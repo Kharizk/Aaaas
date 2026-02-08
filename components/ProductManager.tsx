@@ -1,10 +1,11 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Product, Unit, User } from '../types';
 import { db } from '../services/supabase';
+import { parseExcelFile } from '../services/excelService';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
-  Barcode, LayoutGrid, Boxes, DollarSign, Tag, Palette
+  Barcode, LayoutGrid, Boxes, DollarSign, Tag, Palette, FileSpreadsheet
 } from 'lucide-react';
 
 interface ProductManagerProps {
@@ -21,11 +22,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Import State
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStep, setImportStep] = useState('');
+  const excelInputRef = useRef<HTMLInputElement>(null);
+
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [unitId, setUnitId] = useState('');
   const [price, setPrice] = useState('');
-  const [color, setColor] = useState('#ffffff'); // لون خلفية الصنف
+  const [color, setColor] = useState('#ffffff');
 
   const canEdit = currentUser?.role === 'admin' || currentUser?.permissions.includes('manage_products');
 
@@ -99,6 +105,93 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
     } catch (e) { alert("فشل الحذف"); }
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setIsImporting(true);
+      setImportStep('جاري قراءة ملف البيانات...');
+
+      try {
+          // Artificial delay for UX
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const rawData = await parseExcelFile(file);
+          if (rawData.length === 0) {
+              alert("الملف فارغ أو التنسيق غير مدعوم");
+              setIsImporting(false);
+              return;
+          }
+
+          setImportStep(`تم العثور على ${rawData.length} منتج. جاري المعالجة والحفظ...`);
+          
+          let addedCount = 0;
+          let updatedCount = 0;
+
+          // Process in chunks to avoid UI freeze
+          const chunkSize = 50;
+          for (let i = 0; i < rawData.length; i += chunkSize) {
+              const chunk = rawData.slice(i, i + chunkSize);
+              
+              await Promise.all(chunk.map(async (row: any) => {
+                  // Helper to find column by loosely matching names
+                  const findVal = (keys: string[]) => {
+                      const key = Object.keys(row).find(k => keys.some(search => k.toLowerCase().includes(search.toLowerCase())));
+                      return key ? row[key] : '';
+                  };
+
+                  const pCode = String(findVal(['code', 'كود', 'sku', 'رقم']) || '').trim();
+                  const pName = String(findVal(['name', 'اسم', 'صنف', 'product']) || '').trim();
+                  const pPrice = String(findVal(['price', 'سعر', 'بيع']) || '');
+                  const pUnit = String(findVal(['unit', 'وحدة']) || '');
+
+                  if (pName) {
+                      // Find or Create Unit
+                      let targetUnitId = units.find(u => u.name === pUnit || (pUnit && u.name.includes(pUnit)))?.id;
+                      if (!targetUnitId && pUnit) {
+                          // Create unit on fly if simple text
+                          const newUnit = { id: crypto.randomUUID(), name: pUnit };
+                          await db.units.upsert(newUnit);
+                          setUnits(prev => [...prev, newUnit]);
+                          targetUnitId = newUnit.id;
+                      }
+
+                      const existingProduct = products.find(p => p.code === pCode || p.name === pName);
+                      const productId = existingProduct ? existingProduct.id : crypto.randomUUID();
+                      
+                      const productData: Product = {
+                          id: productId,
+                          code: pCode || `AUTO-${Math.floor(Math.random()*100000)}`,
+                          name: pName,
+                          unitId: targetUnitId || units[0]?.id || '',
+                          price: pPrice || '0',
+                          color: '#ffffff'
+                      };
+
+                      await db.products.upsert(productData);
+                      if (existingProduct) updatedCount++; else addedCount++;
+                  }
+              }));
+              
+              // Update progress bar percentage logic here if needed
+              setImportStep(`تم معالجة ${Math.min(i + chunkSize, rawData.length)} من ${rawData.length}...`);
+          }
+
+          // Refresh Data
+          const allProducts = await db.products.getAll();
+          setProducts(allProducts);
+          
+          alert(`تمت العملية بنجاح!\nتم إضافة: ${addedCount}\nتم تحديث: ${updatedCount}`);
+
+      } catch (error) {
+          console.error(error);
+          alert("حدث خطأ غير متوقع أثناء الاستيراد");
+      } finally {
+          setIsImporting(false);
+          if (excelInputRef.current) excelInputRef.current.value = '';
+      }
+  };
+
   const getUnitName = (id: string) => units.find(u => u.id === id)?.name || '-';
 
   const PriceDisplay = ({ val, pColor }: { val: string, pColor?: string }) => {
@@ -120,8 +213,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   };
 
   return (
-    <div className="h-full flex flex-col space-y-6 animate-in fade-in duration-500 text-right">
+    <div className="h-full flex flex-col space-y-6 animate-in fade-in duration-500 text-right relative">
       
+      {/* Loading Overlay */}
+      {isImporting && (
+          <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-8 animate-in fade-in">
+              <div className="w-64 bg-gray-700 rounded-full h-2 mb-6 overflow-hidden relative shadow-lg border border-white/10">
+                 <div className="h-full bg-gradient-to-r from-sap-secondary via-white to-sap-secondary w-1/2 animate-[shimmer_1.5s_infinite_linear] absolute"></div> 
+              </div>
+              <h2 className="text-2xl font-black text-white mb-2">جاري الاستيراد</h2>
+              <p className="text-white/70 font-bold animate-pulse">{importStep || 'يرجى الانتظار...'}</p>
+          </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 border border-sap-border rounded-sap-m shadow-sm">
         <div className="flex items-center gap-4">
             <div className="p-3 bg-sap-highlight text-sap-primary rounded-xl">
@@ -145,9 +249,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
             </div>
             
             {canEdit && (
-                <button onClick={() => handleOpenModal()} className="bg-sap-primary text-white px-6 py-2.5 rounded-lg text-sm font-black hover:bg-sap-primary-hover shadow-md flex items-center gap-2 transition-all active:scale-95">
-                    <Plus size={20}/> إضافة صنف جديد
-                </button>
+                <>
+                    <input type="file" ref={excelInputRef} onChange={handleImportExcel} accept=".xlsx, .xls" className="hidden" />
+                    <button onClick={() => excelInputRef.current?.click()} className="bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-black hover:bg-green-700 shadow-md flex items-center gap-2 transition-all active:scale-95">
+                        <FileSpreadsheet size={18}/> استيراد Excel
+                    </button>
+                    <button onClick={() => handleOpenModal()} className="bg-sap-primary text-white px-6 py-2.5 rounded-lg text-sm font-black hover:bg-sap-primary-hover shadow-md flex items-center gap-2 transition-all active:scale-95">
+                        <Plus size={20}/> إضافة صنف
+                    </button>
+                </>
             )}
         </div>
       </div>
@@ -210,7 +320,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
               <h3 className="text-base font-black flex items-center gap-2">
                   {editingProduct ? 'تعديل بيانات المنتج' : 'إضافة صنف جديد'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1 rounded-full"><X size={20} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1 rounded-full"><X size={20}/></button>
             </div>
             
             <div className="p-8 space-y-6">

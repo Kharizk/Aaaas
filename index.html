@@ -14,24 +14,13 @@
     
     <!-- ERROR HANDLER & POLYFILLS -->
     <script>
-      // 1. Polyfill process.env to prevent crashes in libraries like @google/genai or Firebase
       window.process = window.process || { env: { NODE_ENV: 'production', API_KEY: '' } };
       
-      // 2. Global Error Handler to show white screen causes
       window.addEventListener('error', function(e) {
         const errorBox = document.getElementById('fatal-error');
         if (errorBox) {
           errorBox.style.display = 'block';
-          errorBox.innerText = 'System Error: ' + e.message;
-        }
-        console.error(e);
-      });
-      
-      window.addEventListener('unhandledrejection', function(e) {
-        const errorBox = document.getElementById('fatal-error');
-        if (errorBox) {
-          errorBox.style.display = 'block';
-          errorBox.innerText = 'Async Error: ' + (e.reason ? e.reason.message : e.reason);
+          errorBox.innerHTML = '<strong>System Error:</strong> ' + e.message;
         }
         console.error(e);
       });
@@ -97,63 +86,29 @@
         }
         
         @media print {
-            /* 1. Hide everything in the body by default */
-            body * {
-                visibility: hidden !important;
-            }
-
-            /* 2. Show only our designated print container and its children */
-            #print-container, #print-container * {
-                visibility: visible !important;
-            }
-
-            /* 3. Position the print container at the top left of the page */
+            body * { visibility: hidden !important; }
+            #print-container, #print-container * { visibility: visible !important; }
             #print-container {
                 position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                margin: 0 !important;
-                padding: 0 !important;
+                left: 0 !important; top: 0 !important;
+                margin: 0 !important; padding: 0 !important;
                 display: block !important;
                 background: white !important;
-                width: 100% !important;
-                height: 100% !important;
-                /* FORCE PRINT COLORS */
+                width: 100% !important; height: 100% !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
-                color-adjust: exact !important;
-            }
-
-            /* 4. Force background colors and images specifically for rows and cells */
-            tr, td, th, div {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
             }
         }
 
-        /* Helper class for full-screen print overlay */
-        .print-only-overlay {
-            display: none;
-        }
-        @media print {
-            .print-only-overlay {
-                display: block !important;
-            }
-        }
+        .print-only-overlay { display: none; }
+        @media print { .print-only-overlay { display: block !important; } }
         
         #fatal-error {
             display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 20px;
-            background: #EF4444;
-            color: white;
-            font-weight: bold;
-            z-index: 10000;
-            text-align: center;
+            position: fixed; top: 0; left: 0; width: 100%;
+            padding: 15px; background: #EF4444; color: white;
+            font-weight: bold; z-index: 10000; text-align: center;
+            font-size: 12px;
         }
     </style>
 <script type="importmap">
@@ -166,19 +121,29 @@
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "xlsx": "https://esm.sh/xlsx@^0.18.5",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3"
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
 </head>
   <body class="bg-sap-background text-sap-text font-sans overflow-hidden text-sm selection:bg-sap-primary selection:text-white">
-    <!-- Error Display for White Screen Debugging -->
+    <!-- Error Display -->
     <div id="fatal-error"></div>
 
-    <!-- Root container for React -->
-    <div id="root" class="h-screen w-screen flex flex-col backdrop-blur-[2px]"></div>
+    <!-- Root container -->
+    <div id="root" class="h-screen w-screen flex flex-col backdrop-blur-[2px]">
+        <!-- Initial Loading State -->
+        <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa;">
+            <div style="width: 40px; height: 40px; border: 4px solid #eee; border-top-color: #006C35; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+            <div style="font-weight: bold; font-size: 16px; color: #333;">StoreFlow Manager</div>
+            <div style="font-size: 12px; margin-top: 5px;">جاري تحميل النظام...</div>
+            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+        </div>
+    </div>
     
-    <!-- Dedicated container for printing to prevent Parent styles inheritance -->
+    <!-- Dedicated container for printing -->
     <div id="print-container" class="print-only-overlay"></div>
 
     <script type="module" src="./index.tsx"></script>
