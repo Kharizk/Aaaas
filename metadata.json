@@ -1,0 +1,7 @@
+{
+  "name": "StoreFlow Manager",
+  "description": "Advanced store management system for products, sales, and cashier settlements",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

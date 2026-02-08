@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>StoreFlow Manager</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#006C35">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="StoreFlow">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3144/3144456.png">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Cairo', 'Segoe UI', 'sans-serif'],
+              mono: ['Consolas', 'Monaco', 'monospace'],
+            },
+            borderRadius: {
+              'sap-s': '4px', 
+              'sap-m': '8px', 
+              'sap-l': '12px', 
+              'm3-s': '4px',
+              'm3-m': '8px',
+              'm3-l': '16px',
+              'm3-xl': '24px',
+              'm3-full': '9999px',
+            },
+            colors: {
+              sap: {
+                primary: '#006C35',
+                'primary-hover': '#004D25',
+                secondary: '#C5A059',
+                shell: '#1F2937',
+                background: '#F8FAFC',
+                surface: '#ffffff',
+                border: '#E2E8F0',
+                text: '#0F172A',
+                'text-variant': '#64748B',
+                success: '#10B981',
+                error: '#EF4444',
+                warning: '#F59E0B',
+                highlight: '#F0FDF4'
+              }
+            },
+            boxShadow: {
+              'sap-1': '0 2px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1)',
+              'sap-2': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              'glow': '0 0 15px rgba(0, 108, 53, 0.15)'
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+        body {
+            background-color: #F8FAFC;
+            color: #0F172A;
+            font-family: 'Cairo', 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            font-size: 13px;
+        }
+        
+        @media print {
+            /* 1. Hide everything in the body by default */
+            body * {
+                visibility: hidden !important;
+            }
+
+            /* 2. Show only our designated print container and its children */
+            #print-container, #print-container * {
+                visibility: visible !important;
+            }
+
+            /* 3. Position the print container at the top left of the page */
+            #print-container {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+                background: white !important;
+                width: 100% !important;
+                height: 100% !important;
+                /* FORCE PRINT COLORS */
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            /* 4. Force background colors and images specifically for rows and cells */
+            tr, td, th, div {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+        }
+
+        /* Helper class for full-screen print overlay */
+        .print-only-overlay {
+            display: none;
+        }
+        @media print {
+            .print-only-overlay {
+                display: block !important;
+            }
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3"
+  }
+}
+</script>
+</head>
+  <body class="bg-sap-background text-sap-text font-sans overflow-hidden text-sm selection:bg-sap-primary selection:text-white">
+    <!-- Root container for React -->
+    <div id="root" class="h-screen w-screen flex flex-col backdrop-blur-[2px]"></div>
+    
+    <!-- Dedicated container for printing to prevent Parent styles inheritance -->
+    <div id="print-container" class="print-only-overlay"></div>
+
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
