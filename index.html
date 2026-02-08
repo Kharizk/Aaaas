@@ -12,6 +12,31 @@
     <meta name="apple-mobile-web-app-title" content="StoreFlow">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3144/3144456.png">
     
+    <!-- ERROR HANDLER & POLYFILLS -->
+    <script>
+      // 1. Polyfill process.env to prevent crashes in libraries like @google/genai or Firebase
+      window.process = window.process || { env: { NODE_ENV: 'production', API_KEY: '' } };
+      
+      // 2. Global Error Handler to show white screen causes
+      window.addEventListener('error', function(e) {
+        const errorBox = document.getElementById('fatal-error');
+        if (errorBox) {
+          errorBox.style.display = 'block';
+          errorBox.innerText = 'System Error: ' + e.message;
+        }
+        console.error(e);
+      });
+      
+      window.addEventListener('unhandledrejection', function(e) {
+        const errorBox = document.getElementById('fatal-error');
+        if (errorBox) {
+          errorBox.style.display = 'block';
+          errorBox.innerText = 'Async Error: ' + (e.reason ? e.reason.message : e.reason);
+        }
+        console.error(e);
+      });
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -116,6 +141,20 @@
                 display: block !important;
             }
         }
+        
+        #fatal-error {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background: #EF4444;
+            color: white;
+            font-weight: bold;
+            z-index: 10000;
+            text-align: center;
+        }
     </style>
 <script type="importmap">
 {
@@ -133,6 +172,9 @@
 </script>
 </head>
   <body class="bg-sap-background text-sap-text font-sans overflow-hidden text-sm selection:bg-sap-primary selection:text-white">
+    <!-- Error Display for White Screen Debugging -->
+    <div id="fatal-error"></div>
+
     <!-- Root container for React -->
     <div id="root" class="h-screen w-screen flex flex-col backdrop-blur-[2px]"></div>
     
