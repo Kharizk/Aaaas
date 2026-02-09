@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 
 export const generateExcelTemplate = () => {
@@ -10,6 +11,33 @@ export const generateExcelTemplate = () => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "نموذج المنتجات");
   XLSX.writeFile(wb, "نموذج_استيراد_المنتجات.xlsx");
+};
+
+export const generateInventoryTemplate = () => {
+  const headers = [
+    { 
+      'كود الصنف': '1001', 
+      'اسم الصنف': 'منتج تجريبي', 
+      'الكمية': 50, 
+      'الوحدة': 'قطعة', 
+      'تاريخ الصلاحية': '2025-12-31' 
+    },
+    { 
+      'كود الصنف': '1002', 
+      'اسم الصنف': 'منتج آخر', 
+      'الكمية': 12, 
+      'الوحدة': 'كرتون', 
+      'تاريخ الصلاحية': '' 
+    }
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(headers);
+  // Adjust column widths
+  ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 15 }];
+  
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "نموذج الجرد");
+  XLSX.writeFile(wb, "نموذج_الجرد_والمخزون.xlsx");
 };
 
 export const generateSalesTemplate = () => {
