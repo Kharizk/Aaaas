@@ -9,7 +9,7 @@ import { parseExcelFile, generateInventoryTemplate } from '../services/excelServ
 import { 
   Printer, Plus, Trash2, Save, FolderOpen, Loader2, 
   Calendar, X, FileText, CheckCircle2, FileCheck2, ClipboardList, Truck, AlertTriangle, ScanLine, Image as ImageIcon, Sparkles, FileSpreadsheet, FileIcon,
-  Tag, CheckSquare, Square, ArrowRight, Download, UploadCloud
+  Tag, CheckSquare, Square, ArrowRight, Download, UploadCloud, Search, Barcode
 } from 'lucide-react';
 
 interface ProductListBuilderProps {
@@ -36,13 +36,13 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   
   // Import State
   const [isScanning, setIsScanning] = useState(false);
-  const [scanStep, setScanStep] = useState<string>(''); // For loading status text
+  const [scanStep, setScanStep] = useState<string>(''); 
   
   // New Items Handling
   const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
   const [showNewItemsModal, setShowNewItemsModal] = useState(false);
   const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(new Set());
-  const [tempExtractedRows, setTempExtractedRows] = useState<ListRow[]>([]); // To hold rows until new items are decided
+  const [tempExtractedRows, setTempExtractedRows] = useState<ListRow[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -79,20 +79,20 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
 
   const handleSave = async () => {
     const validRows = rows.filter(r => r.name.trim());
-    if (validRows.length === 0) { alert("NO VALID DATA TO SAVE"); return; }
+    if (validRows.length === 0) { alert("لا توجد بيانات صالحة للحفظ"); return; }
     setIsSaving(true);
     try {
       const listId = activeListId || crypto.randomUUID();
       await db.lists.upsert({ 
         id: listId, 
-        name: listName || (listType === 'inventory' ? 'INVENTORY LIST' : 'RECEIPT VOUCHER'), 
+        name: listName || (listType === 'inventory' ? 'قائمة جرد' : 'سند استلام'), 
         date: listDate, 
         type: listType,
         rows: validRows 
       });
       setActiveListId(listId);
-      alert("DOCUMENT SAVED SUCCESSFULLY");
-    } catch (e) { alert("SAVE ERROR"); }
+      alert("تم حفظ المستند بنجاح");
+    } catch (e) { alert("فشل الحفظ"); }
     finally { setIsSaving(false); }
   };
 
@@ -102,16 +102,16 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
       if (!file) return;
 
       setIsScanning(true);
-      setScanStep('READING EXCEL FILE...');
+      setScanStep('جاري قراءة ملف Excel...');
 
       try {
           const rawData = await parseExcelFile(file);
           if (rawData.length === 0) {
-              alert("FILE EMPTY OR INVALID FORMAT");
+              alert("الملف فارغ أو التنسيق غير صحيح");
               return;
           }
 
-          setScanStep('PROCESSING ROWS...');
+          setScanStep('معالجة الصفوف...');
           
           await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -145,7 +145,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               return {
                   id: generateId(),
                   code: code,
-                  name: finalName ? String(finalName) : 'UNKNOWN ITEM',
+                  name: finalName ? String(finalName) : 'صنف غير معروف',
                   unitId: finalUnit,
                   qty: Number(qty) || '',
                   expiryDate: expiryDate ? String(expiryDate).split('T')[0] : '', 
@@ -158,33 +158,24 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               const cleanPrev = prev.filter(r => r.name.trim() !== '');
               return [...cleanPrev, ...newRows, createEmptyRow()];
           });
-          alert(`IMPORTED ${newRows.length} ITEMS SUCCESSFULLY.`);
+          alert(`تم استيراد ${newRows.length} صنف بنجاح.`);
 
       } catch (error) {
           console.error("Excel Import Error", error);
-          alert("ERROR PARSING EXCEL FILE.");
+          alert("خطأ في قراءة ملف Excel");
       } finally {
           setIsScanning(false);
           if (excelInputRef.current) excelInputRef.current.value = '';
       }
   };
 
-  // ... (Keep handleSmartScan and other functions as is) ...
   // --- AI Image/PDF Processing (Strict Schema) ---
   const handleSmartScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isPdf = file.type === 'application/pdf';
-    const isImage = file.type.startsWith('image/');
-
-    if (!isPdf && !isImage) {
-        alert("PLEASE UPLOAD IMAGE OR PDF ONLY");
-        return;
-    }
-
     setIsScanning(true);
-    setScanStep('READING FILE STREAM...');
+    setScanStep('جاري رفع الملف...');
     
     try {
         const reader = new FileReader();
@@ -192,7 +183,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
             const result = reader.result as string;
             const base64Data = result.split(',')[1];
             
-            setScanStep('ANALYZING DOCUMENT...');
+            setScanStep('تحليل المستند بالذكاء الاصطناعي...');
             
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
@@ -230,7 +221,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 }
             });
 
-            setScanStep('PROCESSING DATA...');
+            setScanStep('معالجة البيانات...');
             
             let extractedData: any[] = [];
             try {
@@ -298,36 +289,35 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                     const cleanPrev = prev.filter(r => r.name.trim() !== '');
                     return [...cleanPrev, ...processedRows, createEmptyRow()];
                 });
-                alert(`EXTRACTED ${processedRows.length} ITEMS.`);
+                alert(`تم استخراج ${processedRows.length} صنف.`);
                 
             } else {
-                alert("NO TABLE DATA FOUND IN IMAGE.");
+                alert("لم يتم العثور على بيانات في الصورة.");
             }
             setIsScanning(false);
         };
         reader.readAsDataURL(file);
     } catch (error) {
-        alert("AI ERROR");
+        alert("خطأ في خدمة الذكاء الاصطناعي");
         setIsScanning(false);
     } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // ... (Keep handleProcessNewItems, selectProductForRow, etc.) ...
   const handleProcessNewItems = async (action: 'add_only' | 'add_and_label') => {
       const selectedItems = pendingProducts.filter(p => selectedPendingIds.has(p.id));
       if (selectedItems.length > 0) {
           try {
               await Promise.all(selectedItems.map(p => db.products.upsert(p)));
               if (onNewProductsAdded) await onNewProductsAdded();
-          } catch (e) { alert("DB ERROR"); return; }
+          } catch (e) { alert("خطأ في قاعدة البيانات"); return; }
 
           if (action === 'add_and_label') {
               try {
                   const tagList: SavedTagList = {
                       id: crypto.randomUUID(),
-                      name: `AUTO IMPORT - ${new Date().toLocaleDateString('en-US')}`,
+                      name: `استيراد تلقائي - ${new Date().toLocaleDateString('en-US')}`,
                       date: new Date().toISOString(),
                       tags: selectedItems.map(p => ({
                           id: crypto.randomUUID(), productId: p.id, name: p.name, price: p.price || '0',
@@ -338,10 +328,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       }
                   };
                   await db.tagLists.upsert(tagList);
-                  alert("PRODUCTS ADDED & LABELS CREATED");
-              } catch (e) { alert("LABEL CREATION FAILED"); }
+                  alert("تمت إضافة المنتجات وإنشاء قائمة ملصقات");
+              } catch (e) { alert("فشل إنشاء الملصقات"); }
           } else {
-              alert(`ADDED ${selectedItems.length} NEW PRODUCTS`);
+              alert(`تمت إضافة ${selectedItems.length} منتج جديد`);
           }
       }
       setRows(prev => {
@@ -420,26 +410,26 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     const portalNode = document.getElementById('print-container');
     if (!portalNode) return null;
     return createPortal(
-      <ReportLayout title={listType === 'inventory' ? "INVENTORY COUNT SHEET" : "GOODS RECEIPT NOTE"} subtitle={listName || "WAREHOUSE DOCUMENT"}>
+      <ReportLayout title={listType === 'inventory' ? "قائمة جرد المخزون" : "سند استلام بضاعة"} subtitle={listName || "مستند مستودعي"}>
           <div className="grid grid-cols-2 gap-4 mb-4 text-[10px] font-bold bg-gray-50 p-2 border border-sap-border font-mono">
               <div className="space-y-1">
-                  <div className="flex justify-between"><span>DATE:</span> <span>{listDate}</span></div>
-                  <div className="flex justify-between"><span>TYPE:</span> <span className="text-sap-primary">{listType === 'inventory' ? 'STOCKTAKE' : 'INBOUND'}</span></div>
+                  <div className="flex justify-between"><span>التاريخ:</span> <span>{listDate}</span></div>
+                  <div className="flex justify-between"><span>النوع:</span> <span className="text-sap-primary">{listType === 'inventory' ? 'جرد' : 'استلام'}</span></div>
               </div>
               <div className="space-y-1">
-                  <div className="flex justify-between"><span>TOTAL ITEMS:</span> <span>{validRowsCount}</span></div>
-                  <div className="flex justify-between"><span>TOTAL QTY:</span> <span className="text-sap-primary">{totalQty}</span></div>
+                  <div className="flex justify-between"><span>عدد الأصناف:</span> <span>{validRowsCount}</span></div>
+                  <div className="flex justify-between"><span>إجمالي الكمية:</span> <span className="text-sap-primary">{totalQty}</span></div>
               </div>
           </div>
           <table className="w-full text-right border-collapse">
               <thead>
                   <tr className="bg-sap-shell text-white text-[9px] font-black uppercase">
                       <th className="p-1 border border-sap-border w-8 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>#</th>
-                      <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>SKU CODE</th>
-                      <th className="p-1 border border-sap-border" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>DESCRIPTION</th>
-                      <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>QTY</th>
-                      <th className="p-1 border border-sap-border w-16" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>UNIT</th>
-                      <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>EXPIRY</th>
+                      <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كود الصنف</th>
+                      <th className="p-1 border border-sap-border" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>اسم المنتج</th>
+                      <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الكمية</th>
+                      <th className="p-1 border border-sap-border w-16" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الوحدة</th>
+                      <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الصلاحية</th>
                   </tr>
               </thead>
               <tbody className="text-[9px] font-bold font-mono">
@@ -447,9 +437,9 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       const { status } = getExpiryStatus(row.expiryDate);
                       let rowStyle: React.CSSProperties = { borderBottom: '1px solid #E2E8F0' };
                       let statusText = "";
-                      if (status === 'expired') { rowStyle = { ...rowStyle, backgroundColor: '#FECACA', color: '#991B1B', WebkitPrintColorAdjust: 'exact' }; statusText = "EXP"; } 
-                      else if (status === 'critical') { rowStyle = { ...rowStyle, backgroundColor: '#FED7AA', color: '#9A3412', WebkitPrintColorAdjust: 'exact' }; statusText = "CRIT"; } 
-                      else if (status === 'warning') { rowStyle = { ...rowStyle, backgroundColor: '#FEF08A', color: '#854D0E', WebkitPrintColorAdjust: 'exact' }; statusText = "WARN"; } 
+                      if (status === 'expired') { rowStyle = { ...rowStyle, backgroundColor: '#FECACA', color: '#991B1B', WebkitPrintColorAdjust: 'exact' }; statusText = "منتهي"; } 
+                      else if (status === 'critical') { rowStyle = { ...rowStyle, backgroundColor: '#FED7AA', color: '#9A3412', WebkitPrintColorAdjust: 'exact' }; statusText = "حرج"; } 
+                      else if (status === 'warning') { rowStyle = { ...rowStyle, backgroundColor: '#FEF08A', color: '#854D0E', WebkitPrintColorAdjust: 'exact' }; statusText = "تنبيه"; } 
                       else { if (idx % 2 === 0) rowStyle = { ...rowStyle, backgroundColor: '#FFFFFF' }; else rowStyle = { ...rowStyle, backgroundColor: '#F9FAFB' }; }
                       return (
                           <tr key={row.id} style={rowStyle}>
@@ -471,93 +461,102 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 relative">
+    <div className="flex flex-col h-full space-y-4 animate-in fade-in duration-500 relative">
       <PrintView />
       
-      {/* Import / Export Controls */}
-      <div className="bg-sap-surface border border-sap-border p-4 rounded-sm shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-sm ${listType === 'inventory' ? 'bg-blue-900/20 text-blue-400' : 'bg-sap-secondary/20 text-sap-secondary'}`}>
-                  {listType === 'inventory' ? <ClipboardList size={24}/> : <Truck size={24}/>}
+      {/* Top Controls POS Style */}
+      <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className={`p-3 rounded-xl ${listType === 'inventory' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                  {listType === 'inventory' ? <ClipboardList size={28}/> : <Truck size={28}/>}
               </div>
               <div className="flex-1">
-                  <label className="text-[9px] font-black text-sap-text-variant block mb-1 font-mono">DOCUMENT REFERENCE</label>
-                  <input type="text" value={listName} onChange={e => setListName(e.target.value)} placeholder="ENTER REFERENCE..." className="w-full text-sm font-black bg-sap-background border-b border-sap-border focus:border-sap-primary text-sap-text font-mono" />
+                  <label className="text-[10px] font-black text-gray-400 block mb-1">مرجع المستند / اسم القائمة</label>
+                  <input 
+                    type="text" 
+                    value={listName} 
+                    onChange={e => setListName(e.target.value)} 
+                    placeholder="مثال: جرد المستودع رقم 1..." 
+                    className="w-full text-base font-black bg-transparent border-b-2 border-gray-100 focus:border-sap-primary outline-none px-0 py-1" 
+                  />
               </div>
           </div>
           
-          <div className="flex gap-2">
-                <button onClick={generateInventoryTemplate} className="px-4 py-2 bg-sap-background border border-sap-border text-sap-text-variant hover:text-sap-text text-[10px] font-black flex items-center gap-2 transition-all">
-                    <Download size={14}/> TEMPLATE
+          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                <button onClick={generateInventoryTemplate} className="px-4 py-3 bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-black rounded-xl flex items-center gap-2 whitespace-nowrap transition-all">
+                    <Download size={18}/> نموذج Excel
                 </button>
                 <div className="relative">
                     <input type="file" ref={excelInputRef} onChange={handleExcelImport} accept=".xlsx, .xls" className="hidden" />
-                    <button onClick={() => excelInputRef.current?.click()} className="px-4 py-2 bg-sap-background border border-sap-border text-sap-text hover:border-sap-primary text-[10px] font-black flex items-center gap-2 transition-all">
-                        <UploadCloud size={14}/> UPLOAD EXCEL
+                    <button onClick={() => excelInputRef.current?.click()} className="px-4 py-3 bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-black rounded-xl flex items-center gap-2 whitespace-nowrap transition-all">
+                        <UploadCloud size={18}/> رفع Excel
                     </button>
                 </div>
                 <div className="relative">
                     <input type="file" ref={fileInputRef} onChange={handleSmartScan} accept="image/*, application/pdf" className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} disabled={isScanning} className="px-4 py-2 bg-sap-primary text-sap-background text-[10px] font-black hover:bg-sap-primary-hover flex items-center gap-2 shadow-glow">
-                        {isScanning ? <Loader2 size={14} className="animate-spin"/> : <ScanLine size={14}/>} AI SCAN
+                    <button onClick={() => fileInputRef.current?.click()} disabled={isScanning} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black rounded-xl hover:shadow-lg flex items-center gap-2 whitespace-nowrap transition-all shadow-md">
+                        {isScanning ? <Loader2 size={18} className="animate-spin"/> : <ScanLine size={18}/>} مسح ذكي (AI)
                     </button>
                 </div>
           </div>
       </div>
 
-      {/* Main Table Actions */}
-      <div className="flex justify-between items-center bg-sap-shell p-2 border border-sap-border border-b-0 rounded-t-sm">
+      {/* Action Bar */}
+      <div className="flex justify-between items-center bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex gap-2">
-             <button onClick={() => { setActiveListId(null); setRows([createEmptyRow()]); setListName(''); }} className="px-3 py-1 bg-sap-background border border-sap-border text-sap-text text-[10px] font-bold">RESET</button>
-             <button onClick={() => { fetchSavedLists(); setShowSavedLists(true); }} className="px-3 py-1 bg-sap-background border border-sap-border text-sap-secondary text-[10px] font-bold flex items-center gap-2"><FolderOpen size={12}/> HISTORY</button>
+             <button onClick={() => { setActiveListId(null); setRows([createEmptyRow()]); setListName(''); }} className="px-5 py-2.5 hover:bg-red-50 text-red-600 text-xs font-black rounded-lg transition-colors border border-transparent hover:border-red-100">جديد / إفراغ</button>
+             <button onClick={() => { fetchSavedLists(); setShowSavedLists(true); }} className="px-5 py-2.5 hover:bg-gray-50 text-gray-600 text-xs font-black rounded-lg flex items-center gap-2 border border-transparent hover:border-gray-200"><FolderOpen size={16}/> الأرشيف</button>
           </div>
           <div className="flex gap-2">
-             <button onClick={() => window.print()} className="px-4 py-1 bg-sap-surface text-sap-text border border-sap-border text-[10px] font-bold flex items-center gap-2"><FileCheck2 size={12}/> PRINT</button>
-             <button onClick={handleSave} disabled={isSaving} className="px-4 py-1 bg-sap-secondary text-white text-[10px] font-bold flex items-center gap-2 hover:bg-yellow-600">
-                 {isSaving ? <Loader2 size={12} className="animate-spin"/> : <Save size={12}/>} SAVE
+             <button onClick={() => window.print()} className="px-5 py-2.5 bg-gray-100 text-gray-700 text-xs font-black rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-all"><Printer size={16}/> طباعة</button>
+             <button onClick={handleSave} disabled={isSaving} className="px-8 py-2.5 bg-sap-primary text-white text-xs font-black rounded-lg flex items-center gap-2 hover:bg-sap-primary-hover shadow-lg shadow-sap-primary/20 transition-all active:scale-95">
+                 {isSaving ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>} حفظ القائمة
              </button>
           </div>
       </div>
 
-      {/* Editable Table */}
-      <div className="bg-sap-surface border border-sap-border overflow-hidden shadow-inner">
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs font-mono">
-            <thead>
-              <tr className="bg-sap-background text-sap-text-variant font-black uppercase text-[10px] border-b border-sap-border">
-                <th className="p-3 w-12 text-center">#</th>
-                <th className="p-3 w-32">SKU</th>
-                <th className="p-3">DESCRIPTION</th>
-                <th className="p-3 w-24 text-center">QTY</th>
-                <th className="p-3 w-32">UOM</th>
-                <th className="p-3 w-32">EXPIRY</th>
-                <th className="p-3 w-10"></th>
+      {/* Main Grid - POS Style */}
+      <div className="flex-1 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col relative">
+        <div className="overflow-auto custom-scrollbar flex-1 bg-gray-50/30">
+          <table className="w-full text-right text-xs">
+            <thead className="bg-white sticky top-0 z-10 shadow-sm">
+              <tr className="text-gray-500 font-black border-b border-gray-200 text-[11px] uppercase">
+                <th className="p-4 w-12 text-center">#</th>
+                <th className="p-4 w-40">كود الصنف</th>
+                <th className="p-4">اسم المنتج / الوصف</th>
+                <th className="p-4 w-28 text-center">الكمية</th>
+                <th className="p-4 w-32">الوحدة</th>
+                <th className="p-4 w-32">الصلاحية</th>
+                <th className="p-4 w-14"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-sap-border text-sap-text">
+            <tbody className="divide-y divide-gray-100 bg-white">
               {rows.map((row, idx) => (
-                <tr key={row.id} className="hover:bg-sap-background group transition-colors">
-                  <td className="p-3 text-center text-sap-text-variant">{idx + 1}</td>
+                <tr key={row.id} className="group hover:bg-blue-50/30 transition-colors">
+                  <td className="p-4 text-center text-gray-400 font-mono font-bold">{idx + 1}</td>
                   
                   {/* Code */}
                   <td className="p-3 relative">
-                    <input 
-                      id={`code-${row.id}`} type="text" value={row.code} 
-                      onKeyDown={(e) => handleSearchKeyDown(e, row.id, 'code')}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setRows(prev => prev.map(r => r.id === row.id ? { ...r, code: val } : r));
-                        setActiveSearch({ rowId: row.id, field: 'code' });
-                        setSearchTerm(val);
-                      }}
-                      className="w-full bg-transparent border-none p-1 focus:ring-0 font-bold text-sap-primary placeholder-sap-text-variant/30"
-                      placeholder="SCAN..." autoComplete="off"
-                    />
+                    <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg focus-within:border-sap-primary focus-within:ring-2 focus-within:ring-sap-primary/10 transition-all">
+                        <div className="pl-2 pr-3 text-gray-400"><Barcode size={14}/></div>
+                        <input 
+                          id={`code-${row.id}`} type="text" value={row.code} 
+                          onKeyDown={(e) => handleSearchKeyDown(e, row.id, 'code')}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setRows(prev => prev.map(r => r.id === row.id ? { ...r, code: val } : r));
+                            setActiveSearch({ rowId: row.id, field: 'code' });
+                            setSearchTerm(val);
+                          }}
+                          className="w-full bg-transparent border-none p-2.5 font-mono font-black text-sap-primary placeholder-gray-300 text-sm focus:ring-0"
+                          placeholder="SCAN" autoComplete="off"
+                        />
+                    </div>
                     {activeSearch?.rowId === row.id && activeSearch.field === 'code' && filteredProducts.length > 0 && (
-                      <div className="absolute top-full right-0 z-50 bg-sap-shell border border-sap-primary w-64 shadow-xl">
+                      <div className="absolute top-full right-0 z-50 bg-white border border-sap-primary w-64 shadow-xl mt-1 rounded-xl overflow-hidden">
                           {filteredProducts.map((p, i) => (
-                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-2 cursor-pointer border-b border-sap-border/20 flex justify-between ${i === selectedIndex ? 'bg-sap-primary text-white' : 'hover:bg-sap-highlight/10 text-gray-300'}`}>
-                                  <span className="font-bold">{p.code}</span><span className="text-[10px] opacity-70">{p.name}</span>
+                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center ${i === selectedIndex ? 'bg-sap-primary text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                  <span className="font-mono font-black">{p.code}</span><span className="text-[10px] opacity-70 truncate max-w-[100px]">{p.name}</span>
                               </div>
                           ))}
                       </div>
@@ -575,14 +574,14 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                         setActiveSearch({ rowId: row.id, field: 'name' });
                         setSearchTerm(val);
                       }}
-                      className="w-full bg-transparent border-none p-1 focus:ring-0 font-bold text-sap-text placeholder-sap-text-variant/30"
-                      placeholder="SEARCH ITEM..." autoComplete="off"
+                      className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 font-bold text-gray-800 placeholder-gray-300 transition-colors"
+                      placeholder="بحث عن منتج..." autoComplete="off"
                     />
                     {activeSearch?.rowId === row.id && activeSearch.field === 'name' && filteredProducts.length > 0 && (
-                      <div className="absolute top-full right-0 z-50 bg-sap-shell border border-sap-primary w-full shadow-xl">
+                      <div className="absolute top-full right-0 z-50 bg-white border border-sap-primary w-full shadow-xl mt-1 rounded-xl overflow-hidden">
                           {filteredProducts.map((p, i) => (
-                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-2 cursor-pointer border-b border-sap-border/20 flex justify-between ${i === selectedIndex ? 'bg-sap-primary text-white' : 'hover:bg-sap-highlight/10 text-gray-300'}`}>
-                                  <span className="font-bold">{p.name}</span><span className="text-[10px] opacity-70">{p.code}</span>
+                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center ${i === selectedIndex ? 'bg-sap-primary text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                  <span className="font-bold">{p.name}</span><span className="text-[10px] opacity-70 font-mono">{p.code}</span>
                               </div>
                           ))}
                       </div>
@@ -591,97 +590,98 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
 
                   {/* Qty */}
                   <td className="p-3">
-                    <input id={`qty-${row.id}`} type="number" value={row.qty} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-transparent border-none p-1 focus:ring-0 text-center font-black text-sap-secondary placeholder-sap-text-variant/30" placeholder="0" />
+                    <input id={`qty-${row.id}`} type="number" value={row.qty} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
                   </td>
 
                   {/* Unit */}
                   <td className="p-3">
-                    <select id={`unit-${row.id}`} value={row.unitId} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'unit') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, unitId: e.target.value } : r))} className="w-full bg-transparent border-none p-1 focus:ring-0 text-xs font-bold text-sap-text appearance-none cursor-pointer">
-                      <option value="">-</option>
+                    <select id={`unit-${row.id}`} value={row.unitId} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'unit') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, unitId: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-bold text-gray-600 cursor-pointer">
+                      <option value="">- اختر -</option>
                       {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
                   </td>
 
                   {/* Expiry */}
                   <td className="p-3 relative">
-                    <input id={`expiry-${row.id}`} type="date" value={row.expiryDate} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'expiryDate') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, expiryDate: e.target.value } : r))} className="w-full bg-transparent border-none p-1 focus:ring-0 text-xs font-mono text-sap-text" />
-                    {getExpiryStatus(row.expiryDate).status !== 'normal' && <div className="absolute left-1 top-1/2 -translate-y-1/2 text-red-500"><AlertTriangle size={12} /></div>}
+                    <input id={`expiry-${row.id}`} type="date" value={row.expiryDate} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'expiryDate') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, expiryDate: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-mono text-gray-600" />
+                    {getExpiryStatus(row.expiryDate).status !== 'normal' && <div className="absolute left-0 top-1/2 -translate-y-1/2 text-red-500"><AlertTriangle size={14} /></div>}
                   </td>
 
                   <td className="p-3 text-center">
-                    <button onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
+                    <button onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))} className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={16}/></button>
                   </td>
                 </tr>
               ))}
+              
+              {/* Add Row Button at bottom of table */}
               <tr>
-                <td colSpan={7} className="p-0">
-                  <button onClick={() => setRows(prev => [...prev, createEmptyRow()])} className="w-full py-3 bg-sap-background text-sap-primary font-bold text-[10px] hover:bg-sap-highlight/10 flex items-center justify-center gap-2 transition-all">
-                    <Plus size={14} /> ADD ROW
-                  </button>
-                </td>
+                  <td colSpan={7} className="p-3">
+                      <button onClick={() => setRows(prev => [...prev, createEmptyRow()])} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 font-bold hover:border-sap-primary hover:text-sap-primary hover:bg-sap-highlight/10 transition-all flex items-center justify-center gap-2">
+                          <Plus size={18}/> إضافة سطر جديد (أو اضغط Enter)
+                      </button>
+                  </td>
               </tr>
             </tbody>
-            <tfoot className="bg-sap-shell text-sap-text-variant font-black border-t border-sap-border">
-              <tr>
-                <td colSpan={3} className="px-4 py-3 text-left uppercase tracking-widest text-[10px]">TOTAL QUANTITY</td>
-                <td className="px-4 py-3 text-center text-lg text-sap-secondary font-mono">{totalQty}</td>
-                <td colSpan={3}></td>
-              </tr>
-            </tfoot>
           </table>
+        </div>
+        
+        {/* Footer Summary */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center text-xs font-black text-gray-500 uppercase tracking-wide">
+            <div>عدد السجلات: <span className="text-gray-900 text-sm ml-1">{validRowsCount}</span></div>
+            <div>إجمالي الكميات: <span className="text-sap-primary text-xl font-mono ml-2">{totalQty}</span></div>
         </div>
       </div>
 
       {/* Loading Overlay */}
       {isScanning && (
-          <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 animate-in fade-in">
-              <div className="w-64 bg-sap-surface rounded-sm h-1 mb-6 overflow-hidden relative border border-sap-border">
-                 <div className="h-full bg-sap-primary w-1/2 animate-[shimmer_1s_infinite_linear] absolute"></div> 
+          <div className="fixed inset-0 z-[200] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in">
+              <div className="w-20 h-20 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-200 mb-6 animate-pulse">
+                 <ScanLine size={40} className="text-white"/>
               </div>
-              <h2 className="text-xl font-mono font-black text-sap-primary mb-2 blink">SYSTEM PROCESSING</h2>
-              <p className="text-sap-text font-mono text-xs">{scanStep}</p>
+              <h2 className="text-2xl font-black text-gray-800 mb-2">جاري المعالجة الذكية</h2>
+              <p className="text-gray-500 font-bold">{scanStep}</p>
           </div>
       )}
 
       {/* New Items Modal */}
       {showNewItemsModal && (
-          <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-sap-surface w-full max-w-3xl border border-sap-primary shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                  <div className="p-4 bg-sap-shell text-sap-text border-b border-sap-border flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                          <div className="p-2 bg-sap-highlight/10 text-sap-secondary border border-sap-secondary rounded-sm"><Sparkles size={16}/></div>
+          <div className="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-white/20">
+                  <div className="p-6 bg-indigo-600 text-white flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                          <div className="p-3 bg-white/20 rounded-xl"><Sparkles size={24}/></div>
                           <div>
-                              <h3 className="font-black text-sm font-mono text-sap-primary">NEW_ITEMS_DETECTED</h3>
-                              <p className="text-[10px] text-sap-text-variant">FOUND {pendingProducts.length} UNREGISTERED SKUs</p>
+                              <h3 className="font-black text-lg">تم اكتشاف أصناف جديدة</h3>
+                              <p className="text-xs text-indigo-200 font-bold opacity-80">عثر الذكاء الاصطناعي على {pendingProducts.length} منتج غير مسجل</p>
                           </div>
                       </div>
-                      <button onClick={() => setShowNewItemsModal(false)} className="text-sap-text-variant hover:text-white"><X size={18}/></button>
+                      <button onClick={() => setShowNewItemsModal(false)} className="hover:bg-white/10 p-2 rounded-full transition-colors"><X size={24}/></button>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto bg-sap-background p-4 custom-scrollbar">
-                      <div className="flex justify-between items-center mb-4">
-                          <button onClick={() => { if (selectedPendingIds.size === pendingProducts.length) setSelectedPendingIds(new Set()); else setSelectedPendingIds(new Set(pendingProducts.map(p => p.id))); }} className="text-[10px] font-bold text-sap-primary hover:underline flex items-center gap-2">
-                              {selectedPendingIds.size === pendingProducts.length ? <CheckSquare size={14}/> : <Square size={14}/>} 
-                              TOGGLE ALL
+                  <div className="flex-1 overflow-y-auto bg-gray-50 p-6 custom-scrollbar">
+                      <div className="flex justify-between items-center mb-6">
+                          <button onClick={() => { if (selectedPendingIds.size === pendingProducts.length) setSelectedPendingIds(new Set()); else setSelectedPendingIds(new Set(pendingProducts.map(p => p.id))); }} className="text-xs font-black text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
+                              {selectedPendingIds.size === pendingProducts.length ? <CheckSquare size={18}/> : <Square size={18}/>} 
+                              تحديد الكل
                           </button>
-                          <span className="text-[10px] font-bold text-sap-text-variant">SELECTED: {selectedPendingIds.size}</span>
+                          <span className="text-xs font-bold text-gray-500">تم تحديد: {selectedPendingIds.size}</span>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                           {pendingProducts.map(product => {
                               const isSelected = selectedPendingIds.has(product.id);
                               return (
-                                  <div key={product.id} className={`p-3 border transition-all cursor-pointer flex items-center gap-4 ${isSelected ? 'bg-sap-highlight/10 border-sap-primary' : 'bg-sap-surface border-sap-border opacity-60'}`} onClick={() => { const newSet = new Set(selectedPendingIds); if (isSelected) newSet.delete(product.id); else newSet.add(product.id); setSelectedPendingIds(newSet); }}>
-                                      <div className={`w-4 h-4 border flex items-center justify-center ${isSelected ? 'bg-sap-primary border-sap-primary text-sap-background' : 'bg-transparent border-sap-text-variant'}`}>
-                                          {isSelected && <CheckCircle2 size={12}/>}
+                                  <div key={product.id} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-4 ${isSelected ? 'bg-white border-indigo-500 shadow-md' : 'bg-gray-100 border-transparent opacity-60'}`} onClick={() => { const newSet = new Set(selectedPendingIds); if (isSelected) newSet.delete(product.id); else newSet.add(product.id); setSelectedPendingIds(newSet); }}>
+                                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-300 bg-white'}`}>
+                                          {isSelected && <CheckCircle2 size={14}/>}
                                       </div>
                                       <div className="flex-1">
-                                          <div className="font-black text-xs text-sap-text">{product.name}</div>
-                                          <div className="text-[9px] font-mono text-sap-text-variant mt-0.5">SKU: {product.code}</div>
+                                          <div className="font-black text-sm text-gray-800">{product.name}</div>
+                                          <div className="text-[10px] font-mono text-gray-400 font-bold mt-1">CODE: {product.code}</div>
                                       </div>
                                       <div className="text-right">
-                                          <div className="text-[9px] font-bold bg-sap-background px-2 py-1 border border-sap-border text-sap-text-variant">
-                                              {units.find(u => u.id === product.unitId)?.name || 'DEFAULT'}
+                                          <div className="text-[10px] font-black bg-gray-100 px-3 py-1 rounded-full text-gray-500 border border-gray-200">
+                                              {units.find(u => u.id === product.unitId)?.name || 'افتراضي'}
                                           </div>
                                       </div>
                                   </div>
@@ -690,12 +690,12 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       </div>
                   </div>
 
-                  <div className="p-4 bg-sap-shell border-t border-sap-border flex gap-2">
-                      <button onClick={() => handleProcessNewItems('add_only')} className="flex-1 py-3 bg-sap-background border border-sap-border text-sap-text font-bold text-[10px] hover:text-white hover:border-sap-text-variant">
-                          ADD TO DB ONLY
+                  <div className="p-6 bg-white border-t border-gray-100 flex gap-4">
+                      <button onClick={() => handleProcessNewItems('add_only')} className="flex-1 py-4 bg-gray-100 text-gray-600 font-black text-sm rounded-2xl hover:bg-gray-200 transition-all">
+                          إضافة للقاعدة فقط
                       </button>
-                      <button onClick={() => handleProcessNewItems('add_and_label')} className="flex-[2] py-3 bg-sap-primary text-sap-background font-black text-[10px] hover:bg-sap-primary-hover flex items-center justify-center gap-2">
-                          <Tag size={14}/> ADD & GENERATE LABELS
+                      <button onClick={() => handleProcessNewItems('add_and_label')} className="flex-[1.5] py-4 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 flex items-center justify-center gap-3 transition-all">
+                          <Tag size={18}/> إضافة وطباعة ملصقات
                       </button>
                   </div>
               </div>
@@ -704,30 +704,31 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
 
       {/* Saved Lists Modal */}
       {showSavedLists && (
-          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-sap-surface w-full max-w-xl border border-sap-primary shadow-2xl flex flex-col max-h-[80vh]">
-                  <div className="p-4 bg-sap-shell text-white flex justify-between items-center border-b border-sap-border">
-                      <h3 className="font-black text-xs font-mono flex items-center gap-2 text-sap-primary"><FolderOpen size={16}/> SAVED_DOCUMENTS</h3>
-                      <button onClick={() => setShowSavedLists(false)} className="text-sap-text-variant hover:text-white"><X size={16}/></button>
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
+                  <div className="p-6 bg-gray-900 text-white flex justify-between items-center">
+                      <h3 className="font-black text-lg flex items-center gap-3"><FolderOpen size={20} className="text-sap-secondary"/> أرشيف السجلات</h3>
+                      <button onClick={() => setShowSavedLists(false)} className="hover:bg-white/20 p-2 rounded-full"><X size={20}/></button>
                   </div>
-                  <div className="flex-1 overflow-y-auto bg-sap-background custom-scrollbar p-2">
-                      {isLoadingLists ? <div className="p-10 text-center animate-pulse font-mono text-xs text-sap-primary">LOADING DATA...</div> : (
-                          <div className="space-y-1">
-                              {savedLists.map((list) => (
-                                  <div key={list.id} onClick={() => loadList(list)} className="p-3 border border-sap-border hover:border-sap-primary bg-sap-surface cursor-pointer flex justify-between items-center group">
-                                      <div>
-                                          <h4 className="font-black text-xs text-sap-text group-hover:text-sap-primary">{list.name}</h4>
-                                          <div className="flex gap-3 text-[9px] font-mono text-sap-text-variant mt-1">
-                                              <span>{list.date}</span>
-                                              <span>{list.rows?.length || 0} ITEMS</span>
-                                              <span className="text-sap-secondary">{list.type === 'inventory' ? 'STOCK' : 'RCPT'}</span>
-                                          </div>
+                  <div className="flex-1 overflow-y-auto bg-gray-50 custom-scrollbar p-4 space-y-3">
+                      {isLoadingLists ? <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-2"><Loader2 className="animate-spin"/><span className="text-xs font-bold">جاري التحميل...</span></div> : (
+                          savedLists.length > 0 ? savedLists.map((list) => (
+                              <div key={list.id} onClick={() => loadList(list)} className="p-5 bg-white border border-gray-100 rounded-2xl hover:border-sap-primary hover:shadow-lg cursor-pointer flex justify-between items-center group transition-all">
+                                  <div>
+                                      <h4 className="font-black text-sm text-gray-800 group-hover:text-sap-primary mb-1">{list.name}</h4>
+                                      <div className="flex gap-4 text-[10px] font-bold text-gray-400">
+                                          <span className="flex items-center gap-1"><Calendar size={12}/> {list.date}</span>
+                                          <span className="flex items-center gap-1"><FileText size={12}/> {list.rows?.length || 0} صنف</span>
                                       </div>
-                                      <Trash2 size={14} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100" onClick={async (e) => { e.stopPropagation(); if(confirm('DELETE?')) { await db.lists.delete(list.id); fetchSavedLists(); } }} />
                                   </div>
-                              ))}
-                              {savedLists.length === 0 && <div className="p-10 text-center text-sap-text-variant italic font-mono text-xs">NO RECORDS FOUND</div>}
-                          </div>
+                                  <div className="flex items-center gap-3">
+                                      <span className={`px-3 py-1 rounded-full text-[10px] font-black ${list.type === 'inventory' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                                          {list.type === 'inventory' ? 'جرد' : 'استلام'}
+                                      </span>
+                                      <Trash2 size={18} className="text-red-300 hover:text-red-500 transition-colors" onClick={async (e) => { e.stopPropagation(); if(confirm('هل أنت متأكد من الحذف؟')) { await db.lists.delete(list.id); fetchSavedLists(); } }} />
+                                  </div>
+                              </div>
+                          )) : <div className="p-12 text-center text-gray-400 font-bold text-sm">لا توجد سجلات محفوظة</div>
                       )}
                   </div>
               </div>
