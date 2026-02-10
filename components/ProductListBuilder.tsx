@@ -16,9 +16,11 @@ interface ProductListBuilderProps {
   products: Product[];
   units: Unit[];
   onNewProductsAdded?: () => void;
+  initialListParams?: { listId: string, rowId?: string } | null;
+  clearInitialParams?: () => void;
 }
 
-export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products, units, onNewProductsAdded }) => {
+export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products, units, onNewProductsAdded, initialListParams, clearInitialParams }) => {
   const generateId = () => crypto.randomUUID();
   const createEmptyRow = (): ListRow => ({
     id: generateId(), code: '', name: '', unitId: '', qty: '', expiryDate: '', note: '', isDismissed: false
@@ -51,6 +53,9 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   const [activeSearch, setActiveSearch] = useState<{ rowId: string, field: 'name' | 'code' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0); 
+  
+  // Highlighting State
+  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
   const totalQty = rows.reduce((acc, row) => acc + (Number(row.qty) || 0), 0);
   const validRowsCount = rows.filter(r => r.name.trim()).length;
@@ -58,6 +63,42 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   useEffect(() => {
     setSelectedIndex(0);
   }, [searchTerm]);
+
+  // Load Initial List (from Deep Link / Dashboard)
+  useEffect(() => {
+      if (initialListParams) {
+          const loadInitial = async () => {
+              try {
+                  // Fetch all lists then find target (Since we don't have getById exposed in supabase service but getAll is cheap enough or we can assume it's cached)
+                  const allLists = await db.lists.getAll();
+                  const targetList = allLists.find((l: any) => l.id === initialListParams.listId);
+                  
+                  if (targetList) {
+                      loadList(targetList);
+                      if (initialListParams.rowId) {
+                          setHighlightedRowId(initialListParams.rowId);
+                          // Scroll into view
+                          setTimeout(() => {
+                              const el = document.getElementById(`row-${initialListParams.rowId}`);
+                              if (el) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  // Clear highlight after 3s
+                                  setTimeout(() => setHighlightedRowId(null), 3000);
+                              }
+                          }, 500);
+                      }
+                  } else {
+                      alert("القائمة المطلوبة غير موجودة");
+                  }
+              } catch (e) {
+                  console.error(e);
+              } finally {
+                  if (clearInitialParams) clearInitialParams();
+              }
+          };
+          loadInitial();
+      }
+  }, [initialListParams]);
 
   const fetchSavedLists = async () => {
     setIsLoadingLists(true);
@@ -532,7 +573,11 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {rows.map((row, idx) => (
-                <tr key={row.id} className="group hover:bg-blue-50/30 transition-colors">
+                <tr 
+                  id={`row-${row.id}`}
+                  key={row.id} 
+                  className={`group transition-colors duration-500 ${highlightedRowId === row.id ? 'bg-yellow-100' : 'hover:bg-blue-50/30'}`}
+                >
                   <td className="p-4 text-center text-gray-400 font-mono font-bold">{idx + 1}</td>
                   
                   {/* Code */}

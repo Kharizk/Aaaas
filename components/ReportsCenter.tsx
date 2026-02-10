@@ -33,13 +33,15 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     });
     const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
     const [selectedListId, setSelectedListId] = useState<string>('all');
+    const [itemSearch, setItemSearch] = useState('');
 
     useEffect(() => {
         const fetchLists = async () => {
             try {
                 const data = await db.lists.getAll();
-                // Filter only inventory types
-                setLists(data.filter((l: any) => l.type === 'inventory') as SavedList[]);
+                // Sort by date descending (newest first) and include ALL types
+                const sortedLists = data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setLists(sortedLists as SavedList[]);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -62,6 +64,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         let flatRows: { 
             listName: string; 
             listDate: string; 
+            listType: string;
             row: ListRow; 
             unitName: string 
         }[] = [];
@@ -74,6 +77,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                         flatRows.push({
                             listName: list.name,
                             listDate: list.date,
+                            listType: list.type || 'inventory',
                             row: row,
                             unitName: units.find(u => u.id === row.unitId)?.name || '-'
                         });
@@ -82,8 +86,17 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             }
         });
 
+        // 3. Filter by Item Search
+        if (itemSearch.trim()) {
+            const term = itemSearch.toLowerCase();
+            flatRows = flatRows.filter(item => 
+                item.row.name.toLowerCase().includes(term) || 
+                item.row.code.toLowerCase().includes(term)
+            );
+        }
+
         return flatRows;
-    }, [lists, dateFrom, dateTo, selectedListId, units]);
+    }, [lists, dateFrom, dateTo, selectedListId, units, itemSearch]);
 
     const totalQty = filteredData.reduce((acc, curr) => acc + (Number(curr.row.qty) || 0), 0);
 
@@ -97,8 +110,8 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                             <ClipboardList size={32} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-sap-text">أرشيف الجرد المخزني</h2>
-                            <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">سجل تفصيلي للأصناف التي تم جردها</p>
+                            <h2 className="text-2xl font-black text-sap-text">أرشيف العمليات المخزنية</h2>
+                            <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">سجل الجرد وسندات الاستلام</p>
                         </div>
                     </div>
 
@@ -113,10 +126,27 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                         
                         <div className="w-px h-8 bg-gray-200 mx-2"></div>
                         
-                        <select value={selectedListId} onChange={e => setSelectedListId(e.target.value)} className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[150px]">
-                            <option value="all">كافة قوائم الجرد</option>
-                            {lists.map(l => <option key={l.id} value={l.id}>{l.name} ({l.date})</option>)}
+                        <select value={selectedListId} onChange={e => setSelectedListId(e.target.value)} className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[180px]">
+                            <option value="all">كافة القوائم (جرد + استلام)</option>
+                            {lists.map(l => (
+                                <option key={l.id} value={l.id}>
+                                    {l.name} ({l.type === 'inventory' ? 'جرد' : 'استلام'}) - {l.date}
+                                </option>
+                            ))}
                         </select>
+
+                        <div className="w-px h-8 bg-gray-200 mx-2"></div>
+
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                value={itemSearch} 
+                                onChange={e => setItemSearch(e.target.value)} 
+                                placeholder="بحث في الأصناف..."
+                                className="bg-white border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-xs font-bold w-40 focus:w-60 transition-all focus:border-sap-primary"
+                            />
+                            <Search size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"/>
+                        </div>
 
                         <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg">
                             <Printer size={16}/> طباعة
@@ -127,7 +157,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
 
             {/* Report Content */}
             <ReportLayout 
-                title="تقرير تفصيلي للجرد المخزني" 
+                title="تقرير تفصيلي لحركة المخزون" 
                 subtitle={`الفترة من ${dateFrom} إلى ${dateTo}`}
                 showHeader={showHeader}
             >
@@ -149,7 +179,8 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                         <table className="w-full text-right border-collapse">
                             <thead>
                                 <tr className="bg-sap-shell text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
-                                    <th className="px-6 py-4 border-l border-white/5 w-32">التاريخ</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-28">التاريخ</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-24">النوع</th>
                                     <th className="px-6 py-4 border-l border-white/5">المستند / القائمة</th>
                                     <th className="px-6 py-4 border-l border-white/5 w-32">كود الصنف</th>
                                     <th className="px-6 py-4 border-l border-white/5">اسم المنتج</th>
@@ -160,11 +191,16 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                             </thead>
                             <tbody className="text-xs font-bold divide-y divide-gray-50">
                                 {filteredData.length === 0 ? (
-                                    <tr><td colSpan={7} className="p-10 text-center text-gray-400 italic">لا توجد بيانات مطابقة للبحث</td></tr>
+                                    <tr><td colSpan={8} className="p-10 text-center text-gray-400 italic">لا توجد بيانات مطابقة للبحث</td></tr>
                                 ) : (
                                     filteredData.map((item, idx) => (
                                         <tr key={idx} className="hover:bg-indigo-50/30 transition-all group">
                                             <td className="px-6 py-3 font-mono text-gray-500">{item.listDate}</td>
+                                            <td className="px-6 py-3">
+                                                <span className={`px-2 py-1 rounded text-[9px] font-black ${item.listType === 'inventory' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                    {item.listType === 'inventory' ? 'جرد' : 'استلام'}
+                                                </span>
+                                            </td>
                                             <td className="px-6 py-3 text-sap-primary">{item.listName}</td>
                                             <td className="px-6 py-3 font-mono text-gray-600 bg-gray-50/50">{item.row.code || '-'}</td>
                                             <td className="px-6 py-3 text-gray-800">{item.row.name}</td>

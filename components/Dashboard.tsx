@@ -7,13 +7,14 @@ import { ReportLayout } from './ReportLayout';
 import { 
   Package, Ruler, FileText, Clock, 
   ArrowUpRight, AlertCircle, ShoppingBag, Plus, DollarSign, Crown,
-  AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet
+  AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink
 } from 'lucide-react';
 
 interface DashboardProps {
   products: Product[];
   units: Unit[];
   switchToTab: (tab: any) => void;
+  onNavigateToList?: (listId: string, rowId?: string) => void;
 }
 
 interface ExpiryAlert {
@@ -27,7 +28,7 @@ interface ExpiryAlert {
     listType: string;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToTab }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToTab, onNavigateToList }) => {
   const [stats, setStats] = useState({ lists: 0, sales: 0 });
   const [recentLists, setRecentLists] = useState<any[]>([]);
   const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlert[]>([]);
@@ -82,13 +83,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
 
   useEffect(() => { fetchStats(); }, []);
 
-  const handleDismissAlert = async (alertItem: ExpiryAlert) => {
+  const handleDismissAlert = async (e: React.MouseEvent, alertItem: ExpiryAlert) => {
+      e.stopPropagation(); // Prevent navigating when clicking dismiss
       setIsUpdatingAlert(alertItem.rowId);
       try {
           await db.lists.updateRowDismissed(alertItem.listId, alertItem.rowId);
           setExpiryAlerts(prev => prev.filter(a => a.rowId !== alertItem.rowId));
       } catch (e) { alert("فشل تحديث الحالة"); }
       finally { setIsUpdatingAlert(null); }
+  };
+
+  const handleRowClick = (alert: ExpiryAlert) => {
+      if (onNavigateToList) {
+          onNavigateToList(alert.listId, alert.rowId);
+      }
   };
 
   const SAPTile = ({ title, value, subValue, icon: Icon, onClick, colorClass = "from-emerald-500 to-teal-600" }: any) => (
@@ -326,10 +334,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                       </thead>
                       <tbody className="divide-y divide-red-100/50">
                           {expiryAlerts.map(alert => (
-                              <tr key={alert.rowId} className="hover:bg-red-100/30 transition-colors">
-                                  <td className="p-4">
-                                      <div className="font-black text-gray-800">{alert.productName}</div>
-                                      <div className="text-[10px] text-gray-500 font-mono mt-0.5">{alert.productCode}</div>
+                              <tr 
+                                key={alert.rowId} 
+                                onClick={() => handleRowClick(alert)}
+                                className="hover:bg-red-100/30 transition-colors cursor-pointer group"
+                                title="اضغط لفتح القائمة"
+                              >
+                                  <td className="p-4 group-hover:text-red-800 transition-colors flex items-center gap-2">
+                                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-red-400"/>
+                                      <div>
+                                          <div className="font-black text-gray-800 group-hover:text-red-900">{alert.productName}</div>
+                                          <div className="text-[10px] text-gray-500 font-mono mt-0.5">{alert.productCode}</div>
+                                      </div>
                                   </td>
                                   <td className="p-4 font-mono font-bold text-red-600">{alert.expiryDate}</td>
                                   <td className="p-4">
@@ -341,9 +357,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                                   </td>
                                   <td className="p-4 text-center">
                                       <button 
-                                        onClick={() => handleDismissAlert(alert)}
+                                        onClick={(e) => handleDismissAlert(e, alert)}
                                         disabled={isUpdatingAlert === alert.rowId}
-                                        className="text-[10px] font-bold underline text-gray-500 hover:text-sap-success transition-colors"
+                                        className="text-[10px] font-bold underline text-gray-500 hover:text-sap-success transition-colors px-2 py-1 rounded hover:bg-white/50"
                                       >
                                           {isUpdatingAlert === alert.rowId ? 'جاري...' : 'تجاهل / تم المعالجة'}
                                       </button>

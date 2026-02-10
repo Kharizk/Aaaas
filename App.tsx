@@ -42,6 +42,9 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dbStatus, setDbStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   
+  // Navigation Params for deep linking internally
+  const [targetListParams, setTargetListParams] = useState<{ listId: string, rowId?: string } | null>(null);
+
   const [units, setUnits] = useState<Unit[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -178,6 +181,11 @@ const App: React.FC = () => {
   const handleProfileUpdate = (updatedUser: User) => {
       setCurrentUser(updatedUser);
       localStorage.setItem('sf_user_session', JSON.stringify(updatedUser));
+  };
+
+  const handleNavigateToList = (listId: string, rowId?: string) => {
+      setTargetListParams({ listId, rowId });
+      setActiveTab('list');
   };
 
   const hasPermission = (perm: Permission) => {
@@ -346,9 +354,9 @@ const App: React.FC = () => {
                      </div>
                 )}
 
-                {activeTab === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => setActiveTab(t as any)} />}
+                {activeTab === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => setActiveTab(t as any)} onNavigateToList={handleNavigateToList} />}
                 {activeTab === 'products' && hasAnyPermission(['view_products', 'manage_products']) && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
-                {activeTab === 'list' && hasPermission('manage_products') && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} />}
+                {activeTab === 'list' && hasPermission('manage_products') && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
                 {activeTab === 'sales_entry' && hasPermission('record_sales') && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
                 {activeTab === 'reports_center' && hasPermission('view_reports') && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
                 {activeTab === 'settlement' && hasPermission('manage_settlements') && <SettlementManager currentUser={currentUser} />}
