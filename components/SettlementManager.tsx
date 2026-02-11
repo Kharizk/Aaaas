@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom'; // Added for printing
 import { POSPoint, Cashier, Settlement, SettlementEntry, User, Branch } from '../types';
 import { db } from '../services/supabase';
+import { ReportLayout } from './ReportLayout'; // Added for consistent printing
 import { 
   Plus, Trash2, Save, Printer, Edit2, X, Loader2, Eye,
   Wallet, Monitor, Users, History, Calculator, CreditCard, 
@@ -136,12 +138,172 @@ export const SettlementManager: React.FC<SettlementManagerProps> = ({ currentUse
 
   const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  // --- Sub-Components ---
+
+  const SettlementDetailModal = () => {
+      if (!viewingSettlement) return null;
+
+      const net = viewingSettlement.networks.reduce((a,b)=>a+b.amount,0) + viewingSettlement.transfers.reduce((a,b)=>a+b.amount,0);
+      const expected = viewingSettlement.totalSales - net;
+      const diff = viewingSettlement.actualCash - expected;
+      
+      const posName = posPoints.find(p => p.id === viewingSettlement.posId)?.name || '-';
+      const cashierName = cashiers.find(c => c.id === viewingSettlement.cashierId)?.name || '-';
+      const branchName = branches.find(b => b.id === viewingSettlement.branchId)?.name || '-';
+
+      const PrintContent = () => (
+          <ReportLayout 
+            title="تقرير إغلاق وردية (تسوية)" 
+            subtitle={`رقم مرجعي: ${viewingSettlement.id.slice(0,8)}`}
+            branchName={branchName}
+          >
+              <div className="grid grid-cols-2 gap-4 mb-6 text-sm font-bold border-b border-gray-200 pb-4">
+                  <div>التاريخ: <span className="font-mono">{viewingSettlement.date}</span></div>
+                  <div>الكاشير: <span>{cashierName}</span></div>
+                  <div>نقطة البيع: <span>{posName}</span></div>
+                  <div>وقت الإنشاء: <span className="font-mono">{new Date(viewingSettlement.createdAt).toLocaleTimeString('ar-SA')}</span></div>
+              </div>
+
+              <div className="space-y-6">
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50/50">
+                      <h4 className="font-black text-sm mb-3">ملخص المبيعات</h4>
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                              <div className="text-[10px] text-gray-500 mb-1">إجمالي المبيعات</div>
+                              <div className="font-mono font-black text-lg">{fmt(viewingSettlement.totalSales)}</div>
+                          </div>
+                          <div>
+                              <div className="text-[10px] text-gray-500 mb-1">المدفوعات الإلكترونية</div>
+                              <div className="font-mono font-black text-lg">{fmt(net)}</div>
+                          </div>
+                          <div>
+                              <div className="text-[10px] text-gray-500 mb-1">النقد المتوقع</div>
+                              <div className="font-mono font-black text-lg">{fmt(expected)}</div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-right text-xs">
+                          <thead className="bg-gray-100 font-bold border-b border-gray-200">
+                              <tr>
+                                  <th className="p-3">بيان الشبكة / التحويل</th>
+                                  <th className="p-3 text-left">المبلغ</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 font-medium">
+                              {viewingSettlement.networks.map((n, i) => (
+                                  <tr key={i}>
+                                      <td className="p-3">{n.name}</td>
+                                      <td className="p-3 text-left font-mono">{fmt(n.amount)}</td>
+                                  </tr>
+                              ))}
+                              {viewingSettlement.networks.length === 0 && <tr><td colSpan={2} className="p-3 text-center text-gray-400">لا توجد شبكات</td></tr>}
+                          </tbody>
+                      </table>
+                  </div>
+
+                  <div className="border-t-2 border-black pt-4 mt-6">
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold">النقد الفعلي (المسلم):</span>
+                          <span className="font-mono font-black text-xl">{fmt(viewingSettlement.actualCash)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                          <span className="font-bold">نتيجة العجز / الزيادة:</span>
+                          <span className={`font-mono font-black text-lg ${diff < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                              {diff > 0 ? '+' : ''}{fmt(diff)}
+                          </span>
+                      </div>
+                  </div>
+
+                  {viewingSettlement.notes && (
+                      <div className="mt-4 p-3 border border-gray-200 rounded text-xs">
+                          <strong>ملاحظات:</strong> {viewingSettlement.notes}
+                      </div>
+                  )}
+              </div>
+          </ReportLayout>
+      );
+
+      // Render Portal for printing
+      const printContainer = document.getElementById('print-container');
+
+      return (
+          <>
+            {/* Hidden Print Content */}
+            {printContainer && createPortal(<PrintContent />, printContainer)}
+
+            {/* Screen Modal */}
+            <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in zoom-in-95">
+              <div className="bg-white w-full max-w-lg max-h-[90vh] rounded-[2.5rem] overflow-hidden flex flex-col relative shadow-2xl">
+                  <div className="bg-sap-shell text-white p-6 flex justify-between items-start">
+                      <div>
+                          <div className="text-[10px] font-mono opacity-60 mb-1">{viewingSettlement.date}</div>
+                          <h3 className="font-black text-xl">تفاصيل التسوية</h3>
+                      </div>
+                      <button onClick={() => setViewingSettlement(null)} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><X size={20}/></button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar space-y-6">
+                      <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 text-center">
+                          <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">صافي النتيجة</div>
+                          <div className={`text-4xl font-mono font-black ${diff === 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                              {fmt(Math.abs(diff))}
+                          </div>
+                          <div className="text-xs font-bold mt-2 text-gray-500">
+                              {diff === 0 ? 'مطابقة ناجحة' : diff < 0 ? 'عجز مالي' : 'فائض مالي'}
+                          </div>
+                      </div>
+
+                      <div className="space-y-4">
+                          <div className="flex justify-between items-center p-3 border-b border-gray-200">
+                              <span className="text-xs font-bold text-gray-500">إجمالي المبيعات</span>
+                              <span className="font-mono font-black text-lg">{fmt(viewingSettlement.totalSales)}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 border-b border-gray-200">
+                              <span className="text-xs font-bold text-gray-500">مجموع الشبكات</span>
+                              <span className="font-mono font-bold text-gray-700">{fmt(net)}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 border-b border-gray-200 bg-emerald-50/50 rounded-xl">
+                              <span className="text-xs font-black text-emerald-700">النقد الفعلي المستلم</span>
+                              <span className="font-mono font-black text-xl text-emerald-700">{fmt(viewingSettlement.actualCash)}</span>
+                          </div>
+                      </div>
+
+                      <div className="bg-gray-100 p-4 rounded-2xl">
+                          <div className="text-[10px] font-black text-gray-400 mb-2 uppercase">تفاصيل الشبكات</div>
+                          {viewingSettlement.networks.map((n, i) => (
+                              <div key={i} className="flex justify-between text-xs font-bold text-gray-600 mb-1">
+                                  <span>{n.name}</span>
+                                  <span className="font-mono">{fmt(n.amount)}</span>
+                              </div>
+                          ))}
+                      </div>
+
+                      {viewingSettlement.notes && (
+                          <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 text-xs font-bold text-yellow-800">
+                              ملاحظات: {viewingSettlement.notes}
+                          </div>
+                      )}
+                  </div>
+
+                  <div className="p-4 bg-white border-t border-gray-100">
+                      <button onClick={() => window.print()} className="w-full py-4 bg-black text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-all">
+                          <Printer size={18}/> طباعة التقرير
+                      </button>
+                  </div>
+              </div>
+            </div>
+          </>
+      );
+  }
+
   // --- RENDERERS ---
 
   // 1. LIST VIEW (Dashboard)
   if (mode === 'list') {
       return (
-          <div className="space-y-6 animate-in fade-in pb-24">
+          <div className="space-y-6 animate-in fade-in pb-24 relative">
               {/* Header Stats */}
               <div className="bg-sap-primary text-white p-6 rounded-b-[2.5rem] shadow-lg -mt-6 mx-[-1.5rem] mb-6">
                   <div className="flex justify-between items-center mb-6 px-4">
@@ -225,7 +387,7 @@ export const SettlementManager: React.FC<SettlementManagerProps> = ({ currentUse
 
                                   <div className="mt-4 flex gap-2">
                                       <button onClick={() => setViewingSettlement(settlement)} className="flex-1 py-2 bg-sap-highlight text-sap-primary rounded-xl text-xs font-bold flex items-center justify-center gap-2"><Eye size={14}/> تفاصيل</button>
-                                      <button onClick={() => window.print()} className="p-2 bg-gray-100 text-gray-600 rounded-xl"><Printer size={16}/></button>
+                                      {/* Short cut print button can set viewing first then print, but let's stick to detail view flow */}
                                       <button onClick={() => handleDelete(settlement.id)} className="p-2 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16}/></button>
                                   </div>
                               </div>
@@ -233,6 +395,9 @@ export const SettlementManager: React.FC<SettlementManagerProps> = ({ currentUse
                       })
                   )}
               </div>
+
+              {/* Detail Modal Component Rendered Here */}
+              <SettlementDetailModal />
           </div>
       );
   }
@@ -453,76 +618,6 @@ export const SettlementManager: React.FC<SettlementManagerProps> = ({ currentUse
                           {isSaving ? <Loader2 size={18} className="animate-spin"/> : <CheckCircle2 size={18}/>} اعتماد وترحيل
                       </button>
                   )}
-              </div>
-          </div>
-      );
-  }
-
-  // 3. DETAIL VIEW MODAL
-  if (viewingSettlement) {
-      const net = viewingSettlement.networks.reduce((a,b)=>a+b.amount,0) + viewingSettlement.transfers.reduce((a,b)=>a+b.amount,0);
-      const expected = viewingSettlement.totalSales - net;
-      const diff = viewingSettlement.actualCash - expected;
-
-      return (
-          <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in zoom-in-95">
-              <div className="bg-white w-full max-w-lg max-h-[90vh] rounded-[2.5rem] overflow-hidden flex flex-col relative">
-                  <div className="bg-sap-shell text-white p-6 flex justify-between items-start">
-                      <div>
-                          <div className="text-[10px] font-mono opacity-60 mb-1">{viewingSettlement.date}</div>
-                          <h3 className="font-black text-xl">تفاصيل التسوية</h3>
-                      </div>
-                      <button onClick={() => setViewingSettlement(null)} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><X size={20}/></button>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar space-y-6">
-                      <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 text-center">
-                          <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">صافي النتيجة</div>
-                          <div className={`text-4xl font-mono font-black ${diff === 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                              {fmt(Math.abs(diff))}
-                          </div>
-                          <div className="text-xs font-bold mt-2 text-gray-500">
-                              {diff === 0 ? 'مطابقة ناجحة' : diff < 0 ? 'عجز مالي' : 'فائض مالي'}
-                          </div>
-                      </div>
-
-                      <div className="space-y-4">
-                          <div className="flex justify-between items-center p-3 border-b border-gray-200">
-                              <span className="text-xs font-bold text-gray-500">إجمالي المبيعات</span>
-                              <span className="font-mono font-black text-lg">{fmt(viewingSettlement.totalSales)}</span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 border-b border-gray-200">
-                              <span className="text-xs font-bold text-gray-500">مجموع الشبكات</span>
-                              <span className="font-mono font-bold text-gray-700">{fmt(net)}</span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 border-b border-gray-200 bg-emerald-50/50 rounded-xl">
-                              <span className="text-xs font-black text-emerald-700">النقد الفعلي المستلم</span>
-                              <span className="font-mono font-black text-xl text-emerald-700">{fmt(viewingSettlement.actualCash)}</span>
-                          </div>
-                      </div>
-
-                      <div className="bg-gray-100 p-4 rounded-2xl">
-                          <div className="text-[10px] font-black text-gray-400 mb-2 uppercase">تفاصيل الشبكات</div>
-                          {viewingSettlement.networks.map((n, i) => (
-                              <div key={i} className="flex justify-between text-xs font-bold text-gray-600 mb-1">
-                                  <span>{n.name}</span>
-                                  <span className="font-mono">{fmt(n.amount)}</span>
-                              </div>
-                          ))}
-                      </div>
-
-                      {viewingSettlement.notes && (
-                          <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 text-xs font-bold text-yellow-800">
-                              ملاحظات: {viewingSettlement.notes}
-                          </div>
-                      )}
-                  </div>
-
-                  <div className="p-4 bg-white border-t border-gray-100">
-                      <button onClick={() => window.print()} className="w-full py-4 bg-black text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2">
-                          <Printer size={18}/> طباعة التقرير
-                      </button>
-                  </div>
               </div>
           </div>
       );
