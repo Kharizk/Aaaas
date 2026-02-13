@@ -69,10 +69,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     setSelectedIndex(0);
   }, [searchTerm]);
 
-  // Global Shortcut for Quick Scan (F2)
+  // Global Shortcut for Quick Scan (F9)
   useEffect(() => {
       const handleGlobalKeyDown = (e: KeyboardEvent) => {
-          if (e.key === 'F2') {
+          if (e.key === 'F9') {
               e.preventDefault();
               scanInputRef.current?.focus();
               scanInputRef.current?.select();
@@ -617,11 +617,11 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       value={localScanQuery}
                       onChange={e => setLocalScanQuery(e.target.value)}
                       onKeyDown={handleLocalScan}
-                      placeholder="F2 للبحث السريع وتعديل الكمية..." 
+                      placeholder="F9 للبحث السريع وتعديل الكمية..." 
                       className="w-full bg-transparent border-none py-2.5 text-xs font-black placeholder-gray-400 focus:ring-0"
                   />
                   <div className="pl-2 pr-2 flex gap-1">
-                      <div className="text-[9px] bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-400 font-bold hidden xl:block">F2</div>
+                      <div className="text-[9px] bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-400 font-bold hidden xl:block">F9</div>
                   </div>
               </div>
           </div>
