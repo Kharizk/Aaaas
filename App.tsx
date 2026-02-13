@@ -53,6 +53,7 @@ const App: React.FC = () => {
   // Init Check (Auth or Viewer)
   useEffect(() => {
     const init = async () => {
+      try {
         // 1. Check for Catalog View Mode URL
         const params = new URLSearchParams(window.location.search);
         const catId = params.get('catalog');
@@ -80,7 +81,13 @@ const App: React.FC = () => {
         }
 
         // 2. Normal Admin Init
-        await db.auth.initAdminIfNeeded(); // Ensure at least one admin exists
+        try {
+            await db.auth.initAdminIfNeeded(); // Ensure at least one admin exists
+        } catch (dbError) {
+            console.warn("Database initialization warning:", dbError);
+            // We continue even if DB init fails, to allow the UI to load (Login screen will appear, showing network errors if any when trying to login)
+        }
+
         const savedUserStr = localStorage.getItem('sf_user_session');
         if (savedUserStr) {
             try {
@@ -90,7 +97,11 @@ const App: React.FC = () => {
                 localStorage.removeItem('sf_user_session');
             }
         }
+      } catch (err) {
+        console.error("App initialization error:", err);
+      } finally {
         setAuthChecking(false);
+      }
     };
     init();
   }, []);
@@ -127,6 +138,7 @@ const App: React.FC = () => {
 
     } catch (error) {
         setDbStatus('error');
+        console.error("Error fetching data:", error);
     } finally {
         setIsLoading(false);
     }
@@ -157,13 +169,16 @@ const App: React.FC = () => {
               };
               setCurrentUser(safeUser);
               localStorage.setItem('sf_user_session', JSON.stringify(safeUser));
-              await db.users.updateLastLogin(user.id);
-              await db.logs.add({
+              
+              // Fire and forget updates
+              db.users.updateLastLogin(user.id).catch(console.error);
+              db.logs.add({
                   userId: user.id,
                   username: user.username,
                   action: 'LOGIN',
                   details: 'تسجيل دخول ناجح'
-              });
+              }).catch(console.error);
+              
               return true;
           }
       } catch (e) { console.error("Login Error", e); }
