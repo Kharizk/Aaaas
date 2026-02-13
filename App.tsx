@@ -52,7 +52,7 @@ const App: React.FC = () => {
 
   // Init Check (Auth or Viewer)
   useEffect(() => {
-    const init = async () => {
+    const performInit = async () => {
       try {
         // 1. Check for Catalog View Mode URL
         const params = new URLSearchParams(window.location.search);
@@ -63,29 +63,36 @@ const App: React.FC = () => {
             setIsCatalogLoading(true);
             setViewCatalogId(catId);
             try {
-                const catalog = await db.catalogs.get(catId);
+                // Timeout specifically for catalog fetch
+                const catalog = await Promise.race([
+                    db.catalogs.get(catId),
+                    new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+                ]).catch(() => null);
+
                 if (catalog) {
                     setViewCatalogData(catalog as CatalogProject);
                 } else {
-                    alert('المجلة غير موجودة أو تم حذفها');
+                    alert('المجلة غير موجودة أو تم حذفها (أو فشل الاتصال)');
                     setViewCatalogId(null);
                 }
             } catch (e) {
                 console.error("Failed to load catalog", e);
-                alert("حدث خطأ أثناء تحميل المجلة");
                 setViewCatalogId(null);
             } finally {
                 setIsCatalogLoading(false);
             }
-            return; // Stop further init
+            return;
         }
 
         // 2. Normal Admin Init
         try {
-            await db.auth.initAdminIfNeeded(); // Ensure at least one admin exists
+            // Attempt DB Init with a short timeout to prevent blocking UI
+            const dbInitPromise = db.auth.initAdminIfNeeded();
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject("DB_TIMEOUT"), 3000));
+            await Promise.race([dbInitPromise, timeoutPromise]);
         } catch (dbError) {
-            console.warn("Database initialization warning:", dbError);
-            // We continue even if DB init fails, to allow the UI to load (Login screen will appear, showing network errors if any when trying to login)
+            console.warn("Database initialization warning (or timeout):", dbError);
+            // Continue loading the UI even if DB is slow
         }
 
         const savedUserStr = localStorage.getItem('sf_user_session');
@@ -103,7 +110,15 @@ const App: React.FC = () => {
         setAuthChecking(false);
       }
     };
-    init();
+
+    // Failsafe: Ensure loading screen goes away after 4 seconds max
+    const failsafeTimer = setTimeout(() => {
+        setAuthChecking(false);
+    }, 4000);
+
+    performInit().then(() => clearTimeout(failsafeTimer));
+
+    return () => clearTimeout(failsafeTimer);
   }, []);
 
   // Fetch Data Based on Role & Branch (Only if logged in)
