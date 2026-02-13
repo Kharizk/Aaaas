@@ -20,9 +20,18 @@
         const errorBox = document.getElementById('fatal-error');
         if (errorBox) {
           errorBox.style.display = 'block';
-          errorBox.innerHTML = '<strong>System Error:</strong> ' + e.message;
+          errorBox.innerHTML = '<strong>System Error:</strong> ' + (e.message || 'Unknown Error');
         }
         console.error(e);
+      });
+
+      window.addEventListener('unhandledrejection', function(e) {
+        const errorBox = document.getElementById('fatal-error');
+        if (errorBox) {
+          errorBox.style.display = 'block';
+          errorBox.innerHTML = '<strong>Promise Error:</strong> ' + (e.reason ? e.reason.toString() : 'Unhandled Rejection');
+        }
+        console.error("Unhandled Rejection:", e.reason);
       });
 
       // Fallback: If React doesn't take over within 5 seconds, show an error (or hint)
@@ -31,14 +40,14 @@
         // Check if the loading spinner is still the only content
         if (root && root.innerHTML.includes('جاري تحميل النظام')) {
            const statusDiv = document.createElement('div');
-           statusDiv.style.cssText = 'color:red; font-weight:bold; margin-top:10px; font-size:12px; text-align:center;';
-           statusDiv.innerText = 'استغرق التحميل وقتاً أطول من المعتاد. يرجى التحقق من الاتصال أو تحديث الصفحة.';
+           statusDiv.style.cssText = 'color:red; font-weight:bold; margin-top:10px; font-size:12px; text-align:center; direction: rtl;';
+           statusDiv.innerHTML = 'استغرق التحميل وقتاً أطول من المعتاد.<br/>يرجى التحقق من الاتصال أو تحديث الصفحة.<br/>إذا استمرت المشكلة، قد يكون هناك خطأ في إعدادات البيئة (Firebase/Vite).';
            // Append only if not already there
            if (!root.innerText.includes('استغرق التحميل')) {
                root.querySelector('div').appendChild(statusDiv);
            }
         }
-      }, 8000);
+      }, 6000);
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,21 +133,22 @@
             padding: 15px; background: #EF4444; color: white;
             font-weight: bold; z-index: 10000; text-align: center;
             font-size: 12px;
+            direction: ltr;
         }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "react-dom": "https://esm.sh/react-dom@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "firebase/": "https://esm.sh/firebase@^12.9.0/",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5",
     "lucide-react": "https://esm.sh/lucide-react@^0.564.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4",
     "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
-    "xlsx": "https://esm.sh/xlsx@^0.18.5"
+    "firebase/": "https://esm.sh/firebase@^12.9.0/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
   }
 }
 </script>
@@ -164,4 +174,3 @@
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
-    
