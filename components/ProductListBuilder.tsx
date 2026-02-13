@@ -9,7 +9,7 @@ import { parseExcelFile, generateInventoryTemplate } from '../services/excelServ
 import { 
   Printer, Plus, Trash2, Save, FolderOpen, Loader2, 
   Calendar, X, FileText, CheckCircle2, FileCheck2, ClipboardList, Truck, AlertTriangle, ScanLine, Image as ImageIcon, Sparkles, FileSpreadsheet, FileIcon,
-  Tag, CheckSquare, Square, ArrowRight, Download, UploadCloud, Search, Barcode, ChevronDown, Eraser, FileInput, MoreHorizontal, Target
+  Tag, CheckSquare, Square, ArrowRight, Download, UploadCloud, Search, Barcode, ChevronDown, Eraser, FileInput, MoreHorizontal, Target, Keyboard
 } from 'lucide-react';
 
 interface ProductListBuilderProps {
@@ -68,6 +68,19 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   useEffect(() => {
     setSelectedIndex(0);
   }, [searchTerm]);
+
+  // Global Shortcut for Quick Scan (F2)
+  useEffect(() => {
+      const handleGlobalKeyDown = (e: KeyboardEvent) => {
+          if (e.key === 'F2') {
+              e.preventDefault();
+              scanInputRef.current?.focus();
+              scanInputRef.current?.select();
+          }
+      };
+      window.addEventListener('keydown', handleGlobalKeyDown);
+      return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   // Load Initial List (from Deep Link / Dashboard)
   useEffect(() => {
@@ -595,8 +608,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           </div>
           
           {/* Middle: Quick Local Search/Scan */}
-          <div className="flex-1 w-full max-w-md mx-4 relative">
-              <div className="flex items-center bg-gray-100 border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-sap-primary/20 focus-within:border-sap-primary transition-all">
+          <div className="flex-1 w-full max-w-md mx-4 relative hidden md:block">
+              <div className="flex items-center bg-gray-100 border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-sap-primary/20 focus-within:border-sap-primary transition-all shadow-inner">
                   <div className="pl-3 pr-4 text-gray-400"><Target size={16}/></div>
                   <input 
                       ref={scanInputRef}
@@ -604,11 +617,11 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       value={localScanQuery}
                       onChange={e => setLocalScanQuery(e.target.value)}
                       onKeyDown={handleLocalScan}
-                      placeholder="بحث/مسح لتعديل الكمية..." 
+                      placeholder="F2 للبحث السريع وتعديل الكمية..." 
                       className="w-full bg-transparent border-none py-2.5 text-xs font-black placeholder-gray-400 focus:ring-0"
                   />
-                  <div className="pl-4 pr-3">
-                      <div className="text-[9px] bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-400 font-bold">ENTER</div>
+                  <div className="pl-2 pr-2 flex gap-1">
+                      <div className="text-[9px] bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-400 font-bold hidden xl:block">F2</div>
                   </div>
               </div>
           </div>
