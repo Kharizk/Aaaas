@@ -9,7 +9,7 @@ import { parseExcelFile, generateInventoryTemplate } from '../services/excelServ
 import { 
   Printer, Plus, Trash2, Save, FolderOpen, Loader2, 
   Calendar, X, FileText, CheckCircle2, FileCheck2, ClipboardList, Truck, AlertTriangle, ScanLine, Image as ImageIcon, Sparkles, FileSpreadsheet, FileIcon,
-  Tag, CheckSquare, Square, ArrowRight, Download, UploadCloud, Search, Barcode
+  Tag, CheckSquare, Square, ArrowRight, Download, UploadCloud, Search, Barcode, ChevronDown, Eraser
 } from 'lucide-react';
 
 interface ProductListBuilderProps {
@@ -34,6 +34,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   const [isSaving, setIsSaving] = useState(false);
   const [showSavedLists, setShowSavedLists] = useState(false);
   const [savedLists, setSavedLists] = useState<any[]>([]);
+  const [savedListSearch, setSavedListSearch] = useState(''); // New search state for archive
   const [isLoadingLists, setIsLoadingLists] = useState(false);
   
   // Import State
@@ -69,7 +70,6 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
       if (initialListParams) {
           const loadInitial = async () => {
               try {
-                  // Fetch all lists then find target (Since we don't have getById exposed in supabase service but getAll is cheap enough or we can assume it's cached)
                   const allLists = await db.lists.getAll();
                   const targetList = allLists.find((l: any) => l.id === initialListParams.listId);
                   
@@ -77,12 +77,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       loadList(targetList);
                       if (initialListParams.rowId) {
                           setHighlightedRowId(initialListParams.rowId);
-                          // Scroll into view
                           setTimeout(() => {
                               const el = document.getElementById(`row-${initialListParams.rowId}`);
                               if (el) {
                                   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  // Clear highlight after 3s
                                   setTimeout(() => setHighlightedRowId(null), 3000);
                               }
                           }, 500);
@@ -117,6 +115,14 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     setRows(list.rows && list.rows.length > 0 ? list.rows : [createEmptyRow()]);
     setShowSavedLists(false);
   };
+
+  const filteredSavedLists = useMemo(() => {
+      if (!savedListSearch.trim()) return savedLists;
+      return savedLists.filter(l => 
+          l.name.toLowerCase().includes(savedListSearch.toLowerCase()) ||
+          l.date.includes(savedListSearch)
+      );
+  }, [savedLists, savedListSearch]);
 
   const handleSave = async () => {
     const validRows = rows.filter(r => r.name.trim());
@@ -505,54 +511,66 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     <div className="flex flex-col h-full space-y-4 animate-in fade-in duration-500 relative">
       <PrintView />
       
-      {/* Top Controls POS Style */}
-      <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className={`p-3 rounded-xl ${listType === 'inventory' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
-                  {listType === 'inventory' ? <ClipboardList size={28}/> : <Truck size={28}/>}
-              </div>
-              <div className="flex-1">
-                  <label className="text-[10px] font-black text-gray-400 block mb-1">مرجع المستند / اسم القائمة</label>
+      {/* Unified Toolbar */}
+      <div className="bg-white border border-gray-200 p-2 rounded-2xl shadow-sm flex flex-col xl:flex-row justify-between items-center gap-4">
+          {/* Left: Input Info */}
+          <div className="flex items-center gap-3 w-full xl:w-auto p-1">
+              <button 
+                onClick={() => setListType(prev => prev === 'inventory' ? 'receipt' : 'inventory')}
+                className={`p-2.5 rounded-xl transition-all border ${listType === 'inventory' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}
+                title={listType === 'inventory' ? 'تحويل لسند استلام' : 'تحويل لقائمة جرد'}
+              >
+                  {listType === 'inventory' ? <ClipboardList size={20}/> : <Truck size={20}/>}
+              </button>
+              <div className="flex-1 min-w-[200px]">
                   <input 
                     type="text" 
                     value={listName} 
                     onChange={e => setListName(e.target.value)} 
-                    placeholder="مثال: جرد المستودع رقم 1..." 
-                    className="w-full text-base font-black bg-transparent border-b-2 border-gray-100 focus:border-sap-primary outline-none px-0 py-1" 
+                    placeholder="اسم القائمة / مرجع المستند..." 
+                    className="w-full text-sm font-black bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-sap-primary outline-none px-2 py-1.5 transition-colors" 
                   />
+                  <div className="text-[10px] text-gray-400 font-bold px-2 mt-0.5">{listType === 'inventory' ? 'جرد مخزون' : 'سند استلام بضاعة'} - {listDate}</div>
               </div>
           </div>
           
-          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                <button onClick={generateInventoryTemplate} className="px-4 py-3 bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-black rounded-xl flex items-center gap-2 whitespace-nowrap transition-all">
-                    <Download size={18}/> نموذج Excel
-                </button>
-                <div className="relative">
-                    <input type="file" ref={excelInputRef} onChange={handleExcelImport} accept=".xlsx, .xls" className="hidden" />
-                    <button onClick={() => excelInputRef.current?.click()} className="px-4 py-3 bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-black rounded-xl flex items-center gap-2 whitespace-nowrap transition-all">
-                        <UploadCloud size={18}/> رفع Excel
+          {/* Right: Actions Group */}
+          <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-end px-2">
+                {/* File Group */}
+                <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+                    <button onClick={() => { setActiveListId(null); setRows([createEmptyRow()]); setListName(''); }} className="px-3 py-2 hover:bg-white hover:text-red-500 text-gray-500 text-xs font-bold rounded-lg transition-all flex items-center gap-2" title="مسح القائمة">
+                        <Eraser size={16}/> <span className="hidden sm:inline">جديد</span>
+                    </button>
+                    <button onClick={() => { fetchSavedLists(); setShowSavedLists(true); }} className="px-3 py-2 hover:bg-white hover:text-sap-primary text-gray-500 text-xs font-bold rounded-lg transition-all flex items-center gap-2" title="فتح الأرشيف">
+                        <FolderOpen size={16}/> <span className="hidden sm:inline">الأرشيف</span>
                     </button>
                 </div>
-                <div className="relative">
-                    <input type="file" ref={fileInputRef} onChange={handleSmartScan} accept="image/*, application/pdf" className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} disabled={isScanning} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black rounded-xl hover:shadow-lg flex items-center gap-2 whitespace-nowrap transition-all shadow-md">
-                        {isScanning ? <Loader2 size={18} className="animate-spin"/> : <ScanLine size={18}/>} مسح ذكي (AI)
-                    </button>
-                </div>
-          </div>
-      </div>
 
-      {/* Action Bar */}
-      <div className="flex justify-between items-center bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex gap-2">
-             <button onClick={() => { setActiveListId(null); setRows([createEmptyRow()]); setListName(''); }} className="px-5 py-2.5 hover:bg-red-50 text-red-600 text-xs font-black rounded-lg transition-colors border border-transparent hover:border-red-100">جديد / إفراغ</button>
-             <button onClick={() => { fetchSavedLists(); setShowSavedLists(true); }} className="px-5 py-2.5 hover:bg-gray-50 text-gray-600 text-xs font-black rounded-lg flex items-center gap-2 border border-transparent hover:border-gray-200"><FolderOpen size={16}/> الأرشيف</button>
-          </div>
-          <div className="flex gap-2">
-             <button onClick={() => window.print()} className="px-5 py-2.5 bg-gray-100 text-gray-700 text-xs font-black rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-all"><Printer size={16}/> طباعة</button>
-             <button onClick={handleSave} disabled={isSaving} className="px-8 py-2.5 bg-sap-primary text-white text-xs font-black rounded-lg flex items-center gap-2 hover:bg-sap-primary-hover shadow-lg shadow-sap-primary/20 transition-all active:scale-95">
-                 {isSaving ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>} حفظ القائمة
-             </button>
+                {/* Import Group */}
+                <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+                    <button onClick={generateInventoryTemplate} className="px-3 py-2 hover:bg-white text-gray-500 text-xs font-bold rounded-lg transition-all" title="تحميل نموذج Excel">
+                        <Download size={16}/>
+                    </button>
+                    <div className="w-px h-6 bg-gray-200 self-center mx-1"></div>
+                    <input type="file" ref={excelInputRef} onChange={handleExcelImport} accept=".xlsx, .xls" className="hidden" />
+                    <button onClick={() => excelInputRef.current?.click()} className="px-3 py-2 hover:bg-white text-gray-500 text-xs font-bold rounded-lg transition-all flex items-center gap-2">
+                        <UploadCloud size={16}/> <span className="hidden sm:inline">Excel</span>
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleSmartScan} accept="image/*, application/pdf" className="hidden" />
+                    <button onClick={() => fileInputRef.current?.click()} disabled={isScanning} className="px-3 py-2 hover:bg-white text-indigo-600 text-xs font-bold rounded-lg transition-all flex items-center gap-2">
+                        {isScanning ? <Loader2 size={16} className="animate-spin"/> : <ScanLine size={16}/>} <span className="hidden sm:inline">AI Scan</span>
+                    </button>
+                </div>
+
+                {/* Output Group */}
+                <div className="flex gap-2">
+                    <button onClick={() => window.print()} className="px-4 py-2 bg-gray-800 text-white text-xs font-black rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm">
+                        <Printer size={16}/> طباعة
+                    </button>
+                    <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-sap-primary text-white text-xs font-black rounded-xl flex items-center gap-2 hover:bg-sap-primary-hover shadow-lg shadow-sap-primary/20 transition-all active:scale-95">
+                        {isSaving ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>} حفظ
+                    </button>
+                </div>
           </div>
       </div>
 
@@ -751,13 +769,26 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
       {showSavedLists && (
           <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
-                  <div className="p-6 bg-gray-900 text-white flex justify-between items-center">
-                      <h3 className="font-black text-lg flex items-center gap-3"><FolderOpen size={20} className="text-sap-secondary"/> أرشيف السجلات</h3>
-                      <button onClick={() => setShowSavedLists(false)} className="hover:bg-white/20 p-2 rounded-full"><X size={20}/></button>
+                  <div className="p-6 bg-gray-900 text-white flex flex-col gap-4">
+                      <div className="flex justify-between items-center">
+                          <h3 className="font-black text-lg flex items-center gap-3"><FolderOpen size={20} className="text-sap-secondary"/> أرشيف السجلات</h3>
+                          <button onClick={() => setShowSavedLists(false)} className="hover:bg-white/20 p-2 rounded-full"><X size={20}/></button>
+                      </div>
+                      {/* Archive Search Input */}
+                      <div className="relative">
+                          <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+                          <input 
+                            type="text" 
+                            value={savedListSearch} 
+                            onChange={e => setSavedListSearch(e.target.value)} 
+                            placeholder="بحث في الأرشيف (الاسم أو التاريخ)..." 
+                            className="w-full bg-gray-800 text-white placeholder-gray-500 text-xs font-bold py-2.5 pr-10 pl-4 rounded-xl border border-gray-700 focus:border-sap-secondary outline-none"
+                          />
+                      </div>
                   </div>
                   <div className="flex-1 overflow-y-auto bg-gray-50 custom-scrollbar p-4 space-y-3">
                       {isLoadingLists ? <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-2"><Loader2 className="animate-spin"/><span className="text-xs font-bold">جاري التحميل...</span></div> : (
-                          savedLists.length > 0 ? savedLists.map((list) => (
+                          filteredSavedLists.length > 0 ? filteredSavedLists.map((list: any) => (
                               <div key={list.id} onClick={() => loadList(list)} className="p-5 bg-white border border-gray-100 rounded-2xl hover:border-sap-primary hover:shadow-lg cursor-pointer flex justify-between items-center group transition-all">
                                   <div>
                                       <h4 className="font-black text-sm text-gray-800 group-hover:text-sap-primary mb-1">{list.name}</h4>
@@ -773,7 +804,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                                       <Trash2 size={18} className="text-red-300 hover:text-red-500 transition-colors" onClick={async (e) => { e.stopPropagation(); if(confirm('هل أنت متأكد من الحذف؟')) { await db.lists.delete(list.id); fetchSavedLists(); } }} />
                                   </div>
                               </div>
-                          )) : <div className="p-12 text-center text-gray-400 font-bold text-sm">لا توجد سجلات محفوظة</div>
+                          )) : <div className="p-12 text-center text-gray-400 font-bold text-sm">لا توجد سجلات محفوظة مطابقة</div>
                       )}
                   </div>
               </div>
