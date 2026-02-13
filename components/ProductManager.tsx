@@ -5,7 +5,7 @@ import { db } from '../services/supabase';
 import { parseExcelFile } from '../services/excelService';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
-  Barcode, LayoutGrid, Boxes, DollarSign, Tag, Palette, FileSpreadsheet
+  Barcode, LayoutGrid, Boxes, DollarSign, Tag, Palette, FileSpreadsheet, Ruler
 } from 'lucide-react';
 
 interface ProductManagerProps {
@@ -113,9 +113,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setImportStep('جاري قراءة ملف البيانات...');
 
       try {
-          // Artificial delay for UX
           await new Promise(resolve => setTimeout(resolve, 500));
-          
           const rawData = await parseExcelFile(file);
           if (rawData.length === 0) {
               alert("الملف فارغ أو التنسيق غير مدعوم");
@@ -123,18 +121,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
               return;
           }
 
-          setImportStep(`تم العثور على ${rawData.length} منتج. جاري المعالجة والحفظ...`);
+          setImportStep(`تم العثور على ${rawData.length} منتج. جاري المعالجة...`);
           
           let addedCount = 0;
           let updatedCount = 0;
-
-          // Process in chunks to avoid UI freeze
           const chunkSize = 50;
+          
           for (let i = 0; i < rawData.length; i += chunkSize) {
               const chunk = rawData.slice(i, i + chunkSize);
-              
               await Promise.all(chunk.map(async (row: any) => {
-                  // Helper to find column by loosely matching names
                   const findVal = (keys: string[]) => {
                       const key = Object.keys(row).find(k => keys.some(search => k.toLowerCase().includes(search.toLowerCase())));
                       return key ? row[key] : '';
@@ -146,10 +141,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                   const pUnit = String(findVal(['unit', 'وحدة']) || '');
 
                   if (pName) {
-                      // Find or Create Unit
                       let targetUnitId = units.find(u => u.name === pUnit || (pUnit && u.name.includes(pUnit)))?.id;
                       if (!targetUnitId && pUnit) {
-                          // Create unit on fly if simple text
                           const newUnit = { id: crypto.randomUUID(), name: pUnit };
                           await db.units.upsert(newUnit);
                           setUnits(prev => [...prev, newUnit]);
@@ -172,15 +165,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                       if (existingProduct) updatedCount++; else addedCount++;
                   }
               }));
-              
-              // Update progress bar percentage logic here if needed
               setImportStep(`تم معالجة ${Math.min(i + chunkSize, rawData.length)} من ${rawData.length}...`);
           }
 
-          // Refresh Data
           const allProducts = await db.products.getAll();
           setProducts(allProducts);
-          
           alert(`تمت العملية بنجاح!\nتم إضافة: ${addedCount}\nتم تحديث: ${updatedCount}`);
 
       } catch (error) {
@@ -232,8 +221,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                 <Boxes size={28} />
             </div>
             <div>
-                <h2 className="text-2xl font-black text-sap-text">دليل المنتجات والأسعار</h2>
-                <p className="text-xs text-sap-text-variant font-bold mt-1">إدارة الكود، الاسم، الوحدة، وسعر البيع مع لون التمييز</p>
+                <h2 className="text-2xl font-black text-sap-text">المنتجات</h2>
+                <p className="text-xs text-sap-text-variant font-bold mt-1">عرض وتعديل كود المنتج، الاسم، والوحدة</p>
             </div>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -252,10 +241,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                 <>
                     <input type="file" ref={excelInputRef} onChange={handleImportExcel} accept=".xlsx, .xls" className="hidden" />
                     <button onClick={() => excelInputRef.current?.click()} className="bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-black hover:bg-green-700 shadow-md flex items-center gap-2 transition-all active:scale-95">
-                        <FileSpreadsheet size={18}/> استيراد Excel
+                        <FileSpreadsheet size={18}/> استيراد
                     </button>
                     <button onClick={() => handleOpenModal()} className="bg-sap-primary text-white px-6 py-2.5 rounded-lg text-sm font-black hover:bg-sap-primary-hover shadow-md flex items-center gap-2 transition-all active:scale-95">
-                        <Plus size={20}/> إضافة صنف
+                        <Plus size={20}/> إضافة منتج
                     </button>
                 </>
             )}
@@ -266,35 +255,33 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
         <div className="overflow-auto custom-scrollbar flex-1">
             <table className="w-full text-right text-sm">
             <thead className="sticky top-0 z-10">
-                <tr className="bg-sap-shell text-white text-[11px] font-black uppercase tracking-wider">
-                <th className="px-6 py-4 border-l border-white/10 w-48">كود المنتج</th>
-                <th className="px-6 py-4 border-l border-white/10">اسم الصنف</th>
-                <th className="px-6 py-4 w-40 text-center border-l border-white/10">وحدة القياس</th>
-                <th className="px-6 py-4 w-40 text-center border-l border-white/10">سعر البيع</th>
-                {canEdit && <th className="px-6 py-4 w-32 text-center">التحكم</th>}
+                <tr className="bg-sap-shell text-white text-[12px] font-black uppercase tracking-wider">
+                    <th className="px-6 py-4 border-l border-white/10 w-48 flex items-center gap-2"><Barcode size={16}/> كود المنتج</th>
+                    <th className="px-6 py-4 border-l border-white/10"><Package size={16} className="inline mr-2"/> اسم الصنف</th>
+                    <th className="px-6 py-4 w-40 text-center border-l border-white/10"><Ruler size={16} className="inline mr-2"/> الوحدة</th>
+                    <th className="px-6 py-4 w-40 text-center border-l border-white/10"><DollarSign size={16} className="inline mr-2"/> السعر</th>
+                    {canEdit && <th className="px-6 py-4 w-32 text-center">التحكم</th>}
                 </tr>
             </thead>
             <tbody className="divide-y divide-sap-border font-bold">
                 {filteredProducts.map((p) => (
                 <tr key={p.id} className="hover:bg-sap-highlight/20 transition-colors group relative">
+                    {/* CODE COLUMN */}
                     <td className="px-6 py-4 relative">
                         {p.color && p.color !== '#ffffff' && <div className="absolute top-0 right-0 w-1 h-full" style={{ backgroundColor: p.color }}></div>}
-                        <div className="flex items-center gap-3">
-                            <div className="p-1.5 bg-gray-100 rounded text-gray-400"><Barcode size={14} /></div>
-                            <span className="font-mono text-base font-black text-sap-primary tracking-wider">{toAr(p.code)}</span>
-                        </div>
+                        <span className="font-mono text-base font-black text-sap-primary tracking-wider">{toAr(p.code)}</span>
                     </td>
+                    {/* NAME COLUMN */}
                     <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                            {p.color && p.color !== '#ffffff' && <div className="w-3 h-3 rounded-full border border-black/5" style={{ backgroundColor: p.color }}></div>}
-                            <span className="text-sap-text text-sm">{p.name}</span>
-                        </div>
+                        <span className="text-sap-text text-sm">{p.name}</span>
                     </td>
+                    {/* UNIT COLUMN */}
                     <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center gap-2 px-4 py-1 bg-gray-100 rounded-full text-[10px] font-black border border-gray-200 text-gray-500">
+                        <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-100 rounded-full text-[11px] font-black border border-gray-200 text-gray-600">
                             {getUnitName(p.unitId)}
                         </span>
                     </td>
+                    {/* PRICE COLUMN */}
                     <td className="px-6 py-4 text-center">
                         <PriceDisplay val={p.price || ''} pColor={p.color} />
                     </td>
