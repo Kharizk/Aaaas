@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { POSPoint, Cashier, Branch, User, Settlement } from '../types';
+import { POSPoint, Cashier, Branch, User, Settlement, Network } from '../types';
 import { db } from '../services/supabase';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Monitor, 
   Users, Building2, Search, CheckCircle2, ShieldCheck,
   ChevronLeft, LayoutGrid, Smartphone, UserPlus, Eye,
   TrendingUp, Wallet, CreditCard, AlertTriangle, ArrowRight,
-  BarChart3, Activity, Receipt, Coins, History
+  BarChart3, Activity, Receipt, Coins, History, Wifi
 } from 'lucide-react';
 
 interface POSManagementProps {
@@ -15,9 +15,10 @@ interface POSManagementProps {
 }
 
 export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
-  const [activeTab, setActiveTab] = useState<'points' | 'cashiers'>('points');
+  const [activeTab, setActiveTab] = useState<'points' | 'cashiers' | 'networks'>('points');
   const [posPoints, setPosPoints] = useState<POSPoint[]>([]);
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
+  const [networks, setNetworks] = useState<Network[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -42,13 +43,15 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [pos, cash, sett] = await Promise.all([
+      const [pos, cash, nets, sett] = await Promise.all([
         db.posPoints.getAll(),
         db.cashiers.getAll(),
+        db.networks.getAll(),
         db.settlements.getAll()
       ]);
       setPosPoints(pos);
       setCashiers(cash);
+      setNetworks(nets);
       setSettlements(sett);
     } catch (e) { console.error(e); }
     finally { setIsLoading(false); }
@@ -77,9 +80,12 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
       if (activeTab === 'points') {
         const data: POSPoint = { id, name: name.trim(), branchId };
         await db.posPoints.upsert(data);
-      } else {
+      } else if (activeTab === 'cashiers') {
         const data: Cashier = { id, name: name.trim() };
         await db.cashiers.upsert(data);
+      } else {
+        const data: Network = { id, name: name.trim(), branchId }; // Optional branch link for networks
+        await db.networks.upsert(data);
       }
       await fetchData();
       setIsModalOpen(false);
@@ -91,10 +97,11 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من الحذف؟ سيؤثر هذا على سجلات التسوية المرتبطة.')) return;
+    if (!confirm('هل أنت متأكد من الحذف؟')) return;
     try {
       if (activeTab === 'points') await db.posPoints.delete(id);
-      else await db.cashiers.delete(id);
+      else if (activeTab === 'cashiers') await db.cashiers.delete(id);
+      else await db.networks.delete(id);
       await fetchData();
     } catch (e) { alert("فشل الحذف"); }
   };
@@ -104,6 +111,7 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
   // --- Analytical Calculations ---
   const filteredPoints = posPoints.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredCashiers = cashiers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredNetworks = networks.filter(n => n.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const getPosStats = (id: string) => {
       const relevant = settlements.filter(s => s.posId === id);
@@ -279,16 +287,19 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
             <Monitor size={32} />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-sap-text">إدارة نقاط البيع والكادر</h2>
-            <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">تجهيز هيكل الكاشير وربطه بالفروع والتقارير</p>
+            <h2 className="text-2xl font-black text-sap-text">إدارة نقاط البيع والشبكات</h2>
+            <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">تجهيز هيكل الكاشير والربط المالي</p>
           </div>
         </div>
 
         <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200 w-full md:w-auto">
-          <button onClick={() => setActiveTab('points')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === 'points' ? 'bg-white text-sap-primary shadow-sm' : 'text-gray-400 hover:text-sap-primary'}`}>
+          <button onClick={() => setActiveTab('points')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === 'points' ? 'bg-white text-sap-primary shadow-sm' : 'text-gray-400 hover:text-sap-primary'}`}>
             <LayoutGrid size={16}/> نقاط البيع
           </button>
-          <button onClick={() => setActiveTab('cashiers')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === 'cashiers' ? 'bg-white text-sap-primary shadow-sm' : 'text-gray-400 hover:text-sap-primary'}`}>
+          <button onClick={() => setActiveTab('networks')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === 'networks' ? 'bg-white text-sap-primary shadow-sm' : 'text-gray-400 hover:text-sap-primary'}`}>
+            <Wifi size={16}/> الشبكات
+          </button>
+          <button onClick={() => setActiveTab('cashiers')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === 'cashiers' ? 'bg-white text-sap-primary shadow-sm' : 'text-gray-400 hover:text-sap-primary'}`}>
             <Users size={16}/> الكاشيرية
           </button>
         </div>
@@ -299,7 +310,7 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
          <div className="relative flex-1 w-full">
             <input 
               type="text" 
-              placeholder={activeTab === 'points' ? "البحث عن نقطة بيع..." : "البحث عن موظف كاشير..."} 
+              placeholder="بحث..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full !pr-12 !py-4 !bg-white !border-gray-200 !rounded-2xl !text-sm !font-bold shadow-sm focus:!border-sap-primary"
@@ -307,13 +318,13 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
             <Search size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" />
          </div>
          <button onClick={() => handleOpenModal()} className="w-full md:w-auto bg-sap-primary text-white px-10 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 shadow-lg shadow-sap-primary/20 hover:bg-sap-primary-hover active:scale-95 transition-all">
-            <Plus size={20}/> {activeTab === 'points' ? 'إضافة نقطة بيع' : 'إضافة كاشير'}
+            <Plus size={20}/> {activeTab === 'points' ? 'إضافة نقطة بيع' : activeTab === 'networks' ? 'إضافة شبكة دفع' : 'إضافة كاشير'}
          </button>
       </div>
 
       {/* Data Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {activeTab === 'points' ? (
+        {activeTab === 'points' && (
           filteredPoints.map(point => {
             const stats = getPosStats(point.id);
             return (
@@ -348,7 +359,29 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
               </div>
             );
           })
-        ) : (
+        )}
+
+        {activeTab === 'networks' && (
+            filteredNetworks.map(net => (
+                <div key={net.id} className="bg-white p-6 rounded-[2.5rem] border border-sap-border shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-6">
+                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <CreditCard size={28} />
+                        </div>
+                        <div className="flex gap-1">
+                            <button onClick={() => handleOpenModal(net)} className="p-2.5 text-blue-500 hover:bg-blue-50 rounded-xl" title="تعديل"><Edit2 size={18}/></button>
+                            <button onClick={() => handleDelete(net.id)} className="p-2.5 text-red-400 hover:bg-red-50 rounded-xl" title="حذف"><Trash2 size={18}/></button>
+                        </div>
+                    </div>
+                    <h3 className="font-black text-xl text-sap-text mb-2 group-hover:text-blue-600 transition-colors">{net.name}</h3>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                        {net.branchId ? `مخصص لـ: ${branches.find(b => b.id === net.branchId)?.name}` : 'عام / كل الفروع'}
+                    </div>
+                </div>
+            ))
+        )}
+
+        {activeTab === 'cashiers' && (
           filteredCashiers.map(cashier => {
             const stats = getCashierStats(cashier.id);
             return (
@@ -384,7 +417,7 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
           })
         )}
 
-        {(activeTab === 'points' ? filteredPoints : filteredCashiers).length === 0 && !isLoading && (
+        {((activeTab === 'points' && filteredPoints.length === 0) || (activeTab === 'cashiers' && filteredCashiers.length === 0) || (activeTab === 'networks' && filteredNetworks.length === 0)) && !isLoading && (
             <div className="col-span-full py-32 text-center flex flex-col items-center justify-center opacity-20">
                 <Search size={64} className="mb-4" />
                 <p className="text-xl font-black italic">لا يوجد نتائج لعرضها حالياً</p>
@@ -398,8 +431,8 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
           <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20">
             <div className="p-6 bg-sap-shell text-white flex justify-between items-center">
               <h3 className="font-black text-lg flex items-center gap-3">
-                {activeTab === 'points' ? <Monitor size={20}/> : <UserPlus size={20}/>}
-                {editingItem ? 'تعديل البيانات' : (activeTab === 'points' ? 'تعريف نقطة بيع' : 'إضافة كاشير')}
+                {activeTab === 'points' ? <Monitor size={20}/> : activeTab === 'networks' ? <Wifi size={20}/> : <UserPlus size={20}/>}
+                {editingItem ? 'تعديل البيانات' : (activeTab === 'points' ? 'تعريف نقطة بيع' : activeTab === 'networks' ? 'تعريف شبكة دفع' : 'إضافة كاشير')}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full"><X size={20}/></button>
             </div>
@@ -411,21 +444,21 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
                   type="text" 
                   value={name} 
                   onChange={e => setName(e.target.value)} 
-                  placeholder={activeTab === 'points' ? "مثال: كاشير الاستقبال" : "مثال: أحمد محمد"}
+                  placeholder={activeTab === 'points' ? "مثال: كاشير الاستقبال" : activeTab === 'networks' ? "مثال: مدى - الأهلي" : "مثال: أحمد محمد"}
                   className="w-full !p-4 !text-sm !font-black !bg-gray-50 border-gray-100 rounded-2xl focus:!border-sap-primary transition-all"
                   autoFocus
                 />
               </div>
 
-              {activeTab === 'points' && (
+              {(activeTab === 'points' || activeTab === 'networks') && (
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">الفرع المرتبط</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">الفرع المرتبط {activeTab === 'networks' && '(اختياري)'}</label>
                     <select 
                       value={branchId} 
                       onChange={e => setBranchId(e.target.value)}
                       className="w-full !p-4 !text-sm !font-black !bg-gray-50 border-gray-100 rounded-2xl focus:!border-sap-primary"
                     >
-                      <option value="">-- اختر الفرع --</option>
+                      <option value="">{activeTab === 'networks' ? '-- عام (كل الفروع) --' : '-- اختر الفرع --'}</option>
                       {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
                 </div>

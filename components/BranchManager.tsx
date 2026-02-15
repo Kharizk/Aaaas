@@ -71,7 +71,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({ branches, setBranc
   // Branch Report Overlay (Modal)
   const BranchReportOverlay = ({ branch }: { branch: Branch }) => {
     const branchSales = useMemo(() => sales.filter(s => s.branchId === branch.id), [branch.id]);
-    const totalSales = branchSales.reduce((acc, curr) => acc + curr.amount, 0);
+    const totalSales = branchSales.reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const recentSales = branchSales.slice(0, 5);
 
     return (
@@ -86,7 +86,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({ branches, setBranc
                     <div className="grid grid-cols-3 gap-4 mb-6">
                         <div className="bg-white p-4 border border-gray-300 text-center">
                             <div className="text-[10px] font-bold text-gray-500 uppercase">إجمالي المبيعات</div>
-                            <div className="text-xl font-black text-sap-primary mt-1">{totalSales.toLocaleString()} ريال</div>
+                            <div className="text-xl font-black text-sap-primary mt-1">{(totalSales || 0).toLocaleString()} ريال</div>
                         </div>
                         <div className="bg-white p-4 border border-gray-300 text-center">
                             <div className="text-[10px] font-bold text-gray-500 uppercase">عدد العمليات</div>
@@ -112,7 +112,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({ branches, setBranc
                                 {recentSales.map(s => (
                                     <tr key={s.id}>
                                         <td className="font-mono font-bold">{s.date}</td>
-                                        <td className="font-bold text-sap-primary">{s.amount.toLocaleString()}</td>
+                                        <td className="font-bold text-sap-primary">{(s.amount || 0).toLocaleString()}</td>
                                         <td>{s.notes || '-'}</td>
                                     </tr>
                                 ))}

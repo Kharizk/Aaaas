@@ -96,7 +96,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
         </div>
         <div className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-1">{label}</div>
         <div className="text-3xl font-black text-sap-text tracking-tighter mb-2 font-mono">
-            {typeof val === 'number' ? val.toLocaleString() : val}
+            {typeof val === 'number' ? (val || 0).toLocaleString() : val}
             <span className="text-sm font-bold text-gray-300 ml-1">SR</span>
         </div>
         {subText && <div className="text-[10px] font-bold text-gray-400 flex items-center gap-1.5"><Target size={12} className="text-sap-secondary"/> {subText}</div>}
@@ -215,7 +215,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
                                     <div className="text-sap-text text-base">{new Date(m.month + "-01").toLocaleDateString('ar-SA', { month: 'long' })}</div>
                                     <div className="text-[9px] text-gray-400 font-mono mt-0.5 uppercase">Financial Period: {m.month}</div>
                                 </td>
-                                <td className="px-8 py-5 text-center font-mono text-lg text-sap-primary">{m.total.toLocaleString()}</td>
+                                <td className="px-8 py-5 text-center font-mono text-lg text-sap-primary">{(m.total || 0).toLocaleString()}</td>
                                 <td className="px-8 py-5 text-center">
                                     {m.diff !== 0 ? (
                                         <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-mono text-xs ${m.diff > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
@@ -250,7 +250,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
                     <div className="grid grid-cols-2 gap-4 w-full max-w-xl mt-8">
                         <div className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm text-center">
                             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">إجمالي الإيرادات المسجلة</div>
-                            <div className="text-2xl font-black text-sap-primary font-mono">{lifetimeData.total.toLocaleString()} <span className="text-xs">SAR</span></div>
+                            <div className="text-2xl font-black text-sap-primary font-mono">{(lifetimeData.total || 0).toLocaleString()} <span className="text-xs">SAR</span></div>
                         </div>
                         <div className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm text-center">
                             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">متوسط قيمة العملية</div>
@@ -276,7 +276,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
                                     <div className="font-black text-sap-text">{getBranchName(sale.branchId)}</div>
                                     <div className="text-[9px] text-gray-400 flex items-center gap-1 mt-0.5"><MapPin size={10}/> موقع مسجل</div>
                                 </td>
-                                <td className="px-8 py-5 text-center font-mono text-sap-primary text-lg">{sale.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td className="px-8 py-5 text-center font-mono text-sap-primary text-lg">{(sale.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td className="px-8 py-5 text-gray-400 text-xs italic">{sale.notes || 'لا يوجد ملاحظات إضافية'}</td>
                             </tr>
                         ))}

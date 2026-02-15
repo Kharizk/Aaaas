@@ -5,7 +5,7 @@ export interface PriceGroupStyles {
   textColor: string;
   priceColor: string; 
   secondaryColor: string;
-  borderColor?: string; // New
+  borderColor?: string;
   titleFontSize: number;
   itemFontSize: number;
   priceFontSize: number;
@@ -31,6 +31,7 @@ export interface Product {
   name: string;
   unitId: string;
   price?: string;
+  costPrice?: string; 
   color?: string;
   category?: string;
   description?: string;
@@ -63,12 +64,56 @@ export interface Branch {
   location?: string;
 }
 
+export type PaymentMethod = 'cash' | 'card' | 'transfer';
+export type TransactionType = 'sale' | 'return' | 'collection'; 
+
 export interface DailySales {
   id: string;
   branchId?: string;
   date: string;
-  amount: number;
+  
+  totalAmount: number;      
+  paidAmount: number;       
+  remainingAmount: number;  
+  
+  paymentMethod: PaymentMethod;
+  transactionType: TransactionType;
+  
+  isPending: boolean;       
+  isClosed: boolean;        
+  
+  linkedSaleId?: string;    
+  customerName?: string;
+  
+  posPointId?: string;      
+  networkId?: string;       
+  
+  amount: number; 
   notes?: string;
+}
+
+export interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
+  category: string;
+  notes?: string;
+  posPointId?: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  notes?: string;
+  lastVisit?: string;
+}
+
+export interface Network {
+  id: string;
+  name: string;
+  branchId?: string;
 }
 
 export type Permission = 
@@ -170,9 +215,9 @@ export interface PriceGroupBoard {
 
 export interface PriceGroup {
   id: string;
-  name: string; // Project Name
+  name: string;
   date: string;
-  boards: PriceGroupBoard[]; // Board A and Board B
+  boards: PriceGroupBoard[];
   showLogo: boolean;
   logoUrl?: string | null;
   themeId: PriceGroupTheme;
@@ -203,12 +248,25 @@ export interface Settlement {
   posId: string;
   branchId: string;
   cashierId: string;
-  totalSales: number;
+  
+  openingBalance: number;
+  totalCashSales: number;
+  totalCollections: number; 
+  totalExpenses: number;
+  bankDeposit: number; 
+  
+  theoreticalCash: number;
+  actualCash: number;
+  variance: number;
+  
+  totalSales: number; 
+  
   networks: SettlementEntry[];
   transfers: SettlementEntry[];
-  actualCash: number;
+  
   notes?: string;
   createdAt: string;
+  status: 'open' | 'closed';
 }
 
 export type CatalogLayoutType = 'app_modern' | 'geometric_grid' | 'restaurant_menu' | 'luxury_cards' | 'ramadan_special';
@@ -310,4 +368,22 @@ export interface SavedTagList {
   date: string;
   tags: SelectedTag[];
   styles: Omit<TagStyles, 'previewZoom'>;
+}
+
+// --- NEW TYPES FOR UPGRADES ---
+
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
+
+export interface HeldOrder {
+  id: string;
+  date: string;
+  customerName?: string;
+  amount: number;
+  note?: string;
+  // In a real app, this would contain the full cart items
+  rawCartData?: any; 
 }

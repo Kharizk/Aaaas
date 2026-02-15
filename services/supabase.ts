@@ -35,7 +35,6 @@ try {
     firestore = getFirestore(app);
 } catch (error) {
     console.error("Firebase Initialization Error:", error);
-    // Fallback or alert handled in UI by checking connection
 }
 
 const snapshotToArray = (snapshot: any) => {
@@ -143,10 +142,25 @@ export const db = {
     async upsert(product: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "products", product.id), product); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "products", id)); }); }
   },
+  expenses: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "expenses"), orderBy("date", "desc")))), []); },
+    async upsert(expense: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "expenses", expense.id), expense); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "expenses", id)); }); }
+  },
+  customers: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "customers"))), []); },
+    async upsert(customer: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "customers", customer.id), customer); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "customers", id)); }); }
+  },
   posPoints: {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "pos_points"))), []); },
     async upsert(pos: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "pos_points", pos.id), pos); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "pos_points", id)); }); }
+  },
+  networks: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "networks"))), []); },
+    async upsert(network: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "networks", network.id), network); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "networks", id)); }); }
   },
   cashiers: {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "cashiers"))), []); },

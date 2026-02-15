@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { DailySales, Branch } from '../types';
 import { db } from '../services/supabase';
 import { generateSalesTemplate } from '../services/excelService';
-import { Save, DollarSign, FileSpreadsheet, Trash2, Loader2, Edit2, Download, Filter } from 'lucide-react';
+import { Save, DollarSign, FileSpreadsheet, Trash2, Loader2, Edit2, Download, Filter, RefreshCcw } from 'lucide-react';
 
 interface SalesRecorderProps {
   branches: Branch[];
@@ -18,6 +18,9 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Transaction Type (Sale vs Return)
+  const [txnType, setTxnType] = useState<'sale' | 'return'>('sale');
   
   const [filterStart, setFilterStart] = useState(() => {
       const d = new Date();
@@ -46,25 +49,47 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
   }, [filteredSales, currentPage]);
 
   const stats = useMemo(() => ({
-      total: filteredSales.reduce((sum, s) => sum + s.amount, 0),
+      total: filteredSales.reduce((sum, s) => sum + (s.amount || 0), 0),
       count: filteredSales.length,
-      avg: filteredSales.length ? filteredSales.reduce((sum, s) => sum + s.amount, 0) / filteredSales.length : 0
+      avg: filteredSales.length ? filteredSales.reduce((sum, s) => sum + (s.amount || 0), 0) / filteredSales.length : 0
   }), [filteredSales]);
 
   const handleSave = async () => {
     if (!date || !amount || !branchId) { alert("البيانات ناقصة"); return; }
     setIsSaving(true);
     try {
-      const saleData: DailySales = { id: editingId || crypto.randomUUID(), branchId, date, amount: parseFloat(amount), notes: notes.trim() };
+      let finalAmount = parseFloat(amount);
+      if (txnType === 'return' && finalAmount > 0) finalAmount = -finalAmount;
+
+      const saleData: DailySales = { 
+        id: editingId || crypto.randomUUID(), 
+        branchId, 
+        date, 
+        amount: finalAmount, 
+        notes: notes.trim(),
+        // Default values for new fields required by DailySales interface
+        totalAmount: Math.abs(finalAmount),
+        paidAmount: Math.abs(finalAmount),
+        remainingAmount: 0,
+        paymentMethod: 'cash',
+        transactionType: txnType,
+        isPending: false,
+        isClosed: false
+      };
       await db.dailySales.upsert(saleData);
       setSales(prev => editingId ? prev.map(s => s.id === editingId ? saleData : s) : [saleData, ...prev]);
-      setAmount(''); setNotes(''); setEditingId(null);
+      setAmount(''); setNotes(''); setEditingId(null); setTxnType('sale');
     } catch (error) { alert("خطأ في الحفظ"); }
     finally { setIsSaving(false); }
   };
 
   const handleEdit = (sale: DailySales) => {
-    setEditingId(sale.id); setDate(sale.date); setBranchId(sale.branchId || ''); setAmount(sale.amount.toString()); setNotes(sale.notes || '');
+    setEditingId(sale.id); 
+    setDate(sale.date); 
+    setBranchId(sale.branchId || ''); 
+    setAmount(Math.abs(sale.amount || 0).toString()); 
+    setNotes(sale.notes || '');
+    setTxnType((sale.amount || 0) < 0 ? 'return' : 'sale');
   };
 
   const handleDelete = async (id: string) => {
@@ -105,6 +130,12 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
             <div className="w-full lg:w-80 bg-gray-50 border border-gray-300 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto h-fit">
                 <h3 className="font-bold text-sap-primary border-b border-gray-300 pb-2 text-sm">{editingId ? 'تعديل قيد' : 'قيد جديد'}</h3>
                 
+                {/* Transaction Type Toggle */}
+                <div className="flex bg-white rounded-lg border border-gray-300 p-1">
+                    <button onClick={() => setTxnType('sale')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-colors ${txnType === 'sale' ? 'bg-sap-highlight text-sap-primary' : 'text-gray-500'}`}>بيع (إيراد)</button>
+                    <button onClick={() => setTxnType('return')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-colors ${txnType === 'return' ? 'bg-red-100 text-red-600' : 'text-gray-500'}`}>مرتجع (خصم)</button>
+                </div>
+
                 <div>
                     <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">تاريخ العملية</label>
                     <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-2 border border-gray-300 text-sm font-bold bg-white" />
@@ -120,7 +151,10 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
 
                 <div>
                     <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">المبلغ (ريال)</label>
-                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-2 border border-gray-300 text-lg font-mono font-black text-sap-primary bg-white" placeholder="0.00" />
+                    <div className="relative">
+                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className={`w-full p-2 border border-gray-300 text-lg font-mono font-black bg-white ${txnType === 'return' ? 'text-red-600' : 'text-sap-primary'}`} placeholder="0.00" />
+                        {txnType === 'return' && <RefreshCcw className="absolute left-2 top-1/2 -translate-y-1/2 text-red-300" size={16}/>}
+                    </div>
                 </div>
 
                 <div>
@@ -129,7 +163,7 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
                 </div>
 
                 <div className="flex gap-2 mt-2">
-                    {editingId && <button onClick={() => {setEditingId(null); setAmount(''); setNotes('');}} className="flex-1 py-2 bg-white border border-gray-300 text-gray-600 text-xs font-bold hover:bg-gray-100">إلغاء</button>}
+                    {editingId && <button onClick={() => {setEditingId(null); setAmount(''); setNotes(''); setTxnType('sale');}} className="flex-1 py-2 bg-white border border-gray-300 text-gray-600 text-xs font-bold hover:bg-gray-100">إلغاء</button>}
                     <button onClick={handleSave} disabled={isSaving} className="flex-1 py-2 bg-sap-primary text-white border border-sap-primary text-xs font-bold hover:bg-sap-primary-hover flex justify-center items-center gap-2">
                         {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {editingId ? 'تحديث' : 'حفظ'}
                     </button>
@@ -150,7 +184,7 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
                     </select>
                     <div className="mr-auto flex gap-4 font-bold text-gray-700">
                         <span>العدد: {stats.count}</span>
-                        <span>الإجمالي: <span className="text-sap-primary font-mono">{stats.total.toLocaleString()}</span></span>
+                        <span>الإجمالي: <span className={`font-mono ${stats.total >= 0 ? 'text-sap-primary' : 'text-red-500'}`}>{(stats.total || 0).toLocaleString()}</span></span>
                     </div>
                 </div>
 
@@ -167,11 +201,14 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
                         </thead>
                         <tbody>
                             {paginatedSales.map(sale => (
-                                <tr key={sale.id} className="group hover:bg-[#E8F5E9]">
+                                <tr key={sale.id} className={`group ${(sale.amount || 0) < 0 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-[#E8F5E9]'}`}>
                                     <td className="font-mono text-gray-700 font-bold">{sale.date}</td>
                                     <td className="font-bold text-sap-text">{(branches.find(b=>b.id===sale.branchId)?.name) || '-'}</td>
-                                    <td className="font-mono font-black text-sap-primary">{sale.amount.toLocaleString()}</td>
-                                    <td className="text-gray-500 text-xs truncate max-w-[200px]">{sale.notes}</td>
+                                    <td className={`font-mono font-black ${(sale.amount || 0) < 0 ? 'text-red-600' : 'text-sap-primary'}`}>{(sale.amount || 0).toLocaleString()}</td>
+                                    <td className="text-gray-500 text-xs truncate max-w-[200px]">
+                                        {(sale.amount || 0) < 0 && <span className="text-[9px] bg-red-200 text-red-800 px-1 rounded ml-1">مرتجع</span>}
+                                        {sale.notes}
+                                    </td>
                                     <td className="text-center">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => handleEdit(sale)} className="p-1 text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200"><Edit2 size={14}/></button>
