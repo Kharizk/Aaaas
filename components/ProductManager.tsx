@@ -1,12 +1,12 @@
-
 import React, { useState, useMemo, useRef } from 'react';
 import { Product, Unit, User } from '../types';
 import { db } from '../services/supabase';
 import { parseExcelFile, exportDataToExcel } from '../services/excelService';
-import { EmptyState, LoadingSkeleton } from './UIStates'; // Imported new components
+import { EmptyState } from './UIStates';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
-  Barcode, LayoutGrid, Boxes, DollarSign, Tag, Palette, FileSpreadsheet, Ruler, CheckSquare, Square, Download, TrendingUp, List, Grid
+  Barcode, LayoutGrid, DollarSign, FileSpreadsheet, Ruler, 
+  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft
 } from 'lucide-react';
 
 interface ProductManagerProps {
@@ -22,16 +22,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list'); // Added View Mode
-  
-  // Bulk Actions
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
-  // Import State
-  const [isImporting, setIsImporting] = useState(false);
-  const [importStep, setImportStep] = useState('');
-  const excelInputRef = useRef<HTMLInputElement>(null);
-
+  // Form State
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [unitId, setUnitId] = useState('');
@@ -40,11 +34,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [color, setColor] = useState('#ffffff');
 
   const canEdit = currentUser?.role === 'admin' || currentUser?.permissions.includes('manage_products');
-
-  const toAr = (n: string | number) => {
-    if (n === undefined || n === null) return '';
-    return n.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
-  };
+  const excelInputRef = useRef<HTMLInputElement>(null);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
@@ -53,437 +43,257 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
     );
   }, [products, searchQuery]);
 
-  const toggleSelect = (id: string) => {
-      const newSet = new Set(selectedIds);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
-      setSelectedIds(newSet);
-  };
-
-  const toggleSelectAll = () => {
-      if (selectedIds.size === filteredProducts.length) setSelectedIds(new Set());
-      else setSelectedIds(new Set(filteredProducts.map(p => p.id)));
-  };
-
-  const handleBulkDelete = async () => {
-      if (selectedIds.size === 0) return;
-      if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} منتج؟`)) return;
-      
-      try {
-          const ids = Array.from(selectedIds) as string[];
-          await Promise.all(ids.map(id => db.products.delete(id)));
-          setProducts(prev => prev.filter(p => !selectedIds.has(p.id)));
-          setSelectedIds(new Set());
-      } catch (e) { alert("حدث خطأ أثناء الحذف"); }
-  };
-
-  const handleExport = () => {
-      const data = products.map(p => ({
-          'كود المنتج': p.code,
-          'اسم المنتج': p.name,
-          'الوحدة': units.find(u => u.id === p.unitId)?.name || '',
-          'سعر البيع': p.price,
-          'سعر التكلفة': p.costPrice
-      }));
-      exportDataToExcel(data, 'Products_Export');
-  };
-
+  // --- Actions ---
   const handleOpenModal = (product?: Product) => {
     if (!canEdit && !product) return;
-    
     if (product) {
       setEditingProduct(product);
-      setCode(product.code);
-      setName(product.name);
-      setUnitId(product.unitId);
-      setPrice(product.price || '');
-      setCostPrice(product.costPrice || '');
-      setColor(product.color || '#ffffff');
+      setCode(product.code); setName(product.name); setUnitId(product.unitId);
+      setPrice(product.price || ''); setCostPrice(product.costPrice || ''); setColor(product.color || '#ffffff');
     } else {
       setEditingProduct(null);
-      setCode('');
-      setName('');
-      setUnitId('');
-      setPrice('');
-      setCostPrice('');
-      setColor('#ffffff');
+      setCode(''); setName(''); setUnitId(''); setPrice(''); setCostPrice(''); setColor('#ffffff');
     }
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
-    if (!code || !name || !unitId) {
-        alert("الرجاء إكمال البيانات الإلزامية");
-        return;
-    }
+    if (!code || !name || !unitId) { alert("البيانات الأساسية مطلوبة"); return; }
     setIsSaving(true);
     try {
         const productData: Product = {
           id: editingProduct ? editingProduct.id : crypto.randomUUID(),
-          code: code.trim(), 
-          name: name.trim(), 
-          unitId,
-          price: price.trim(),
-          costPrice: costPrice.trim(),
-          color: color
+          code: code.trim(), name: name.trim(), unitId,
+          price: price.trim(), costPrice: costPrice.trim(), color
         };
         await db.products.upsert(productData);
-        if (editingProduct) {
-          setProducts(prev => prev.map(p => p.id === editingProduct.id ? productData : p));
-        } else {
-          setProducts(prev => [...prev, productData]);
-        }
+        if (editingProduct) setProducts(prev => prev.map(p => p.id === editingProduct.id ? productData : p));
+        else setProducts(prev => [...prev, productData]);
         setIsModalOpen(false);
-    } catch (e) { 
-        alert("فشل الحفظ في قاعدة البيانات"); 
-    }
+    } catch (e) { alert("فشل الحفظ"); }
     setIsSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!canEdit) return;
-    if (!confirm('سيتم حذف السجل نهائياً، هل أنت متأكد؟')) return;
-    try {
-      await db.products.delete(id);
-      setProducts(prev => prev.filter(p => p.id !== id));
-    } catch (e) { alert("فشل الحذف"); }
-  };
-
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      // ... (Keep existing logic)
-      // For brevity, using the same logic as before but ensuring we use the new components where applicable if needed.
-      // Copying logic from previous file to ensure functionality remains.
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      setIsImporting(true);
-      setImportStep('جاري قراءة ملف البيانات...');
-
+  const handleBulkDelete = async () => {
+      if (!confirm(`حذف ${selectedIds.size} عنصر؟`)) return;
       try {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const rawData = await parseExcelFile(file);
-          if (rawData.length === 0) {
-              alert("الملف فارغ أو التنسيق غير مدعوم");
-              setIsImporting(false);
-              return;
-          }
-
-          setImportStep(`تم العثور على ${rawData.length} منتج. جاري المعالجة...`);
-          
-          let addedCount = 0;
-          let updatedCount = 0;
-          const chunkSize = 50;
-          
-          for (let i = 0; i < rawData.length; i += chunkSize) {
-              const chunk = rawData.slice(i, i + chunkSize);
-              await Promise.all(chunk.map(async (row: any) => {
-                  const findVal = (keys: string[]) => {
-                      const key = Object.keys(row).find(k => keys.some(search => k.toLowerCase().includes(search.toLowerCase())));
-                      return key ? row[key] : '';
-                  };
-
-                  const pCode = String(findVal(['code', 'كود', 'sku', 'رقم']) || '').trim();
-                  const pName = String(findVal(['name', 'اسم', 'صنف', 'product']) || '').trim();
-                  const pPrice = String(findVal(['price', 'سعر', 'بيع']) || '');
-                  const pCost = String(findVal(['cost', 'تكلفة', 'شراء']) || ''); 
-                  const pUnit = String(findVal(['unit', 'وحدة']) || '');
-
-                  if (pName) {
-                      let targetUnitId = units.find(u => u.name === pUnit || (pUnit && u.name.includes(pUnit)))?.id;
-                      if (!targetUnitId && pUnit) {
-                          const newUnit = { id: crypto.randomUUID(), name: pUnit };
-                          await db.units.upsert(newUnit);
-                          setUnits(prev => [...prev, newUnit]);
-                          targetUnitId = newUnit.id;
-                      }
-
-                      const existingProduct = products.find(p => p.code === pCode || p.name === pName);
-                      const productId = existingProduct ? existingProduct.id : crypto.randomUUID();
-                      
-                      const productData: Product = {
-                          id: productId,
-                          code: pCode || `AUTO-${Math.floor(Math.random()*100000)}`,
-                          name: pName,
-                          unitId: targetUnitId || units[0]?.id || '',
-                          price: pPrice || '0',
-                          costPrice: pCost || '0',
-                          color: '#ffffff'
-                      };
-
-                      await db.products.upsert(productData);
-                      if (existingProduct) updatedCount++; else addedCount++;
-                  }
-              }));
-              setImportStep(`تم معالجة ${Math.min(i + chunkSize, rawData.length)} من ${rawData.length}...`);
-          }
-
-          const allProducts = await db.products.getAll();
-          setProducts(allProducts);
-          alert(`تمت العملية بنجاح!\nتم إضافة: ${addedCount}\nتم تحديث: ${updatedCount}`);
-
-      } catch (error) {
-          console.error(error);
-          alert("حدث خطأ غير متوقع أثناء الاستيراد");
-      } finally {
-          setIsImporting(false);
-          if (excelInputRef.current) excelInputRef.current.value = '';
-      }
-  };
-
-  const getUnitName = (id: string) => units.find(u => u.id === id)?.name || '-';
-
-  const PriceDisplay = ({ val, pColor }: { val: string, pColor?: string }) => {
-    if (!val || val === '0') return <span className="text-gray-300">-</span>;
-    const [main, dec] = val.includes('.') ? val.split('.') : [val, '٠٠'];
-    return (
-      <div className="flex items-center justify-center gap-1 font-black" dir="ltr">
-        <span className="text-sap-primary text-base">{toAr(main)}</span>
-        <span className="text-gray-300">.</span>
-        <span 
-          className="text-[10px] px-1 rounded border border-black/5" 
-          style={{ backgroundColor: pColor && pColor !== '#ffffff' ? pColor : '#FEE2E2', color: pColor && pColor !== '#ffffff' ? '#000' : '#EF4444' }}
-        >
-          {toAr(dec || '00')}
-        </span>
-        <span className="text-[8px] text-gray-400 ml-1 uppercase">ريال</span>
-      </div>
-    );
+          const ids = Array.from(selectedIds);
+          await Promise.all(ids.map((id: string) => db.products.delete(id)));
+          setProducts(prev => prev.filter(p => !selectedIds.has(p.id)));
+          setSelectedIds(new Set());
+      } catch (e) { alert("خطأ في الحذف"); }
   };
 
   return (
-    <div className="h-full flex flex-col space-y-6 animate-in fade-in duration-500 text-right relative">
+    <div className="h-full flex flex-col animate-in fade-in duration-300">
       
-      {/* Loading Overlay */}
-      {isImporting && (
-          <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-8 animate-in fade-in">
-              <div className="w-64 bg-gray-700 rounded-full h-2 mb-6 overflow-hidden relative shadow-lg border border-white/10">
-                 <div className="h-full bg-gradient-to-r from-sap-secondary via-white to-sap-secondary w-1/2 animate-[shimmer_1.5s_infinite_linear] absolute"></div> 
-              </div>
-              <h2 className="text-2xl font-black text-white mb-2">جاري الاستيراد</h2>
-              <p className="text-white/70 font-bold animate-pulse">{importStep || 'يرجى الانتظار...'}</p>
-          </div>
-      )}
-
-      {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 border border-sap-border rounded-sap-m shadow-sm">
-        <div className="flex items-center gap-4">
-            <div className="p-3 bg-sap-highlight text-sap-primary rounded-xl">
-                <Boxes size={28} />
-            </div>
-            <div>
-                <h2 className="text-2xl font-black text-sap-text">المنتجات</h2>
-                <p className="text-xs text-sap-text-variant font-bold mt-1">
-                    {filteredProducts.length} منتج مسجل
-                </p>
-            </div>
+      {/* 1. Odoo Style Control Panel */}
+      <div className="bg-white border-b border-gray-200 px-6 py-3 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm z-10">
+        <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+            <span className="text-sap-primary font-bold cursor-pointer hover:underline">المنتجات</span>
+            <ChevronRight size={14} />
+            <span>الكل</span>
         </div>
         
         <div className="flex items-center gap-3 w-full md:w-auto">
-            {selectedIds.size > 0 && (
-                <button onClick={handleBulkDelete} className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-red-100 transition-all animate-in slide-in-from-top-2">
-                    <Trash2 size={14}/> حذف ({selectedIds.size})
-                </button>
-            )}
-
-            <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                <button onClick={() => setViewMode('list')} className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-sap-primary' : 'text-gray-400'}`} title="قائمة"><List size={18}/></button>
-                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-sap-primary' : 'text-gray-400'}`} title="شبكة"><LayoutGrid size={18}/></button>
-            </div>
-
-            <div className="relative flex-1 md:w-56">
+            {/* Search Bar */}
+            <div className="relative flex-1 md:w-80">
                 <input 
                   type="text" 
-                  placeholder="بحث بالكود أو الاسم..." 
+                  placeholder="بحث..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pr-10 pl-4 py-2.5 border border-gray-300 rounded-lg text-sm font-bold focus:border-sap-primary"
+                  className="w-full pl-4 pr-10 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-sap-primary focus:border-sap-primary transition-all"
                 />
-                <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
-            
+
+            {/* View Switcher */}
+            <div className="flex border border-gray-300 rounded-md overflow-hidden">
+                <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-gray-100 text-sap-primary' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><List size={16}/></button>
+                <button onClick={() => setViewMode('kanban')} className={`p-2 ${viewMode === 'kanban' ? 'bg-gray-100 text-sap-primary' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><LayoutGrid size={16}/></button>
+            </div>
+
+            {/* Action Buttons */}
             {canEdit && (
-                <>
-                    <input type="file" ref={excelInputRef} onChange={handleImportExcel} accept=".xlsx, .xls" className="hidden" />
-                    <button onClick={() => excelInputRef.current?.click()} className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-200" title="استيراد">
-                        <FileSpreadsheet size={20}/>
-                    </button>
-                    <button onClick={handleExport} className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-200" title="تصدير">
-                        <Download size={20}/>
-                    </button>
-                    <button onClick={() => handleOpenModal()} className="bg-sap-primary text-white px-5 py-2.5 rounded-lg text-sm font-black hover:bg-sap-primary-hover shadow-md flex items-center gap-2 transition-all active:scale-95">
-                        <Plus size={18}/> <span className="hidden sm:inline">جديد</span>
-                    </button>
-                </>
+                <button onClick={() => handleOpenModal()} className="bg-sap-primary text-white px-4 py-1.5 rounded-md text-sm font-bold shadow-sm hover:bg-sap-primary-hover transition-colors">
+                    جديد
+                </button>
             )}
         </div>
       </div>
 
-      {/* Content Area */}
-      {products.length === 0 ? (
-          <EmptyState 
-            title="لا توجد منتجات حتى الآن" 
-            subtitle="ابدأ بإضافة منتجك الأول يدوياً أو استورد قائمة من Excel"
-            icon={Package}
-            action={
-                <button onClick={() => handleOpenModal()} className="mt-4 px-6 py-2 bg-sap-primary text-white rounded-xl font-black text-sm hover:bg-sap-primary-hover transition-all shadow-lg">
-                    إضافة منتج جديد
-                </button>
-            }
-          />
-      ) : filteredProducts.length === 0 ? (
-          <EmptyState title="لا توجد نتائج" subtitle="لم نتمكن من العثور على منتجات تطابق بحثك" icon={Search} />
-      ) : (
-          <div className="flex-1 overflow-auto custom-scrollbar bg-white/50 border border-sap-border rounded-sap-m shadow-sm p-1">
-            {viewMode === 'list' ? (
-                <table className="w-full text-right text-sm">
-                    <thead className="sticky top-0 z-10">
-                        <tr className="bg-sap-shell text-white text-[12px] font-black uppercase tracking-wider">
-                            <th className="px-4 py-4 w-10 text-center">
-                                <button onClick={toggleSelectAll} className="hover:text-sap-secondary">
-                                    {selectedIds.size === filteredProducts.length && filteredProducts.length > 0 ? <CheckSquare size={18}/> : <Square size={18}/>}
-                                </button>
-                            </th>
-                            <th className="px-6 py-4 border-l border-white/10 w-48 flex items-center gap-2"><Barcode size={16}/> كود المنتج</th>
-                            <th className="px-6 py-4 border-l border-white/10"><Package size={16} className="inline mr-2"/> اسم الصنف</th>
-                            <th className="px-6 py-4 w-32 text-center border-l border-white/10"><Ruler size={16} className="inline mr-2"/> الوحدة</th>
-                            <th className="px-6 py-4 w-32 text-center border-l border-white/10"><DollarSign size={16} className="inline mr-2"/> السعر</th>
-                            {canEdit && <th className="px-6 py-4 w-24 text-center">التحكم</th>}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-sap-border font-bold bg-white">
-                        {filteredProducts.map((p) => (
-                        <tr key={p.id} className={`hover:bg-sap-highlight/20 transition-colors group relative ${selectedIds.has(p.id) ? 'bg-blue-50' : ''}`}>
-                            <td className="px-4 py-4 text-center">
-                                <button onClick={() => toggleSelect(p.id)} className="text-gray-400 hover:text-sap-primary">
-                                    {selectedIds.has(p.id) ? <CheckSquare size={18} className="text-sap-primary"/> : <Square size={18}/>}
-                                </button>
-                            </td>
-                            <td className="px-6 py-4 relative">
-                                {p.color && p.color !== '#ffffff' && <div className="absolute top-0 right-0 w-1 h-full" style={{ backgroundColor: p.color }}></div>}
-                                <span className="font-mono text-base font-black text-sap-primary tracking-wider">{toAr(p.code)}</span>
-                            </td>
-                            <td className="px-6 py-4">
-                                <span className="text-sap-text text-sm">{p.name}</span>
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                                <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-100 rounded-full text-[11px] font-black border border-gray-200 text-gray-600">
-                                    {getUnitName(p.unitId)}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                                <PriceDisplay val={p.price || ''} pColor={p.color} />
-                            </td>
-                            {canEdit && (
-                                <td className="px-6 py-4 text-center">
-                                    <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                        <button onClick={() => handleOpenModal(p)} className="p-2 text-sap-text-variant hover:text-sap-primary hover:bg-sap-highlight rounded-lg transition-all"><Edit2 size={16}/></button>
-                                        <button onClick={() => handleDelete(p.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={16}/></button>
-                                    </div>
-                                </td>
-                            )}
-                        </tr>
-                        ))}
-                    </tbody>
-                </table>
-            ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4">
-                    {filteredProducts.map(p => (
-                        <div key={p.id} className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition-all group ${selectedIds.has(p.id) ? 'border-sap-primary ring-1 ring-sap-primary' : 'border-gray-200'}`}>
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-xs shadow-inner" style={{ backgroundColor: p.color && p.color !== '#ffffff' ? p.color : '#006C35' }}>
-                                    {p.name.charAt(0)}
-                                </div>
-                                <button onClick={() => toggleSelect(p.id)} className="text-gray-300 hover:text-sap-primary">
-                                    {selectedIds.has(p.id) ? <CheckSquare size={18} className="text-sap-primary"/> : <Square size={18}/>}
-                                </button>
-                            </div>
-                            <h3 className="font-black text-gray-800 text-sm mb-1 line-clamp-2 min-h-[2.5em]" title={p.name}>{p.name}</h3>
-                            <div className="text-[10px] font-mono text-gray-400 mb-3">{p.code}</div>
-                            
-                            <div className="flex items-end justify-between mt-auto">
-                                <div className="text-sap-primary font-black text-lg">
-                                    {p.price} <span className="text-[9px]">SAR</span>
-                                </div>
-                                {canEdit && (
-                                    <button onClick={() => handleOpenModal(p)} className="p-2 bg-gray-50 text-gray-500 rounded-lg hover:bg-sap-primary hover:text-white transition-colors opacity-0 group-hover:opacity-100">
-                                        <Edit2 size={14}/>
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-          </div>
-      )}
-
-      {/* Modal ... (Kept exactly as previous file) */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
-          <div className="bg-white border-2 border-sap-primary shadow-2xl w-full max-w-lg rounded-sap-m overflow-hidden animate-in zoom-in duration-200">
-            <div className="px-6 py-4 bg-sap-primary text-white flex justify-between items-center">
-              <h3 className="text-base font-black flex items-center gap-2">
-                  {editingProduct ? 'تعديل بيانات المنتج' : 'إضافة صنف جديد'}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1 rounded-full"><X size={20}/></button>
-            </div>
-            
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                      <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">كود الصنف</label>
-                      <input type="text" value={code} onChange={e => setCode(e.target.value)} className="w-full pr-4 pl-4 py-3 border-2 border-gray-200 rounded-lg focus:border-sap-primary font-mono font-black text-lg text-right" placeholder="P-0000" />
+      {/* 2. Content Area */}
+      <div className="flex-1 overflow-auto bg-[#F3F4F6] p-4 md:p-6">
+          
+          {/* Bulk Action Bar */}
+          {selectedIds.size > 0 && (
+              <div className="mb-4 bg-white p-2 px-4 rounded-md border border-gray-300 shadow-sm flex items-center justify-between animate-in slide-in-from-top-2">
+                  <span className="text-sm font-bold text-gray-700">{selectedIds.size} عنصر محدد</span>
+                  <div className="flex gap-2">
+                      <button onClick={handleBulkDelete} className="text-red-600 hover:bg-red-50 px-3 py-1 rounded text-xs font-bold border border-transparent hover:border-red-200">حذف المحدد</button>
+                      <button onClick={() => setSelectedIds(new Set())} className="text-gray-500 hover:bg-gray-100 px-3 py-1 rounded text-xs font-bold">إلغاء</button>
                   </div>
-                  <div className="space-y-1">
-                      <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">سعر البيع</label>
-                      <div className="relative">
-                        <input type="text" value={price} onChange={e => setPrice(e.target.value)} className="w-full pr-4 pl-10 py-3 border-2 border-gray-200 rounded-lg focus:border-sap-primary font-black text-lg text-sap-primary text-left" placeholder="0.00" />
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+              </div>
+          )}
+
+          {viewMode === 'list' ? (
+              <div className="bg-white border border-gray-300 rounded-sm shadow-sm overflow-hidden">
+                  <table className="w-full text-right text-sm">
+                      <thead className="bg-[#F9FAFB] border-b border-gray-200 text-gray-600 font-bold">
+                          <tr>
+                              <th className="p-3 w-10 text-center">
+                                  <input type="checkbox" className="accent-sap-primary" 
+                                    onChange={(e) => setSelectedIds(e.target.checked ? new Set(filteredProducts.map(p => p.id)) : new Set())}
+                                    checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0}
+                                  />
+                              </th>
+                              <th className="p-3">الكود</th>
+                              <th className="p-3 w-1/3">الاسم</th>
+                              <th className="p-3">الوحدة</th>
+                              <th className="p-3">سعر البيع</th>
+                              <th className="p-3">التكلفة</th>
+                              <th className="p-3 w-20"></th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                          {filteredProducts.map(p => (
+                              <tr key={p.id} className="hover:bg-gray-50 group transition-colors cursor-pointer" onClick={() => handleOpenModal(p)}>
+                                  <td className="p-3 text-center" onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }}>
+                                      <input type="checkbox" checked={selectedIds.has(p.id)} className="accent-sap-primary" readOnly />
+                                  </td>
+                                  <td className="p-3 font-mono text-sap-secondary font-bold">{p.code}</td>
+                                  <td className="p-3 font-bold text-gray-800">{p.name}</td>
+                                  <td className="p-3 text-gray-500">
+                                      <span className="bg-gray-100 px-2 py-0.5 rounded text-xs border border-gray-200">{units.find(u => u.id === p.unitId)?.name}</span>
+                                  </td>
+                                  <td className="p-3 font-bold">{p.price}</td>
+                                  <td className="p-3 text-gray-400">{p.costPrice || '-'}</td>
+                                  <td className="p-3 text-center">
+                                      <MoreHorizontal size={16} className="text-gray-400 mx-auto opacity-0 group-hover:opacity-100" />
+                                  </td>
+                              </tr>
+                          ))}
+                      </tbody>
+                  </table>
+              </div>
+          ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredProducts.map(p => (
+                      <div key={p.id} onClick={() => handleOpenModal(p)} className="bg-white border border-gray-200 rounded-md p-4 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-32 relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 w-1 h-full" style={{ backgroundColor: p.color || '#ccc' }}></div>
+                          <div className="flex justify-between items-start mb-2 pl-2 pr-3">
+                              <h3 className="font-bold text-gray-800 line-clamp-2 text-sm">{p.name}</h3>
+                              <input type="checkbox" checked={selectedIds.has(p.id)} onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }} className="accent-sap-primary" />
+                          </div>
+                          <div className="mt-auto pr-3">
+                              <div className="text-xs text-gray-500 font-mono mb-1">{p.code}</div>
+                              <div className="flex justify-between items-center">
+                                  <span className="font-black text-sap-primary text-lg">{p.price} <span className="text-[10px] text-gray-400">SAR</span></span>
+                                  <span className="text-[10px] bg-gray-100 px-2 rounded text-gray-500">{units.find(u => u.id === p.unitId)?.name}</span>
+                              </div>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          )}
+      </div>
+
+      {/* 3. Form Modal (Odoo "Sheet" Style) */}
+      {isModalOpen && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+              <div className="bg-[#F9FAFB] w-full max-w-4xl h-[90vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                  {/* Modal Header */}
+                  <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shrink-0">
+                      <div className="flex items-center gap-4">
+                          <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-800">
+                              <ArrowLeft size={20}/>
+                          </button>
+                          <h2 className="text-lg font-bold text-sap-primary">
+                              {editingProduct ? editingProduct.name : 'منتج جديد'}
+                          </h2>
+                      </div>
+                      <div className="flex gap-2">
+                          <button onClick={handleSave} disabled={isSaving} className="bg-sap-primary text-white px-6 py-2 rounded-md text-sm font-bold hover:bg-sap-primary-hover shadow-sm flex items-center gap-2">
+                              {isSaving && <Loader2 size={14} className="animate-spin"/>} حفظ
+                          </button>
+                          <button onClick={() => setIsModalOpen(false)} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-bold hover:bg-gray-50">
+                              إلغاء
+                          </button>
+                      </div>
+                  </div>
+
+                  {/* Sheet Content */}
+                  <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                      <div className="bg-white border border-gray-200 shadow-sm rounded-sm p-8 max-w-3xl mx-auto min-h-[500px]">
+                          {/* Top Area: Status Bar & Title */}
+                          <div className="flex justify-between items-start mb-8">
+                              <div className="flex-1">
+                                  <label className="block text-sm font-bold text-gray-500 mb-1">اسم المنتج</label>
+                                  <input 
+                                    type="text" 
+                                    value={name} 
+                                    onChange={e => setName(e.target.value)} 
+                                    className="w-full text-2xl font-bold border-b border-gray-300 focus:border-sap-primary outline-none py-1 placeholder-gray-300"
+                                    placeholder="مثال: مياه معدنية"
+                                  />
+                              </div>
+                              <div className="w-20 h-20 bg-gray-50 border border-gray-200 flex items-center justify-center rounded-md ml-4 text-gray-300">
+                                  <Package size={32}/>
+                              </div>
+                          </div>
+
+                          {/* Grid Form */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                              <div className="space-y-4">
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">كود الصنف</label>
+                                      <input type="text" value={code} onChange={e => setCode(e.target.value)} className="flex-1 border-b border-gray-300 focus:border-sap-primary outline-none py-1 font-mono text-sap-secondary font-bold" />
+                                  </div>
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">وحدة القياس</label>
+                                      <select value={unitId} onChange={e => setUnitId(e.target.value)} className="flex-1 border-b border-gray-300 focus:border-sap-primary outline-none py-1 bg-white">
+                                          <option value="">-- اختر --</option>
+                                          {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                      </select>
+                                  </div>
+                              </div>
+
+                              <div className="space-y-4">
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">سعر البيع</label>
+                                      <div className="flex-1 flex items-center border-b border-gray-300 focus-within:border-sap-primary">
+                                          <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full outline-none py-1 font-bold text-lg" placeholder="0.00" />
+                                          <span className="text-xs text-gray-400 font-bold ml-1">SAR</span>
+                                      </div>
+                                  </div>
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">التكلفة</label>
+                                      <div className="flex-1 flex items-center border-b border-gray-300 focus-within:border-sap-primary">
+                                          <input type="number" value={costPrice} onChange={e => setCostPrice(e.target.value)} className="w-full outline-none py-1 text-gray-500" placeholder="0.00" />
+                                          <span className="text-xs text-gray-400 font-bold ml-1">SAR</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div className="mt-8 pt-6 border-t border-gray-100">
+                              <label className="block text-sm font-bold text-gray-600 mb-2">لون التمييز (في الشبكة)</label>
+                              <div className="flex gap-3">
+                                  {['#ffffff', '#fecaca', '#bbf7d0', '#bfdbfe', '#fde68a', '#e9d5ff'].map(c => (
+                                      <button 
+                                        key={c} 
+                                        onClick={() => setColor(c)}
+                                        className={`w-8 h-8 rounded-full border border-gray-300 ${color === c ? 'ring-2 ring-offset-2 ring-sap-primary' : ''}`}
+                                        style={{ backgroundColor: c }}
+                                      />
+                                  ))}
+                              </div>
+                          </div>
                       </div>
                   </div>
               </div>
-              
-              <div className="space-y-1">
-                  <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">اسم المنتج</label>
-                  <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full pr-4 pl-4 py-3 border-2 border-gray-200 rounded-lg focus:border-sap-primary font-bold text-sm" placeholder="أدخل اسم المنتج..." />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                      <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">سعر التكلفة</label>
-                      <input type="text" value={costPrice} onChange={e => setCostPrice(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-sap-primary font-mono font-bold text-left" placeholder="0.00" />
-                  </div>
-                  <div className="space-y-1">
-                      <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">وحدة القياس</label>
-                      <select value={unitId} onChange={e => setUnitId(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-sap-primary font-bold text-sm bg-white">
-                            <option value="">-- اختر --</option>
-                            {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </select>
-                  </div>
-              </div>
-
-              <div className="space-y-1">
-                  <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">لون التمييز</label>
-                  <div className="flex items-center gap-3 border-2 border-gray-200 rounded-lg p-2 bg-gray-50">
-                      <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-10 h-10 border-none cursor-pointer rounded bg-transparent" />
-                      <span className="text-[10px] font-mono font-black text-gray-400 uppercase">{color}</span>
-                      <Palette size={16} className="text-gray-300 ml-auto" />
-                  </div>
-              </div>
-
-              <div className="pt-4 flex gap-3">
-                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 border-2 border-gray-200 text-gray-500 rounded-lg font-black text-xs hover:bg-gray-50">إلغاء</button>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="flex-1 py-3 bg-sap-primary text-white rounded-lg font-black text-xs hover:bg-sap-primary-hover shadow-lg flex justify-center items-center gap-2 transition-all"
-                >
-                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} حفظ المنتج
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
       )}
     </div>
   );

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>StoreFlow Manager</title>
     <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#006C35">
+    <meta name="theme-color" content="#2D3748">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="StoreFlow">
@@ -64,9 +64,9 @@
               mono: ['Consolas', 'Monaco', 'monospace'],
             },
             borderRadius: {
-              'sap-s': '4px', 
-              'sap-m': '8px', 
-              'sap-l': '12px', 
+              'sap-s': '2px', 
+              'sap-m': '4px', 
+              'sap-l': '8px', 
               'm3-s': '4px',
               'm3-m': '8px',
               'm3-l': '16px',
@@ -75,25 +75,25 @@
             },
             colors: {
               sap: {
-                primary: '#006C35',
-                'primary-hover': '#004D25',
-                secondary: '#C5A059',
-                shell: '#1F2937',
-                background: '#F8FAFC',
+                primary: '#800020', /* Burgundy (النبيتي) - Main Action Color */
+                'primary-hover': '#5e0018',
+                secondary: '#C5A059', /* Gold (الذهبي) - Accents/Highlights */
+                shell: '#2D3748', /* Dark Gray (الرمادي الغامق) - Sidebar/Headers */
+                background: '#F9FAFB', /* Very Light Gray - App Background */
                 surface: '#ffffff',
                 border: '#E2E8F0',
-                text: '#0F172A',
-                'text-variant': '#64748B',
-                success: '#10B981',
-                error: '#EF4444',
-                warning: '#F59E0B',
-                highlight: '#F0FDF4'
+                text: '#1A202C',
+                'text-variant': '#718096',
+                success: '#059669',
+                error: '#DC2626',
+                warning: '#D97706',
+                highlight: '#FDF2F8' /* Light Burgundy tint */
               }
             },
             boxShadow: {
-              'sap-1': '0 2px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1)',
-              'sap-2': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-              'glow': '0 0 15px rgba(0, 108, 53, 0.15)'
+              'sap-1': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+              'sap-2': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              'glow': '0 0 15px rgba(128, 0, 32, 0.15)'
             }
           },
         },
@@ -101,13 +101,22 @@
     </script>
     <style>
         body {
-            background-color: #F8FAFC;
-            color: #0F172A;
+            background-color: #F3F4F6;
+            color: #1A202C;
             font-family: 'Cairo', 'Segoe UI', sans-serif;
             margin: 0;
             padding: 0;
             font-size: 13px;
         }
+        
+        /* Odoo-like Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+        /* Odoo Table Style Override */
+        table { border-collapse: separate; border-spacing: 0; }
         
         @media print {
             body * { visibility: hidden !important; }
@@ -153,16 +162,16 @@
 }
 </script>
 </head>
-  <body class="bg-sap-background text-sap-text font-sans overflow-hidden text-sm selection:bg-sap-primary selection:text-white">
+  <body class="bg-[#F3F4F6] text-sap-text font-sans overflow-hidden text-sm selection:bg-sap-primary selection:text-white">
     <!-- Error Display -->
     <div id="fatal-error"></div>
 
     <!-- Root container -->
-    <div id="root" class="h-screen w-screen flex flex-col backdrop-blur-[2px]">
+    <div id="root" class="h-screen w-screen flex flex-col">
         <!-- Initial Loading State -->
-        <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa;">
-            <div style="width: 40px; height: 40px; border: 4px solid #eee; border-top-color: #006C35; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
-            <div style="font-weight: bold; font-size: 16px; color: #333;">StoreFlow Manager</div>
+        <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #718096; background: #F3F4F6;">
+            <div style="width: 50px; height: 50px; border: 4px solid #e2e8f0; border-top-color: #800020; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+            <div style="font-weight: 800; font-size: 18px; color: #2D3748;">StoreFlow</div>
             <div style="font-size: 12px; margin-top: 5px;">جاري تحميل النظام...</div>
             <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
         </div>

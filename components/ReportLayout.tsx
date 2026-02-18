@@ -24,7 +24,7 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
   branchName,
   dateRange
 }) => {
-  const [orgName, setOrgName] = useState(localStorage.getItem('print_org_name') || 'مؤسسة إدارة المتجر');
+  const [orgName, setOrgName] = useState(localStorage.getItem('print_org_name') || 'مؤسسة المدير برو التجارية');
   
   const currentDate = new Date().toLocaleDateString('ar-SA');
   const currentTime = new Date().toLocaleTimeString('ar-SA');
@@ -40,105 +40,103 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
   }, []);
 
   return (
-    <div className="report-container bg-white p-12 print:p-0 print:m-0 overflow-visible relative text-right" dir="rtl">
+    <div className="report-container bg-white p-12 print:p-0 print:m-0 overflow-visible relative text-right font-sans" dir="rtl">
       
       {showHeader && (
-        <div className="report-header relative mb-10 print:mb-4">
-          <div className="flex justify-between items-start pb-6 print:pb-2 border-b-[3px] border-sap-primary print:border-b-2">
+        <div className="report-header mb-10 print:mb-6">
+          {/* Top Gold Bar */}
+          <div className="h-2 w-full bg-sap-secondary mb-6 print:mb-4"></div>
+
+          <div className="flex justify-between items-start pb-6 border-b-2 border-gray-100">
             {/* Right Side: Org Info */}
-            <div className="space-y-1">
-              <h1 className="text-3xl print:text-xl font-black text-sap-primary leading-tight">{orgName}</h1>
-              <p className="text-sm print:text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">Inventory & Sales Management System</p>
-              <div className="flex items-center gap-2 mt-2 text-[10px] print:text-[8px] font-black text-sap-secondary">
-                  <Globe size={12} className="print:w-3 print:h-3"/>
-                  <span>نظام التقارير السحابي الموحد</span>
+            <div className="space-y-2">
+              <h1 className="text-3xl print:text-2xl font-black text-sap-shell leading-tight">{orgName}</h1>
+              <p className="text-sm print:text-[10px] font-bold text-sap-secondary uppercase tracking-[2px]">Enterprise Resource Planning</p>
+              <div className="flex items-center gap-2 mt-2 text-[10px] font-medium text-gray-500">
+                  <Globe size={12}/>
+                  <span>نظام الإدارة الموحد</span>
               </div>
             </div>
             
-            {/* Center: Badge */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center print:hidden">
-                 <div className="w-20 h-20 bg-sap-shell text-white rounded-2xl flex items-center justify-center font-black text-3xl shadow-xl border-4 border-white">SF</div>
-                 <div className="bg-sap-primary text-white px-4 py-1 rounded-full text-[9px] font-black mt-2 shadow-sm uppercase tracking-widest">Official</div>
+            {/* Center: Logo Placeholder (Optional) */}
+            <div className="hidden print:block absolute left-1/2 -translate-x-1/2 top-10 opacity-10">
+                 <div className="text-6xl font-black text-sap-shell">SF</div>
             </div>
 
-            {/* Left Side: Meta Info */}
-            <div className="text-left space-y-1.5 pt-1">
-              <div className="text-[11px] print:text-[9px] font-black text-gray-700 flex items-center justify-end gap-2">
-                {currentDate} <Calendar size={14} className="text-sap-primary print:w-3 print:h-3" />
+            {/* Left Side: Document Meta */}
+            <div className="text-left space-y-2">
+              <div className="bg-sap-highlight px-4 py-2 rounded-lg border border-sap-primary/10">
+                  <div className="text-[10px] font-black text-sap-primary uppercase tracking-widest mb-1">وثيقة رسمية</div>
+                  <div className="text-[12px] font-bold text-gray-800 font-mono">{crypto.randomUUID().slice(0,8).toUpperCase()}</div>
               </div>
-              <div className="text-[11px] print:text-[9px] font-black text-gray-700 flex items-center justify-end gap-2">
-                {currentTime} <Clock size={14} className="text-sap-primary print:w-3 print:h-3" />
+              <div className="text-[10px] text-gray-500 font-medium flex flex-col items-end">
+                 <span>{currentDate}</span>
+                 <span>{currentTime}</span>
               </div>
-              <div className="text-[9px] print:text-[8px] font-mono text-gray-400 uppercase">Ref: {crypto.randomUUID().slice(0,8).toUpperCase()}</div>
             </div>
           </div>
 
-          {/* Quick Stats Bar under header */}
-          <div className="flex justify-between items-center py-3 print:py-1 px-6 print:px-2 bg-gray-50 print:bg-transparent border-b border-gray-200 text-[10px] print:text-[9px] font-black text-gray-500 uppercase">
+          {/* Context Bar */}
+          <div className="flex justify-between items-center py-2 px-1 mt-2 text-[10px] font-bold text-gray-600 border-b border-gray-100 bg-gray-50/50">
               <div className="flex gap-6">
-                  <span className="flex items-center gap-1.5"><ShieldCheck size={12} className="text-sap-success"/> بيانات مصادق عليها</span>
-                  {branchName && <span className="flex items-center gap-1.5">الفرع: <span className="text-sap-text">{branchName}</span></span>}
-                  {dateRange && <span className="flex items-center gap-1.5">الفترة: <span className="text-sap-text">{dateRange}</span></span>}
+                  {branchName && <span className="flex items-center gap-1"><span className="text-sap-secondary">●</span> الفرع: {branchName}</span>}
+                  {dateRange && <span className="flex items-center gap-1"><span className="text-sap-secondary">●</span> الفترة: {dateRange}</span>}
               </div>
-              <div className="flex items-center gap-1.5">
-                  <FileText size={12}/> مستند آلي
-              </div>
+              <div className="text-sap-primary">نسخة أصلية</div>
           </div>
         </div>
       )}
 
-      <div className="text-center mb-12 print:mb-4">
-          <h2 className="text-4xl print:text-2xl font-black text-sap-text mb-4 print:mb-1 inline-block relative">
+      {/* Title Section */}
+      <div className="text-center mb-8 print:mb-6">
+          <h2 className="text-2xl print:text-xl font-black text-sap-shell mb-2 inline-block border-b-4 border-sap-secondary pb-1">
             {title}
-            <div className="absolute -bottom-2 right-0 w-full h-1 bg-sap-secondary/30 rounded-full print:hidden"></div>
           </h2>
-          {subtitle && <p className="text-lg print:text-sm font-bold text-gray-400 mt-2 print:mt-0">{subtitle}</p>}
+          {subtitle && <p className="text-sm font-bold text-gray-400 mt-2">{subtitle}</p>}
       </div>
 
-      <div className="report-body min-h-[500px] print:min-h-0">
+      {/* Main Content */}
+      <div className="report-body min-h-[400px] print:min-h-0">
         {children}
       </div>
 
       {showSignatures && (
-        <div className="mt-20 print:mt-8 pt-10 print:pt-4 border-t-2 border-dashed border-gray-200 break-inside-avoid">
-          <div className="flex justify-between items-end px-10 print:px-0">
-            <div className="text-center group">
-                <div className="w-24 h-24 print:w-16 print:h-16 bg-gray-50 border-2 border-gray-100 rounded-2xl flex items-center justify-center mb-3 opacity-30 grayscale group-hover:opacity-100 transition-all">
-                    {/* Simulated QR Code */}
-                    <div className="grid grid-cols-4 gap-1 p-2">
-                        {Array.from({length:16}).map((_,i) => <div key={i} className={`w-3 h-3 print:w-2 print:h-2 ${Math.random() > 0.5 ? 'bg-black' : 'bg-transparent'}`}></div>)}
-                    </div>
-                </div>
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[2px]">Verification Code</p>
+        <div className="mt-16 print:mt-10 pt-8 border-t border-gray-200 break-inside-avoid">
+          <div className="flex justify-between items-end px-8 print:px-0">
+            <div className="text-center">
+                <div className="mb-4 text-xs font-bold text-gray-400">المحاسب / المستلم</div>
+                <div className="h-12 border-b border-gray-300 w-40 mx-auto"></div>
             </div>
             
-            <div className="flex gap-24 print:gap-10">
-                <div className="text-center space-y-6 print:space-y-4">
-                    <div className="w-48 print:w-32 h-[1px] bg-gray-300"></div>
-                    <p className="text-xs print:text-[10px] font-black text-gray-500 uppercase tracking-widest">توقيع المراجعة والتدقيق</p>
-                </div>
-                <div className="text-center space-y-6 print:space-y-4">
-                    <div className="w-48 print:w-32 h-[1px] bg-sap-primary shadow-sm"></div>
-                    <p className="text-xs print:text-[10px] font-black text-sap-primary uppercase tracking-widest">اعتماد الإدارة المالية</p>
-                </div>
+            <div className="text-center">
+                <div className="mb-4 text-xs font-bold text-gray-400">ختم المؤسسة</div>
+                <div className="w-20 h-20 border-2 border-dashed border-gray-200 rounded-full mx-auto flex items-center justify-center text-[8px] text-gray-300">Stamp</div>
+            </div>
+
+            <div className="text-center">
+                <div className="mb-4 text-xs font-bold text-sap-primary">المدير العام</div>
+                <div className="h-12 border-b border-gray-300 w-40 mx-auto"></div>
             </div>
           </div>
-          <div className="mt-12 print:mt-4 text-center text-[9px] print:text-[8px] font-bold text-gray-300 uppercase tracking-[4px]">
-              StoreFlow Cloud Solutions © {new Date().getFullYear()} - All Rights Reserved
+          
+          <div className="mt-8 text-center">
+              <p className="text-[8px] text-gray-400">تم استخراج هذا المستند آلياً عبر نظام StoreFlow - {new Date().getFullYear()}</p>
           </div>
         </div>
       )}
 
       <style>{`
         @media print {
-          @page { size: A4 ${orientation}; margin: 5mm; }
-          body { background: white !important; -webkit-print-color-adjust: exact !important; }
+          @page { size: A4 ${orientation}; margin: 10mm; }
+          body { background: white !important; }
           .report-container { width: 100% !important; padding: 0 !important; }
-          .report-header { border-bottom-width: 2px !important; }
-          table { width: 100% !important; page-break-inside: auto !important; }
-          tr { page-break-inside: avoid !important; page-break-after: auto !important; }
-          thead { display: table-header-group !important; }
-          tfoot { display: table-footer-group !important; }
+          .bg-sap-shell { background-color: #2D3748 !important; color: white !important; }
+          .bg-sap-secondary { background-color: #C5A059 !important; }
+          .text-sap-primary { color: #800020 !important; }
+          .border-sap-secondary { border-color: #C5A059 !important; }
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th { background-color: #F3F4F6 !important; color: #2D3748 !important; font-weight: 900 !important; border: 1px solid #E5E7EB !important; }
+          td { border: 1px solid #E5E7EB !important; }
         }
       `}</style>
     </div>
