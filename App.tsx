@@ -31,7 +31,7 @@ import {
   Percent, FileLineChart, Wallet, Crown, LogOut, Users, UserCircle, BookOpen, Monitor,
   ShoppingBag, TrendingDown, Bell, Moon, Sun, Loader2, Command, Keyboard, Search,
   Grid, ArrowRight, Home, Menu, X, ChevronRight, Building2,
-  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle
+  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star
 } from 'lucide-react';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -95,6 +95,21 @@ const AppContent: React.FC = () => {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('sf_theme') === 'dark');
   const [showCmdPalette, setShowCmdPalette] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
+  const [favorites, setFavorites] = useState<string[]>(() => {
+      try {
+          const saved = localStorage.getItem('sf_favorites');
+          return saved ? JSON.parse(saved) : [];
+      } catch (e) { return []; }
+  });
+
+  const toggleFavorite = (appId: string, e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      setFavorites(prev => {
+          const newFavs = prev.includes(appId) ? prev.filter(id => id !== appId) : [...prev, appId];
+          localStorage.setItem('sf_favorites', JSON.stringify(newFavs));
+          return newFavs;
+      });
+  };
 
   // --- Theme Colors ---
   const COLORS = {
@@ -251,10 +266,82 @@ const AppContent: React.FC = () => {
   if (viewCatalogId && viewCatalogData) return <CatalogGenerator products={[]} units={[]} viewModeData={viewCatalogData} />;
   if (!currentUser) return <LoginScreen onLogin={handleLogin} />;
 
-  // --- Render App Grid (Refined & Smaller) ---
-  const AppLauncher = () => (
-    <div className="absolute inset-0 overflow-y-auto bg-[#F5F5F5] dark:bg-slate-900 animate-in zoom-in-95 duration-300">
-        <div className="max-w-screen-2xl mx-auto p-6 md:p-10 pb-32">
+  // --- Render App Grid (Refined & Modern) ---
+  const AppLauncher = () => {
+    const time = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const date = new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
+    
+    // Quick Stats Calculation
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todaySales = dailySales.filter(s => s.date.startsWith(todayStr));
+    const totalAmount = todaySales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const totalOrders = todaySales.length;
+    const canViewDashboard = hasPermission('view_dashboard');
+
+    return (
+    <div className="absolute inset-0 overflow-y-auto bg-[#F8FAFC] dark:bg-[#0F172A] animate-in fade-in duration-500">
+        {/* Hero Section */}
+        <div className="relative bg-gradient-to-b from-sap-primary/5 to-transparent pt-12 pb-12 px-6 md:px-12">
+           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-end gap-6">
+              <div>
+                 <h1 className="text-3xl md:text-4xl font-black text-sap-primary dark:text-white mb-2 tracking-tight">
+                    مرحباً، {currentUser?.fullName.split(' ')[0]} 👋
+                 </h1>
+                 <p className="text-slate-500 dark:text-slate-400 font-medium text-lg flex items-center gap-2">
+                    <span className="opacity-70">{date}</span>
+                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                    <span className="opacity-70" dir="ltr">{time}</span>
+                 </p>
+              </div>
+              
+              {/* Quick Search Trigger */}
+              <button 
+                onClick={() => setShowCmdPalette(true)}
+                className="w-full md:w-96 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 text-slate-400 hover:border-sap-primary/50 hover:shadow-lg hover:shadow-sap-primary/5 transition-all group cursor-text"
+              >
+                 <Search className="text-sap-secondary group-hover:scale-110 transition-transform" />
+                 <span className="flex-1 text-right text-sm font-bold group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">ابحث عن تطبيق أو تقرير...</span>
+                 <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md text-[10px] font-mono border border-slate-200 dark:border-slate-600">Ctrl K</span>
+              </button>
+           </div>
+        </div>
+
+        {/* Quick Stats for Admin/Dashboard Viewers */}
+        {canViewDashboard && (
+            <div className="max-w-7xl mx-auto px-6 md:px-12 -mt-6 mb-8 relative z-10 animate-in slide-in-from-bottom-4 fade-in duration-700 delay-100">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                            <DollarSign size={24} strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-400 font-bold mb-0.5">مبيعات اليوم</p>
+                            <p className="text-xl font-black text-slate-800 dark:text-white">{totalAmount.toLocaleString()} <span className="text-xs font-medium text-slate-400">ر.س</span></p>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+                         <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                            <Receipt size={24} strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-400 font-bold mb-0.5">عدد الطلبات</p>
+                            <p className="text-xl font-black text-slate-800 dark:text-white">{totalOrders}</p>
+                        </div>
+                    </div>
+                     <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group" onClick={() => setActiveTab('dashboard')}>
+                         <div className="p-3 bg-purple-50 text-purple-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <BarChart4 size={24} strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-400 font-bold mb-0.5">لوحة البيانات</p>
+                            <p className="text-sm font-bold text-purple-600 flex items-center gap-1">عرض التفاصيل <ArrowRight size={14} className="rotate-180"/></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        <div className="max-w-7xl mx-auto px-6 md:px-12 pb-24">
             {appGroups.map((group, groupIdx) => {
                 const visibleApps = group.apps.filter(app => {
                     if (app.permission) return hasPermission(app.permission as any);
@@ -265,30 +352,46 @@ const AppContent: React.FC = () => {
                 if (visibleApps.length === 0) return null;
 
                 return (
-                    <div key={groupIdx} className="mb-8">
-                        {/* Group Title - Minimal */}
-                        <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 mb-3 px-2 uppercase tracking-widest border-b border-gray-200 dark:border-gray-700 pb-2">
-                            {group.title}
-                        </h3>
+                    <div key={groupIdx} className="mb-10">
+                        <div className="flex items-center gap-4 mb-6">
+                           <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-200 dark:via-slate-800 to-transparent"></div>
+                           <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-4 py-1 bg-slate-50 dark:bg-slate-900 rounded-full border border-slate-100 dark:border-slate-800">
+                               {group.title}
+                           </h3>
+                           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent"></div>
+                        </div>
                         
-                        {/* Flexible Grid - Smaller Icons */}
-                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-y-6 gap-x-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {visibleApps.map(app => (
                                 <button 
                                     key={app.id} 
                                     onClick={() => setActiveTab(app.id as any)}
-                                    className="flex flex-col items-center gap-2 group outline-none"
+                                    className="relative flex flex-col items-center p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700/50 hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] hover:border-sap-primary/20 hover:-translate-y-1.5 transition-all duration-300 group overflow-hidden"
                                 >
-                                    {/* App Icon - Smaller Size (w-14 h-14) */}
+                                    {/* Hover Gradient Effect */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-50/50 dark:to-slate-700/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    
+                                    {/* Icon Container */}
                                     <div 
-                                        className="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg group-hover:-translate-y-1 active:scale-95"
+                                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-gray-200/50 dark:shadow-none mb-5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 relative z-10"
                                         style={{ backgroundColor: app.color }}
                                     >
-                                        <app.icon size={28} strokeWidth={1.5} className="md:w-8 md:h-8" />
+                                        <app.icon size={30} strokeWidth={1.5} className="drop-shadow-md" />
+                                        {/* Glossy reflection */}
+                                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent rounded-2xl" />
                                     </div>
                                     
-                                    {/* App Label */}
-                                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 text-center leading-tight px-1 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                    {/* Favorite Button */}
+                                    <button 
+                                        onClick={(e) => toggleFavorite(app.id, e)}
+                                        className={`absolute top-3 left-3 p-1.5 rounded-full z-20 transition-all hover:scale-110 ${favorites.includes(app.id) ? 'text-yellow-400 bg-white shadow-sm opacity-100' : 'text-slate-300 bg-slate-50/50 hover:bg-white hover:text-yellow-400'}`}
+                                        title={favorites.includes(app.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                                    >
+                                        <Star size={16} fill={favorites.includes(app.id) ? "currentColor" : "none"} />
+                                    </button>
+                                    
+                                    {/* Label */}
+                                    <span className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-sap-primary dark:group-hover:text-white transition-colors relative z-10">
                                         {app.label}
                                     </span>
                                 </button>
@@ -298,15 +401,50 @@ const AppContent: React.FC = () => {
                 );
             })}
             
-            {/* Install App Button */}
-            <div className="flex justify-center mt-12 opacity-40 hover:opacity-100 transition-opacity">
+            {/* Footer / Install */}
+            <div className="mt-16 flex flex-col items-center justify-center gap-4 opacity-60 hover:opacity-100 transition-opacity pb-10">
                 <InstallApp sidebarOpen={true} />
+                <p className="text-[10px] text-slate-400 font-mono">StoreFlow System v2.5.0</p>
             </div>
         </div>
     </div>
   );
+  };
 
   const activeAppInfo = flattenApps.find(a => a.id === activeTab);
+
+  // --- Favorites Sidebar ---
+  const FavoritesSidebar = () => {
+      const favApps = flattenApps.filter(app => favorites.includes(app.id));
+      if (favApps.length === 0) return null;
+
+      return (
+          <div className="w-[70px] bg-white dark:bg-slate-950 border-l border-gray-200 dark:border-slate-800 flex flex-col items-center py-6 gap-4 z-40 hidden md:flex shrink-0 shadow-sm">
+              <div className="mb-2">
+                  <div className="w-8 h-8 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500">
+                      <Star size={16} fill="currentColor" />
+                  </div>
+              </div>
+              <div className="w-8 h-px bg-gray-100 dark:bg-slate-800 mb-2"></div>
+              {favApps.map(app => (
+                  <button 
+                      key={app.id}
+                      onClick={() => setActiveTab(app.id as any)}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${activeTab === app.id ? 'bg-sap-primary text-white shadow-lg shadow-sap-primary/30' : 'hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-600'}`}
+                      title={app.label}
+                  >
+                      <app.icon size={20} strokeWidth={2} />
+                      
+                      {/* Tooltip */}
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-all translate-x-2 group-hover:translate-x-0 shadow-xl">
+                          {app.label}
+                          <div className="absolute top-1/2 -right-1 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+                      </div>
+                  </button>
+              ))}
+          </div>
+      );
+  };
 
   return (
     <div className={`flex flex-col h-screen w-full bg-[#F0F2F5] dark:bg-slate-900 text-[#0F172A] font-sans print:h-auto print:bg-white print:overflow-visible transition-colors duration-300 ${darkMode ? 'dark:bg-slate-900 dark:text-white' : ''}`}>
@@ -384,40 +522,43 @@ const AppContent: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 relative overflow-hidden print:p-0 print:block">
-          {activeTab === 'launcher' ? (
-              <AppLauncher />
-          ) : (
-              <div className="absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.99] duration-200">
-                  <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0">
-                      {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
-                      
-                      {/* Render Active Component */}
-                      {activeTab === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => setActiveTab(t as any)} onNavigateToList={handleNavigateToList} />}
-                      {activeTab === 'pos' && <POSInterface products={products} setDailySales={setDailySales} />}
-                      {activeTab === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
-                      {activeTab === 'expenses' && <ExpenseManager />}
-                      {activeTab === 'customers' && <CustomerManager />}
-                      {activeTab === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
-                      {activeTab === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
-                      {activeTab === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
-                      {activeTab === 'settlement' && <SettlementManager currentUser={currentUser} />}
-                      {activeTab === 'pos_setup' && <POSManagement branches={branches} />}
-                      {activeTab === 'branches' && <BranchManager branches={branches} setBranches={setBranches} sales={dailySales} />}
-                      {activeTab === 'units' && <UnitManager units={units} setUnits={setUnits} />}
-                      {activeTab === 'database' && <DatabaseManager />}
-                      {activeTab === 'settings' && <Settings />}
-                      {activeTab === 'user_profile' && <UserProfile user={currentUser} onUpdate={handleProfileUpdate} />}
-                      {activeTab === 'users' && <UserManager currentUser={currentUser} branches={branches} />}
-                      {activeTab === 'price_tags' && <PriceTagGenerator products={products} units={units} />}
-                      {activeTab === 'offers' && <OfferGenerator products={products} units={units} />}
-                      {activeTab === 'price_groups' && <PriceGroupManager />}
-                      {activeTab === 'catalog' && <CatalogGenerator products={products} units={units} />}
+      {/* Main Content Area with Sidebar */}
+      <div className="flex-1 flex overflow-hidden relative">
+          <FavoritesSidebar />
+          <main className="flex-1 relative overflow-hidden print:p-0 print:block">
+              {activeTab === 'launcher' ? (
+                  <AppLauncher />
+              ) : (
+                  <div className="absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.99] duration-200">
+                      <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0">
+                          {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
+                          
+                          {/* Render Active Component */}
+                          {activeTab === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => setActiveTab(t as any)} onNavigateToList={handleNavigateToList} />}
+                          {activeTab === 'pos' && <POSInterface products={products} setDailySales={setDailySales} />}
+                          {activeTab === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
+                          {activeTab === 'expenses' && <ExpenseManager />}
+                          {activeTab === 'customers' && <CustomerManager />}
+                          {activeTab === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
+                          {activeTab === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
+                          {activeTab === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
+                          {activeTab === 'settlement' && <SettlementManager currentUser={currentUser} />}
+                          {activeTab === 'pos_setup' && <POSManagement branches={branches} />}
+                          {activeTab === 'branches' && <BranchManager branches={branches} setBranches={setBranches} sales={dailySales} />}
+                          {activeTab === 'units' && <UnitManager units={units} setUnits={setUnits} />}
+                          {activeTab === 'database' && <DatabaseManager />}
+                          {activeTab === 'settings' && <Settings />}
+                          {activeTab === 'user_profile' && <UserProfile user={currentUser} onUpdate={handleProfileUpdate} />}
+                          {activeTab === 'users' && <UserManager currentUser={currentUser} branches={branches} />}
+                          {activeTab === 'price_tags' && <PriceTagGenerator products={products} units={units} />}
+                          {activeTab === 'offers' && <OfferGenerator products={products} units={units} />}
+                          {activeTab === 'price_groups' && <PriceGroupManager />}
+                          {activeTab === 'catalog' && <CatalogGenerator products={products} units={units} />}
+                      </div>
                   </div>
-              </div>
-          )}
-      </main>
+              )}
+          </main>
+      </div>
     </div>
   );
 };
