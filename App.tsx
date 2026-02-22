@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Component, ErrorInfo } from 'react';
 import { ProductManager } from './components/ProductManager';
 import { UnitManager } from './components/UnitManager';
 import { ProductListBuilder } from './components/ProductListBuilder';
@@ -31,8 +31,48 @@ import {
   Percent, FileLineChart, Wallet, Crown, LogOut, Users, UserCircle, BookOpen, Monitor,
   ShoppingBag, TrendingDown, Bell, Moon, Sun, Loader2, Command, Keyboard, Search,
   Grid, ArrowRight, Home, Menu, X, ChevronRight, Building2,
-  Calculator, Truck, BarChart4, Receipt, CreditCard
+  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle
 } from 'lucide-react';
+
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-gray-50 text-gray-800 p-4 text-center" dir="rtl">
+          <div className="bg-red-100 p-4 rounded-full mb-4">
+            <AlertTriangle size={48} className="text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">حدث خطأ غير متوقع</h1>
+          <p className="text-gray-600 mb-6">نعتذر عن هذا الخطأ. يرجى محاولة تحديث الصفحة.</p>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 max-w-lg w-full overflow-auto text-left mb-6" dir="ltr">
+            <pre className="text-xs text-red-500 font-mono">{this.state.error?.toString()}</pre>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-sap-primary text-white rounded-lg hover:bg-sap-primary-hover transition-colors font-bold"
+          >
+            تحديث الصفحة
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -384,9 +424,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <NotificationProvider>
-      <AppContent />
-    </NotificationProvider>
+    <ErrorBoundary>
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
+    </ErrorBoundary>
   );
 };
 
