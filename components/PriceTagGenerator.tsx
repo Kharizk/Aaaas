@@ -78,6 +78,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     { id: 'industrial_grid', name: 'صناعي (مُخطط)', icon: LayoutGrid, desc: 'حدود قوية وتصميم صلب' },
     { id: 'big_impact', name: 'السعر الكبير', icon: Zap, desc: 'التركيز الكامل على السعر' },
     { id: 'discount_red', name: 'تخفيضات', icon: TagIcon, desc: 'إطار أحمر للسعر السابق' },
+    { id: 'yellow_shelf_label', name: 'ملصق الرف (أصفر)', icon: LayoutTemplate, desc: 'تصميم الرف القياسي' },
   ];
 
   useEffect(() => { fetchSavedLists(); }, []);
@@ -258,13 +259,16 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     {tag.name}
                 </div>
                 <div 
-                    className="pt-1 mt-1 flex items-baseline gap-1 border-t border-gray-100"
+                    className="pt-1 mt-1 flex flex-col items-center gap-0.5 border-t border-gray-100"
                     style={{ justifyContent: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start' }}
                 >
-                    {s.showOriginalPrice && tag.originalPrice && <span style={{ fontSize: '9pt', color: s.originalPriceColor, textDecoration: 'line-through' }} className="font-bold">{tag.originalPrice}</span>}
-                    <span style={{ fontSize: `${s.priceFontSize}pt`, color: s.priceColor, fontWeight: s.priceWeight, fontFamily: 'monospace' }}>{tag.price}</span>
-                    <span style={{ fontSize: '10pt', color: s.currencyColor, fontWeight: 'bold' }}>SAR</span>
-                    {s.showUnit && tag.unitName && <span style={{ color: s.unitColor }} className="text-[10px] font-bold self-center ml-2 border px-1 rounded bg-gray-50">{tag.unitName}</span>}
+                    <div className="flex items-baseline gap-1">
+                        {s.showOriginalPrice && tag.originalPrice && <span style={{ fontSize: '9pt', color: s.originalPriceColor, textDecoration: 'line-through' }} className="font-bold">{tag.originalPrice}</span>}
+                        <span style={{ fontSize: `${s.priceFontSize}pt`, color: s.priceColor, fontWeight: s.priceWeight, fontFamily: 'monospace' }}>{tag.price}</span>
+                        <span style={{ fontSize: '10pt', color: s.currencyColor, fontWeight: 'bold' }}>SAR</span>
+                        {s.showUnit && tag.unitName && <span style={{ color: s.unitColor }} className="text-[10px] font-bold self-center ml-2 border px-1 rounded bg-gray-50">{tag.unitName}</span>}
+                    </div>
+                    <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة</span>
                 </div>
             </div>
           );
@@ -301,6 +305,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             </span>
                         </div>
                     </div>
+                    <span className="text-[6px] text-gray-400 font-bold mt-1 text-center w-full">شامل الضريبة</span>
                 </div>
 
                 {/* Right Side (Information Section) */}
@@ -366,8 +371,13 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         </div>
                     )}
                     <div className="flex items-baseline gap-1 ml-auto">
-                        <span style={{ fontSize: `${s.priceFontSize}pt`, color: s.priceColor, fontWeight: '900', fontFamily: 'monospace' }}>{tag.price}</span>
-                        <span className="text-[10px] font-bold">SR</span>
+                        <div className="flex flex-col items-end">
+                            <div className="flex items-baseline gap-1">
+                                <span style={{ fontSize: `${s.priceFontSize}pt`, color: s.priceColor, fontWeight: '900', fontFamily: 'monospace' }}>{tag.price}</span>
+                                <span className="text-[10px] font-bold">SR</span>
+                            </div>
+                            <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -385,6 +395,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             <span style={{ fontSize: `${s.priceFontSize * 1.5}pt`, fontWeight: '900' }}>{tag.price}</span>
                             <span className="text-xs font-bold mt-2 ml-1">SR</span>
                         </div>
+                        <span className="text-[8px] text-white/70 font-bold mt-1">السعر شامل الضريبة</span>
                     </div>
                 </div>
                 <div className="h-[35%] bg-white p-2 flex items-center justify-center text-center">
@@ -414,10 +425,60 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             )}
                             {s.showUnit && tag.unitName && <span className="text-[9px] text-gray-500 font-bold">{tag.unitName}</span>}
                         </div>
-                        <div className="flex items-baseline gap-0.5">
-                            <span style={{ fontSize: `${s.priceFontSize}pt`, color: '#DC2626', fontWeight: '900' }}>{tag.price}</span>
-                            <span className="text-[8px] font-bold text-red-600">ر.س</span>
+                        <div className="flex flex-col items-end">
+                            <div className="flex items-baseline gap-0.5">
+                                <span style={{ fontSize: `${s.priceFontSize}pt`, color: '#DC2626', fontWeight: '900' }}>{tag.price}</span>
+                                <span className="text-[8px] font-bold text-red-600">ر.س</span>
+                            </div>
+                            <span className="text-[7px] text-gray-400 font-bold">شامل الضريبة</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+          );
+      }
+
+      if (s.template === 'yellow_shelf_label') {
+          const product = products.find(p => p.id === tag.productId);
+          const barcode = product?.code || '---';
+          const itemCode = product?.code || '---';
+          const [intPart, decPart] = tag.price.split('.');
+          const unitDisplay = (s.showUnit && tag.unitName) ? tag.unitName : 'حبة';
+          
+          return (
+            <div className="flex flex-row h-full w-full border border-black relative overflow-hidden font-sans text-black" style={{ backgroundColor: s.backgroundColor, direction: 'rtl' }}>
+                {/* Right Section (Product Details) */}
+                <div className="w-[65%] flex flex-col p-2 relative border-l border-black/20">
+                    {/* Product Name */}
+                    <div 
+                        className="flex-1 flex items-start justify-start text-right leading-snug break-words mb-1 font-bold"
+                        style={{ fontSize: `${s.nameFontSize}pt`, color: '#000' }}
+                    >
+                        {tag.name}
+                    </div>
+                    
+                    {/* Bottom Details */}
+                    <div className="mt-auto text-[9px] font-bold space-y-0.5 pt-1">
+                        <div className="flex justify-between items-center text-black/70">
+                            <span>العبوة: 1</span>
+                            <span>الوحدة: {unitDisplay}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="font-mono tracking-tighter">Barcode: {barcode}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Left Section (Price) */}
+                <div className="w-[35%] flex flex-col items-center justify-between p-1" style={{ backgroundColor: s.backgroundColor }}>
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                        <span style={{ fontSize: `${s.priceFontSize}pt`, fontWeight: '900', color: '#000', lineHeight: 1 }}>{tag.price}</span>
+                        <span className="text-sm font-black mt-1">S.R</span>
+                    </div>
+                    
+                    <div className="w-full text-center border-t border-black/20 pt-1">
+                        <div className="text-[10px] font-black">السعر شامل الضريبة</div>
+                        <div className="text-[8px] font-mono opacity-70" dir="ltr">{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'})}</div>
                     </div>
                 </div>
             </div>
@@ -529,7 +590,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         {templatesList.map(t => (
                             <button
                                 key={t.id}
-                                onClick={() => handleStyleChange('template', t.id)}
+                                onClick={() => {
+                                    handleStyleChange('template', t.id);
+                                    if (t.id === 'yellow_shelf_label') {
+                                        handleStyleChange('backgroundColor', '#fde047');
+                                    } else {
+                                        handleStyleChange('backgroundColor', '#ffffff');
+                                    }
+                                }}
                                 className={`p-3 border rounded-[2px] flex items-center gap-3 transition-all ${currentScopeStyles.template === t.id ? 'bg-sap-highlight border-sap-primary ring-1 ring-sap-primary' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
                             >
                                 <div className={`p-2 rounded ${currentScopeStyles.template === t.id ? 'bg-sap-primary text-white' : 'bg-gray-100 text-gray-500'}`}>
@@ -639,6 +707,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] font-bold">لون الوحدة</span>
                             <input type="color" value={currentScopeStyles.unitColor} onChange={e => handleStyleChange('unitColor', e.target.value)} className="w-6 h-6 border-none cursor-pointer" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold">لون الخلفية</span>
+                            <input type="color" value={currentScopeStyles.backgroundColor} onChange={e => handleStyleChange('backgroundColor', e.target.value)} className="w-6 h-6 border-none cursor-pointer" />
                         </div>
                     </div>
                 </div>

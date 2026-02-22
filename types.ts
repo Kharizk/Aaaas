@@ -307,7 +307,7 @@ export interface CatalogProject {
   styleConfig: CatalogStyleConfig;
 }
 
-export type TagTemplate = 'classic_vertical' | 'side_horizontal' | 'industrial_grid' | 'big_impact' | 'discount_red';
+export type TagTemplate = 'classic_vertical' | 'side_horizontal' | 'industrial_grid' | 'big_impact' | 'discount_red' | 'yellow_shelf_label';
 
 export interface TagStyleOverrides {
   nameFontSize?: number;

@@ -363,10 +363,12 @@ const AppContent: React.FC = () => {
                         
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {visibleApps.map(app => (
-                                <button 
+                                <div 
                                     key={app.id} 
                                     onClick={() => setActiveTab(app.id as any)}
-                                    className="relative flex flex-col items-center p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700/50 hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] hover:border-sap-primary/20 hover:-translate-y-1.5 transition-all duration-300 group overflow-hidden"
+                                    role="button"
+                                    tabIndex={0}
+                                    className="relative flex flex-col items-center p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700/50 hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] hover:border-sap-primary/20 hover:-translate-y-1.5 transition-all duration-300 group overflow-hidden cursor-pointer"
                                 >
                                     {/* Hover Gradient Effect */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-50/50 dark:to-slate-700/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -394,7 +396,7 @@ const AppContent: React.FC = () => {
                                     <span className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-sap-primary dark:group-hover:text-white transition-colors relative z-10">
                                         {app.label}
                                     </span>
-                                </button>
+                                </div>
                             ))}
                         </div>
                     </div>
