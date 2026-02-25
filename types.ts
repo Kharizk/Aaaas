@@ -18,6 +18,8 @@ export interface PriceGroupStyles {
   padding: number;
   boardsPerPage: 1 | 2;
   showGeometricPattern: boolean;
+  currencySymbolType?: CurrencySymbolType;
+  currencySymbolImage?: string | null;
 }
 
 export interface Unit {
@@ -189,6 +191,8 @@ export interface SavedOfferList {
     logoSize: number;
     orientation: 'portrait' | 'landscape';
     showUnit: boolean;
+    currencySymbolType?: CurrencySymbolType;
+    currencySymbolImage?: string | null;
   };
 }
 
@@ -280,6 +284,8 @@ export interface CatalogStyleConfig {
   borderRadius: number;
   layoutType: CatalogLayoutType;
   showHeader: boolean;
+  currencySymbolType?: CurrencySymbolType;
+  currencySymbolImage?: string | null;
 }
 
 export interface CatalogItem {
@@ -309,6 +315,8 @@ export interface CatalogProject {
 
 export type TagTemplate = 'classic_vertical' | 'side_horizontal' | 'industrial_grid' | 'big_impact' | 'discount_red' | 'yellow_shelf_label';
 
+export type CurrencySymbolType = 'text' | 'icon' | 'custom_image';
+
 export interface TagStyleOverrides {
   nameFontSize?: number;
   priceFontSize?: number;
@@ -326,6 +334,12 @@ export interface TagStyleOverrides {
   showOriginalPrice?: boolean;
   template?: TagTemplate;
   backgroundColor?: string;
+  currencySymbolType?: CurrencySymbolType;
+  currencySymbolImage?: string | null;
+  currencySymbolSize?: number;
+  currencySymbolPosition?: 'before' | 'after' | 'superscript_before' | 'superscript_after';
+  currencySymbolMargin?: number;
+  nameBackgroundColor?: string;
 }
 
 export interface SelectedTag {
@@ -360,6 +374,12 @@ export interface TagStyles {
   showOriginalPrice: boolean;
   template: TagTemplate;
   backgroundColor: string;
+  nameBackgroundColor?: string;
+  currencySymbolType: CurrencySymbolType;
+  currencySymbolImage: string | null;
+  currencySymbolSize: number;
+  currencySymbolPosition: 'before' | 'after' | 'superscript_before' | 'superscript_after';
+  currencySymbolMargin: number;
 }
 
 export interface SavedTagList {

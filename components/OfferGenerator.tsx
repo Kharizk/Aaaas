@@ -3,6 +3,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Product, Unit, OfferTag, OfferTemplate, SavedOfferList } from '../types';
 import { db } from '../services/supabase';
+import { useSystemSettings } from './SystemSettingsContext';
+import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
 import { 
   Printer, Plus, Trash2, Search, ZoomIn, ZoomOut, X, Save, FolderOpen, 
   Layout, Tag as TagIcon, Settings2, Monitor, Sliders, Zap, Bomb, 
@@ -18,6 +20,7 @@ interface OfferGeneratorProps {
 type LabelsCount = 2 | 4 | 6 | 8 | 12 | 14 | 16 | 20 | 24;
 
 export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units }) => {
+  const { settings } = useSystemSettings();
   const [selectedTags, setSelectedTags] = useState<OfferTag[]>([]);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const [labelsPerPage, setLabelsPerPage] = useState<LabelsCount>(12);
@@ -251,7 +254,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <span className="font-black tracking-tighter text-black" style={{ fontSize: isPrint ? `${pFontSize * 0.85}pt` : `${pFontSize}px` }}>{priceMain}</span>
                             <div className="flex flex-col items-start ml-1 leading-none">
                                 <span className="font-black text-black" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>.{priceDec}</span>
-                                <span className="text-[10px] font-black uppercase bg-black text-white px-1 mt-1">SAR</span>
+                                <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="black" className="w-4 h-4 mt-1" />
                             </div>
                         </div>
                     </div>
@@ -333,7 +336,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <span className="font-black text-red-500" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>
                                 {priceDec}
                             </span>
-                            <span className="text-[8px] font-black text-slate-400 uppercase mt-1">ريال</span>
+                            <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="#94a3b8" className="w-3 h-3 mt-1" />
                         </div>
                     </div>
                 </div>

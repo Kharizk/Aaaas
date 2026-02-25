@@ -23,6 +23,7 @@ import { UserManager } from './components/UserManager';
 import { UserProfile } from './components/UserProfile';
 import { InstallApp } from './components/InstallApp';
 import { NotificationProvider } from './components/Notifications';
+import { SystemSettingsProvider } from './components/SystemSettingsContext';
 import { Product, Unit, Branch, DailySales, User, Permission, CatalogProject } from './types';
 import { db } from './services/supabase';
 import { 
@@ -31,7 +32,7 @@ import {
   Percent, FileLineChart, Wallet, Crown, LogOut, Users, UserCircle, BookOpen, Monitor,
   ShoppingBag, TrendingDown, Bell, Moon, Sun, Loader2, Command, Keyboard, Search,
   Grid, ArrowRight, Home, Menu, X, ChevronRight, Building2,
-  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star
+  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2
 } from 'lucide-react';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -83,7 +84,58 @@ const AppContent: React.FC = () => {
 
   // 'launcher' means the main grid view. Any other value is a specific app.
   const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers'>('launcher');
-  
+  const [openApps, setOpenApps] = useState<string[]>([]);
+
+  const handleOpenApp = (appId: string) => {
+      if (!openApps.includes(appId)) {
+          setOpenApps(prev => [...prev, appId]);
+      }
+      setActiveTab(appId as any);
+  };
+
+  const handleCloseApp = (appId: string, e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      const newApps = openApps.filter(id => id !== appId);
+      setOpenApps(newApps);
+      if (activeTab === appId) {
+          const index = openApps.indexOf(appId);
+          if (newApps.length > 0) {
+              const newIndex = Math.max(0, index - 1);
+              setActiveTab(newApps[newIndex] as any);
+          } else {
+              setActiveTab('launcher');
+          }
+      }
+  };
+
+  // Keyboard Shortcuts & Auto-Scroll
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt + W: Close current tab
+      if (e.altKey && (e.key === 'w' || e.key === 'W' || e.key === 'ص')) {
+        if (activeTab !== 'launcher') {
+          handleCloseApp(activeTab);
+        }
+      }
+      // Alt + 1-9: Switch to tab
+      if (e.altKey && !isNaN(parseInt(e.key)) && parseInt(e.key) > 0) {
+        const index = parseInt(e.key) - 1;
+        if (index < openApps.length) {
+          setActiveTab(openApps[index] as any);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, openApps]);
+
+  useEffect(() => {
+    const activeTabElement = document.getElementById(`tab-${activeTab}`);
+    if (activeTabElement) {
+      activeTabElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeTab]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [targetListParams, setTargetListParams] = useState<{ listId: string, rowId?: string } | null>(null);
@@ -255,7 +307,7 @@ const AppContent: React.FC = () => {
 
   const handleLogout = () => { if (confirm('تسجيل الخروج؟')) { localStorage.removeItem('sf_user_session'); setCurrentUser(null); window.location.reload(); } };
   const handleProfileUpdate = (updatedUser: User) => { setCurrentUser(updatedUser); localStorage.setItem('sf_user_session', JSON.stringify(updatedUser)); };
-  const handleNavigateToList = (listId: string, rowId?: string) => { setTargetListParams({ listId, rowId }); setActiveTab('list'); };
+  const handleNavigateToList = (listId: string, rowId?: string) => { setTargetListParams({ listId, rowId }); handleOpenApp('list'); };
   const hasPermission = (perm: Permission) => (!currentUser ? false : currentUser.role === 'admin' ? true : currentUser.permissions.includes(perm));
   const hasAnyPermission = (perms: Permission[]) => (!currentUser ? false : currentUser.role === 'admin' ? true : perms.some(p => currentUser.permissions.includes(p)));
 
@@ -328,7 +380,7 @@ const AppContent: React.FC = () => {
                             <p className="text-xl font-black text-slate-800 dark:text-white">{totalOrders}</p>
                         </div>
                     </div>
-                     <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group" onClick={() => setActiveTab('dashboard')}>
+                     <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group" onClick={() => handleOpenApp('dashboard')}>
                          <div className="p-3 bg-purple-50 text-purple-600 rounded-xl group-hover:scale-110 transition-transform">
                             <BarChart4 size={24} strokeWidth={2.5} />
                         </div>
@@ -365,7 +417,7 @@ const AppContent: React.FC = () => {
                             {visibleApps.map(app => (
                                 <div 
                                     key={app.id} 
-                                    onClick={() => setActiveTab(app.id as any)}
+                                    onClick={() => handleOpenApp(app.id)}
                                     role="button"
                                     tabIndex={0}
                                     className="relative flex flex-col items-center p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700/50 hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] hover:border-sap-primary/20 hover:-translate-y-1.5 transition-all duration-300 group overflow-hidden cursor-pointer"
@@ -431,7 +483,7 @@ const AppContent: React.FC = () => {
               {favApps.map(app => (
                   <button 
                       key={app.id}
-                      onClick={() => setActiveTab(app.id as any)}
+                      onClick={() => handleOpenApp(app.id)}
                       className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${activeTab === app.id ? 'bg-sap-primary text-white shadow-lg shadow-sap-primary/30' : 'hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-600'}`}
                       title={app.label}
                   >
@@ -469,7 +521,7 @@ const AppContent: React.FC = () => {
                   </div>
                   <div className="max-h-[300px] overflow-y-auto p-2">
                       {filteredNavItems.map(item => (
-                          <button key={item.id} onClick={() => { setActiveTab(item.id as any); setShowCmdPalette(false); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-right transition-colors">
+                          <button key={item.id} onClick={() => { handleOpenApp(item.id); setShowCmdPalette(false); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-right transition-colors">
                               <div className="p-2 rounded-lg text-white" style={{ backgroundColor: item.color }}><item.icon size={16}/></div>
                               <span className="font-bold">{item.label}</span>
                           </button>
@@ -484,18 +536,53 @@ const AppContent: React.FC = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveTab('launcher')} 
-            className="p-1.5 hover:bg-white/10 rounded-[4px] transition-colors flex items-center justify-center"
+            className={`p-1.5 rounded-[4px] transition-colors flex items-center justify-center ${activeTab === 'launcher' ? 'bg-white/20 text-white' : 'hover:bg-white/10 text-white/80'}`}
             title="التطبيقات"
           >
-             <Grid size={18} className="text-white/80 hover:text-white transition-colors"/>
+             <Grid size={18}/>
           </button>
           
-          {activeTab !== 'launcher' && (
-              <div className="flex items-center gap-2 text-sm font-bold text-white animate-in fade-in slide-in-from-right-4">
-                  <span className="text-white/40">/</span>
-                  <span className="text-white">{activeAppInfo?.label}</span>
-              </div>
-          )}
+          {/* Tab Bar */}
+          <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar no-scrollbar max-w-[60vw]">
+              {openApps.map(appId => {
+                  const app = flattenApps.find(a => a.id === appId);
+                  if (!app) return null;
+                  const isActive = activeTab === appId;
+                  return (
+                      <div 
+                        key={appId}
+                        id={`tab-${appId}`}
+                        onClick={() => setActiveTab(appId as any)}
+                        className={`
+                            group relative flex items-center gap-2 px-3 py-1.5 rounded-[4px] cursor-pointer transition-all duration-200 select-none border border-transparent
+                            ${isActive 
+                                ? 'bg-white text-slate-900 shadow-sm font-bold' 
+                                : 'hover:bg-white/10 text-white/70 hover:text-white'
+                            }
+                        `}
+                      >
+                          <app.icon size={14} className={isActive ? 'text-sap-primary' : ''} />
+                          <span className="text-xs whitespace-nowrap max-w-[120px] truncate">{app.label}</span>
+                          <button 
+                            onClick={(e) => handleCloseApp(appId, e)}
+                            className={`p-0.5 rounded-full transition-colors ${isActive ? 'hover:bg-gray-200 text-gray-400 hover:text-red-500' : 'opacity-0 group-hover:opacity-100 hover:bg-white/20 text-white/60 hover:text-white'}`}
+                          >
+                              <X size={12} />
+                          </button>
+                      </div>
+                  );
+              })}
+              
+              {openApps.length > 1 && (
+                <button 
+                    onClick={() => { setOpenApps([]); setActiveTab('launcher'); }}
+                    className="p-1.5 hover:bg-red-500/20 hover:text-red-400 text-white/20 rounded-md transition-colors ml-2"
+                    title="إغلاق الكل"
+                >
+                    <Trash2 size={14} />
+                </button>
+              )}
+          </div>
         </div>
 
         {/* Center Search (Fake Odoo Search) */}
@@ -528,37 +615,44 @@ const AppContent: React.FC = () => {
       <div className="flex-1 flex overflow-hidden relative">
           <FavoritesSidebar />
           <main className="flex-1 relative overflow-hidden print:p-0 print:block">
-              {activeTab === 'launcher' ? (
+              {/* Launcher */}
+              <div className="absolute inset-0" style={{ display: activeTab === 'launcher' ? 'block' : 'none', zIndex: activeTab === 'launcher' ? 10 : 0 }}>
                   <AppLauncher />
-              ) : (
-                  <div className="absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.99] duration-200">
+              </div>
+
+              {/* Open Apps (Preserved State) */}
+              {openApps.map(appId => (
+                  <div 
+                    key={appId} 
+                    className="absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.99] duration-200"
+                    style={{ display: activeTab === appId ? 'flex' : 'none', zIndex: activeTab === appId ? 20 : 5 }}
+                  >
                       <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0">
                           {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
                           
-                          {/* Render Active Component */}
-                          {activeTab === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => setActiveTab(t as any)} onNavigateToList={handleNavigateToList} />}
-                          {activeTab === 'pos' && <POSInterface products={products} setDailySales={setDailySales} />}
-                          {activeTab === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
-                          {activeTab === 'expenses' && <ExpenseManager />}
-                          {activeTab === 'customers' && <CustomerManager />}
-                          {activeTab === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
-                          {activeTab === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
-                          {activeTab === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
-                          {activeTab === 'settlement' && <SettlementManager currentUser={currentUser} />}
-                          {activeTab === 'pos_setup' && <POSManagement branches={branches} />}
-                          {activeTab === 'branches' && <BranchManager branches={branches} setBranches={setBranches} sales={dailySales} />}
-                          {activeTab === 'units' && <UnitManager units={units} setUnits={setUnits} />}
-                          {activeTab === 'database' && <DatabaseManager />}
-                          {activeTab === 'settings' && <Settings />}
-                          {activeTab === 'user_profile' && <UserProfile user={currentUser} onUpdate={handleProfileUpdate} />}
-                          {activeTab === 'users' && <UserManager currentUser={currentUser} branches={branches} />}
-                          {activeTab === 'price_tags' && <PriceTagGenerator products={products} units={units} />}
-                          {activeTab === 'offers' && <OfferGenerator products={products} units={units} />}
-                          {activeTab === 'price_groups' && <PriceGroupManager />}
-                          {activeTab === 'catalog' && <CatalogGenerator products={products} units={units} />}
+                          {appId === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => handleOpenApp(t)} onNavigateToList={handleNavigateToList} />}
+                          {appId === 'pos' && <POSInterface products={products} setDailySales={setDailySales} />}
+                          {appId === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
+                          {appId === 'expenses' && <ExpenseManager />}
+                          {appId === 'customers' && <CustomerManager />}
+                          {appId === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
+                          {appId === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
+                          {appId === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
+                          {appId === 'settlement' && <SettlementManager currentUser={currentUser} />}
+                          {appId === 'pos_setup' && <POSManagement branches={branches} />}
+                          {appId === 'branches' && <BranchManager branches={branches} setBranches={setBranches} sales={dailySales} />}
+                          {appId === 'units' && <UnitManager units={units} setUnits={setUnits} />}
+                          {appId === 'database' && <DatabaseManager />}
+                          {appId === 'settings' && <Settings />}
+                          {appId === 'user_profile' && <UserProfile user={currentUser} onUpdate={handleProfileUpdate} />}
+                          {appId === 'users' && <UserManager currentUser={currentUser} branches={branches} />}
+                          {appId === 'price_tags' && <PriceTagGenerator products={products} units={units} />}
+                          {appId === 'offers' && <OfferGenerator products={products} units={units} />}
+                          {appId === 'price_groups' && <PriceGroupManager />}
+                          {appId === 'catalog' && <CatalogGenerator products={products} units={units} />}
                       </div>
                   </div>
-              )}
+              ))}
           </main>
       </div>
     </div>
@@ -568,9 +662,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <NotificationProvider>
-        <AppContent />
-      </NotificationProvider>
+      <SystemSettingsProvider>
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
+      </SystemSettingsProvider>
     </ErrorBoundary>
   );
 };

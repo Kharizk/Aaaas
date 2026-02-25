@@ -11,6 +11,15 @@ import {
   ScanLine, Tag as TagIcon, Zap, CheckCircle2, LayoutTemplate, Columns, Rows, Barcode as BarcodeIcon
 } from 'lucide-react';
 
+const SaudiRiyalIcon = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 3v18" />
+    <path d="M8 3v14c0 2.5-2 4-4 4" />
+    <path d="M3 10h18" />
+    <path d="M3 14h18" />
+  </svg>
+);
+
 interface PriceTagGeneratorProps {
   products: Product[];
   units: Unit[];
@@ -69,7 +78,13 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     showUnit: true,
     showOriginalPrice: false,
     template: 'classic_vertical',
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
+    nameBackgroundColor: '#ffffff',
+    currencySymbolType: 'icon',
+    currencySymbolImage: null,
+    currencySymbolSize: 14,
+    currencySymbolPosition: 'after',
+    currencySymbolMargin: 4
   });
 
   const templatesList = [
@@ -193,7 +208,13 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       showUnit: tag.styles?.showUnit ?? globalStyles.showUnit,
       showOriginalPrice: tag.styles?.showOriginalPrice ?? globalStyles.showOriginalPrice,
       template: tag.styles?.template ?? globalStyles.template,
-      backgroundColor: tag.styles?.backgroundColor ?? globalStyles.backgroundColor
+      backgroundColor: tag.styles?.backgroundColor ?? globalStyles.backgroundColor,
+      nameBackgroundColor: tag.styles?.nameBackgroundColor ?? globalStyles.nameBackgroundColor,
+      currencySymbolType: tag.styles?.currencySymbolType ?? globalStyles.currencySymbolType,
+      currencySymbolImage: tag.styles?.currencySymbolImage ?? globalStyles.currencySymbolImage,
+      currencySymbolSize: tag.styles?.currencySymbolSize ?? globalStyles.currencySymbolSize,
+      currencySymbolPosition: tag.styles?.currencySymbolPosition ?? globalStyles.currencySymbolPosition,
+      currencySymbolMargin: tag.styles?.currencySymbolMargin ?? globalStyles.currencySymbolMargin
     };
   };
 
@@ -217,21 +238,37 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   };
 
   const AccordionHeader = ({ title, isOpen, onClick, icon: Icon }: any) => (
-      <button onClick={onClick} className="w-full flex items-center justify-between px-3 py-2 bg-[#E8F5E9] border-y border-sap-border hover:bg-[#C8E6C9] transition-colors group">
-          <div className="flex items-center gap-2">
-              <Icon size={16} className="text-sap-primary" />
-              <span className="text-xs font-bold text-sap-text uppercase tracking-wide">{title}</span>
+      <button onClick={onClick} className={`w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 transition-all duration-200 group ${isOpen ? 'bg-white' : 'bg-gray-50/50 hover:bg-gray-50'}`}>
+          <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg transition-all ${isOpen ? 'bg-sap-primary text-white shadow-md shadow-sap-primary/20' : 'bg-white border border-gray-200 text-gray-400 group-hover:border-sap-primary/50 group-hover:text-sap-primary'}`}>
+                <Icon size={16} strokeWidth={isOpen ? 2.5 : 2} />
+              </div>
+              <span className={`text-xs font-bold uppercase tracking-wider ${isOpen ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700'}`}>{title}</span>
           </div>
-          {isOpen ? <ChevronUp size={14} className="text-sap-text-variant"/> : <ChevronDown size={14} className="text-sap-text-variant"/>}
+          <div className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-sap-primary' : 'text-gray-300'}`}>
+             <ChevronDown size={16} />
+          </div>
       </button>
   );
 
   const PropertyRow = ({ label, children }: { label: string, children?: React.ReactNode }) => (
-    <div className="flex items-center justify-between gap-2 mb-2 last:mb-0">
-      <span className="text-[10px] font-bold text-sap-text-variant w-24 truncate text-right">{label}</span>
-      <div className="flex-1">{children}</div>
+    <div className="flex items-center justify-between gap-3 mb-3 last:mb-0">
+      <span className="text-xs font-semibold text-gray-600 w-24 shrink-0 truncate text-right">{label}</span>
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
+
+  const CurrencySymbolRenderer = ({ type, imageUrl, color, size, style, className }: { type: any, imageUrl?: string | null, color?: string, size?: number, style?: React.CSSProperties, className?: string }) => {
+      const sizeStyle = size ? { width: `${size}px`, height: `${size}px`, fontSize: `${size}px` } : {};
+      
+      if (type === 'custom_image' && imageUrl) {
+          return <img src={imageUrl} alt="Currency" className={className} style={{ ...style, ...sizeStyle, objectFit: 'contain' }} />;
+      }
+      if (type === 'text') {
+          return <span className={className} style={{ ...style, color, fontFamily: 'sans-serif', fontWeight: 'bold', fontSize: size ? `${size}pt` : 'inherit' }}>ر.س</span>;
+      }
+      return <SaudiRiyalIcon className={className} style={{ ...style, ...sizeStyle, color }} />;
+  };
 
   const renderTagLayout = (tag: SelectedTag | undefined, s: any) => {
       if (!tag) {
@@ -243,6 +280,37 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             </div>
           );
       }
+
+      // Helper to render price with currency symbol based on position
+      const PriceWithCurrency = ({ priceComponent, scale = 1 }: { priceComponent?: React.ReactNode, scale?: number } = {}) => {
+          const margin = s.currencySymbolMargin || 4;
+          const position = s.currencySymbolPosition || 'after';
+          
+          const symbol = (
+              <CurrencySymbolRenderer 
+                  type={s.currencySymbolType} 
+                  imageUrl={s.currencySymbolImage} 
+                  color={s.currencyColor} 
+                  size={s.currencySymbolSize || 14}
+              />
+          );
+
+          const price = priceComponent || <span style={{ fontSize: `${s.priceFontSize * scale}pt`, color: s.priceColor, fontWeight: s.priceWeight, fontFamily: 'monospace' }}>{tag.price}</span>;
+
+          if (position === 'before') {
+              return <div className="flex items-center" style={{ gap: `${margin}px` }}>{symbol}{price}</div>;
+          }
+          if (position === 'after') {
+              return <div className="flex items-center" style={{ gap: `${margin}px` }}>{price}{symbol}</div>;
+          }
+          if (position === 'superscript_before') {
+              return <div className="flex items-start" style={{ gap: `${margin}px` }}><div className="mt-1">{symbol}</div>{price}</div>;
+          }
+          if (position === 'superscript_after') {
+              return <div className="flex items-start" style={{ gap: `${margin}px` }}>{price}<div className="mt-1">{symbol}</div></div>;
+          }
+          return <div className="flex items-center gap-1">{price}{symbol}</div>;
+      };
 
       if (s.template === 'classic_vertical') {
           return (
@@ -264,8 +332,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 >
                     <div className="flex items-baseline gap-1">
                         {s.showOriginalPrice && tag.originalPrice && <span style={{ fontSize: '9pt', color: s.originalPriceColor, textDecoration: 'line-through' }} className="font-bold">{tag.originalPrice}</span>}
-                        <span style={{ fontSize: `${s.priceFontSize}pt`, color: s.priceColor, fontWeight: s.priceWeight, fontFamily: 'monospace' }}>{tag.price}</span>
-                        <span style={{ fontSize: '10pt', color: s.currencyColor, fontWeight: 'bold' }}>SAR</span>
+                        <PriceWithCurrency />
                         {s.showUnit && tag.unitName && <span style={{ color: s.unitColor }} className="text-[10px] font-bold self-center ml-2 border px-1 rounded bg-gray-50">{tag.unitName}</span>}
                     </div>
                     <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة</span>
@@ -279,7 +346,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
           return (
             <div className="flex flex-row h-full w-full relative overflow-hidden font-sans">
                 {/* Left Side (Price Focus Section) */}
-                <div className="w-[38%] bg-[#f8f9fa] flex flex-col items-center justify-center border-l-2 border-gray-200 p-2 relative">
+                <div className="w-[38%] flex flex-col items-center justify-center border-l-2 border-gray-200 p-2 relative" style={{ backgroundColor: s.backgroundColor }}>
                     <div className="absolute top-1 left-2 flex flex-col items-start gap-0.5 opacity-20">
                        <BarcodeIcon size={12} />
                        <div className="w-8 h-1 bg-black rounded-full"></div>
@@ -293,23 +360,24 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     )}
                     
                     <div className="flex items-start mt-2">
-                        <span style={{ fontSize: `${s.priceFontSize * 1.4}pt`, color: s.priceColor, fontWeight: '900', fontFamily: 'monospace', letterSpacing: '-2px' }} className="leading-none">
-                          {intPart}
-                        </span>
-                        <div className="flex flex-col ml-1 border-r border-gray-300 pr-1 mr-1">
-                            <span className="text-[12pt] font-black leading-none" style={{color: s.priceColor}}>
-                              .{decPart || '00'}
-                            </span>
-                            <span className="text-[8pt] font-black tracking-tighter mt-1" style={{color: s.currencyColor}}>
-                              SAR
-                            </span>
-                        </div>
+                        <PriceWithCurrency 
+                            priceComponent={
+                                <div className="flex items-baseline">
+                                    <span style={{ fontSize: `${s.priceFontSize * 1.4}pt`, color: s.priceColor, fontWeight: '900', fontFamily: 'monospace', letterSpacing: '-2px' }} className="leading-none">
+                                      {intPart}
+                                    </span>
+                                    <span className="text-[12pt] font-black leading-none ml-1" style={{color: s.priceColor}}>
+                                       .{decPart || '00'}
+                                    </span>
+                                </div>
+                            }
+                        />
                     </div>
                     <span className="text-[6px] text-gray-400 font-bold mt-1 text-center w-full">شامل الضريبة</span>
                 </div>
 
                 {/* Right Side (Information Section) */}
-                <div className="w-[62%] flex flex-col justify-between p-3 bg-white">
+                <div className="w-[62%] flex flex-col justify-between p-3" style={{ backgroundColor: s.backgroundColor }}>
                     <div className="flex justify-between items-start">
                         {s.showLogo && globalStyles.logoUrl ? (
                             <img src={globalStyles.logoUrl} alt="Logo" style={{ height: `${globalStyles.logoSize * 0.7}px` }} className="object-contain" />
@@ -356,14 +424,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             <div className="flex flex-col h-full border-4 border-black">
                 <div className="bg-black text-white px-2 py-1 flex justify-between items-center h-8 shrink-0">
                     <span className="text-[8px] font-mono tracking-widest">ITEM CODE</span>
-                    {s.showUnit && tag.unitName && <span className="text-[10px] font-bold bg-white text-black px-1 rounded-sm">{tag.unitName}</span>}
+                    {s.showUnit && tag.unitName && <span className="text-[10px] font-bold bg-white text-black px-1 rounded-sm" style={{ color: s.unitColor }}>{tag.unitName}</span>}
                 </div>
-                <div className="flex-1 flex items-center justify-center p-2 text-center bg-gray-100">
-                    <div style={{ fontSize: `${s.nameFontSize}pt`, color: '#000', fontWeight: '900', textTransform: 'uppercase' }} className="leading-tight">
+                <div className="flex-1 flex items-center justify-center p-2 text-center" style={{ backgroundColor: s.backgroundColor }}>
+                    <div style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor, fontWeight: '900', textTransform: 'uppercase' }} className="leading-tight">
                         {tag.name}
                     </div>
                 </div>
-                <div className="flex items-center justify-between px-3 py-2 border-t-4 border-black bg-white">
+                <div className="flex items-center justify-between px-3 py-2 border-t-4 border-black" style={{ backgroundColor: s.backgroundColor }}>
                     {s.showOriginalPrice && tag.originalPrice && (
                         <div className="flex flex-col">
                             <span className="text-[7px] font-bold text-gray-500">WAS</span>
@@ -372,10 +440,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     )}
                     <div className="flex items-baseline gap-1 ml-auto">
                         <div className="flex flex-col items-end">
-                            <div className="flex items-baseline gap-1">
-                                <span style={{ fontSize: `${s.priceFontSize}pt`, color: s.priceColor, fontWeight: '900', fontFamily: 'monospace' }}>{tag.price}</span>
-                                <span className="text-[10px] font-bold">SR</span>
-                            </div>
+                            <PriceWithCurrency />
                             <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة</span>
                         </div>
                     </div>
@@ -386,21 +451,39 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       if (s.template === 'big_impact') {
           return (
-            <div className="flex flex-col h-full">
-                <div className="h-[65%] bg-sap-primary flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[150%] bg-white/10 rounded-full blur-xl"></div>
-                    <div className="flex flex-col items-center z-10 text-white">
-                        {s.showOriginalPrice && tag.originalPrice && <span className="text-sm font-bold opacity-60 line-through mb-1">{tag.originalPrice}</span>}
-                        <div className="flex items-start leading-none">
-                            <span style={{ fontSize: `${s.priceFontSize * 1.5}pt`, fontWeight: '900' }}>{tag.price}</span>
-                            <span className="text-xs font-bold mt-2 ml-1">SR</span>
-                        </div>
-                        <span className="text-[8px] text-white/70 font-bold mt-1">السعر شامل الضريبة</span>
-                    </div>
+            <div className="flex h-full w-full bg-white relative overflow-hidden border border-gray-200">
+                {/* Side Strip - VAT (Right Side) */}
+                <div className="w-[24px] h-full flex items-center justify-center bg-gray-50 border-l border-gray-100 absolute right-0 top-0 bottom-0 z-20">
+                     <span className="text-[9px] font-black -rotate-90 whitespace-nowrap tracking-wide text-gray-800" style={{ transform: 'rotate(-90deg) translateX(0%)' }}>السعر شامل الضريبة</span>
                 </div>
-                <div className="h-[35%] bg-white p-2 flex items-center justify-center text-center">
-                    <div style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor, fontWeight: 'bold' }} className="leading-tight line-clamp-2">
-                        {tag.name}
+
+                <div className="flex-1 flex flex-col h-full mr-[24px]">
+                    {/* Top Section - Price */}
+                    <div 
+                        className="h-[65%] flex items-center justify-center relative overflow-hidden"
+                        style={{ backgroundColor: s.backgroundColor }}
+                    >
+                         <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[150%] bg-white/10 rounded-full blur-xl"></div>
+                         <div className="flex flex-col items-center z-10">
+                            {s.showOriginalPrice && tag.originalPrice && (
+                                <span className="text-sm font-bold opacity-80 line-through mb-1" style={{ color: s.priceColor }}>{tag.originalPrice}</span>
+                            )}
+                            <div className="flex items-start leading-none" style={{ color: s.priceColor }}>
+                                <PriceWithCurrency scale={1.5} />
+                            </div>
+                         </div>
+                    </div>
+
+                    {/* Bottom Section - Name */}
+                    <div className="h-[35%] p-2 flex items-center justify-center text-center relative" style={{ backgroundColor: s.nameBackgroundColor || s.backgroundColor }}>
+                        <div style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor, fontWeight: 'bold' }} className="leading-tight line-clamp-2">
+                            {tag.name}
+                        </div>
+                         {s.showUnit && tag.unitName && (
+                            <span className="absolute bottom-1 left-2 text-[8px] font-bold bg-gray-50 px-1 rounded" style={{ color: s.unitColor }}>
+                                {tag.unitName}
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
@@ -423,13 +506,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     <span className="text-xs font-bold line-through">{tag.originalPrice}</span>
                                 </div>
                             )}
-                            {s.showUnit && tag.unitName && <span className="text-[9px] text-gray-500 font-bold">{tag.unitName}</span>}
+                            {s.showUnit && tag.unitName && <span className="text-[9px] font-bold" style={{ color: s.unitColor }}>{tag.unitName}</span>}
                         </div>
                         <div className="flex flex-col items-end">
-                            <div className="flex items-baseline gap-0.5">
-                                <span style={{ fontSize: `${s.priceFontSize}pt`, color: '#DC2626', fontWeight: '900' }}>{tag.price}</span>
-                                <span className="text-[8px] font-bold text-red-600">ر.س</span>
-                            </div>
+                            <PriceWithCurrency />
                             <span className="text-[7px] text-gray-400 font-bold">شامل الضريبة</span>
                         </div>
                     </div>
@@ -452,14 +532,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     {/* Product Name */}
                     <div 
                         className="flex-1 flex items-start justify-start text-right leading-snug break-words mb-1 font-bold"
-                        style={{ fontSize: `${s.nameFontSize}pt`, color: '#000' }}
+                        style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor }}
                     >
                         {tag.name}
                     </div>
                     
                     {/* Bottom Details */}
                     <div className="mt-auto text-[9px] font-bold space-y-0.5 pt-1">
-                        <div className="flex justify-between items-center text-black/70">
+                        <div className="flex justify-between items-center" style={{ color: s.unitColor }}>
                             <span>العبوة: 1</span>
                             <span>الوحدة: {unitDisplay}</span>
                         </div>
@@ -472,8 +552,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 {/* Left Section (Price) */}
                 <div className="w-[35%] flex flex-col items-center justify-between p-1" style={{ backgroundColor: s.backgroundColor }}>
                     <div className="flex-1 flex flex-col items-center justify-center">
-                        <span style={{ fontSize: `${s.priceFontSize}pt`, fontWeight: '900', color: '#000', lineHeight: 1 }}>{tag.price}</span>
-                        <span className="text-sm font-black mt-1">S.R</span>
+                        <PriceWithCurrency />
                     </div>
                     
                     <div className="w-full text-center border-t border-black/20 pt-1">
@@ -541,20 +620,39 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
   if (!hasStarted && savedLists.length > 0) {
       return (
-          <div className="h-full w-full bg-sap-background flex items-center justify-center">
-              <div className="bg-white border border-sap-border p-8 shadow-sm w-[600px] rounded-sap-s">
-                  <h1 className="text-2xl font-black text-sap-primary mb-6 flex items-center gap-2"><LayoutGrid size={24}/> معالج طباعة الملصقات</h1>
-                  <div className="space-y-4">
-                      <button onClick={() => setHasStarted(true)} className="w-full flex items-center gap-4 p-4 border border-sap-border hover:bg-sap-highlight hover:border-sap-primary text-right transition-colors group bg-gray-50">
-                          <div className="bg-sap-primary text-white p-3 rounded-sap-s group-hover:bg-sap-primary-hover shadow-sm"><FilePlus size={24} /></div>
-                          <div><div className="font-bold text-sm text-sap-text">مشروع جديد فارغ</div><div className="text-xs text-sap-text-variant">بدء صفحة A4 جديدة للملصقات</div></div>
+          <div className="h-full w-full bg-gray-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-gray-200 shadow-xl w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                  <div className="p-8 bg-gradient-to-br from-sap-primary to-sap-primary/80 text-white">
+                      <h1 className="text-3xl font-black mb-2 flex items-center gap-3"><LayoutGrid size={32}/> معالج طباعة الملصقات</h1>
+                      <p className="text-white/80 text-sm font-medium">قم بإنشاء وطباعة ملصقات الأسعار بسهولة واحترافية</p>
+                  </div>
+                  
+                  <div className="p-8 overflow-y-auto custom-scrollbar">
+                      <button onClick={() => setHasStarted(true)} className="w-full flex items-center gap-5 p-5 border-2 border-dashed border-gray-200 hover:border-sap-primary hover:bg-sap-highlight/10 rounded-xl transition-all group mb-8 text-right">
+                          <div className="bg-sap-primary/10 text-sap-primary p-4 rounded-full group-hover:scale-110 transition-transform"><FilePlus size={28} /></div>
+                          <div>
+                              <div className="font-black text-lg text-gray-800 group-hover:text-sap-primary transition-colors">مشروع جديد فارغ</div>
+                              <div className="text-sm text-gray-500">بدء صفحة A4 جديدة للملصقات</div>
+                          </div>
                       </button>
-                      <div className="text-xs font-black text-sap-text-variant uppercase tracking-widest mt-6 mb-2 border-b border-sap-border pb-1">المشاريع الأخيرة</div>
-                      <div className="border border-sap-border bg-white max-h-[300px] overflow-y-auto">
+
+                      <div className="flex items-center gap-4 mb-4">
+                          <div className="h-px bg-gray-200 flex-1"></div>
+                          <span className="text-xs font-black text-gray-400 uppercase tracking-widest">المشاريع الأخيرة</span>
+                          <div className="h-px bg-gray-200 flex-1"></div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
                           {savedLists.map(list => (
-                              <div key={list.id} onClick={() => loadProject(list)} className="p-3 border-b border-sap-border hover:bg-sap-highlight cursor-pointer flex justify-between items-center text-xs group">
-                                  <span className="font-bold text-sap-text group-hover:text-sap-primary">{list.name}</span>
-                                  <span className="text-sap-text-variant font-mono">{new Date(list.date).toLocaleDateString('ar-SA')}</span>
+                              <div key={list.id} onClick={() => loadProject(list)} className="p-4 border border-gray-100 hover:border-sap-primary/30 hover:bg-sap-highlight/5 rounded-xl cursor-pointer flex justify-between items-center group transition-all shadow-sm hover:shadow-md">
+                                  <div className="flex items-center gap-3">
+                                      <div className="bg-gray-100 p-2 rounded-lg text-gray-500 group-hover:text-sap-primary group-hover:bg-white transition-colors"><FolderOpen size={18}/></div>
+                                      <div>
+                                          <div className="font-bold text-gray-800 group-hover:text-sap-primary transition-colors">{list.name}</div>
+                                          <div className="text-xs text-gray-400 font-mono mt-0.5">{new Date(list.date).toLocaleDateString('ar-SA')}</div>
+                                      </div>
+                                  </div>
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-sap-primary text-xs font-bold bg-sap-highlight/20 px-3 py-1 rounded-full">فتح</div>
                               </div>
                           ))}
                       </div>
@@ -571,22 +669,33 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       <FullPagePrint />
 
       {/* Sidebar */}
-      <aside className="w-[320px] bg-white border-l-2 border-sap-secondary flex flex-col shrink-0 print:hidden z-30 shadow-lg text-xs h-full">
-        <div className={`px-3 py-2 font-black text-sm flex items-center justify-between shadow-md transition-colors ${activeTagId ? 'bg-sap-primary text-white' : 'bg-sap-shell text-white'}`}>
-            <div className="flex items-center gap-2">
-                <Settings size={16} className="text-sap-secondary"/> 
-                <span>{activeTagId ? 'تعديل ملصق محدد' : 'الإعدادات العامة'}</span>
+      <aside className="w-[340px] bg-white border-l border-gray-200 flex flex-col shrink-0 print:hidden z-30 shadow-xl shadow-gray-200/50 h-full font-sans">
+        <div className={`px-5 py-4 flex items-center justify-between transition-colors relative overflow-hidden ${activeTagId ? 'bg-sap-primary' : 'bg-white border-b border-gray-100'}`}>
+            {activeTagId && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none"></div>}
+            
+            <div className="flex items-center gap-3 relative z-10">
+                <div className={`p-2 rounded-lg ${activeTagId ? 'bg-white/20 text-white' : 'bg-sap-primary/10 text-sap-primary'}`}>
+                    <Settings size={18} strokeWidth={2.5}/> 
+                </div>
+                <div>
+                    <div className={`text-xs font-bold uppercase tracking-wider ${activeTagId ? 'text-white/80' : 'text-gray-400'}`}>الإعدادات</div>
+                    <div className={`font-black text-sm ${activeTagId ? 'text-white' : 'text-gray-800'}`}>{activeTagId ? 'تخصيص الملصق' : 'الإعدادات العامة'}</div>
+                </div>
             </div>
-            {activeTagId && <button onClick={() => setActiveTagId(null)} className="text-[10px] bg-white/20 px-2 py-0.5 rounded hover:bg-white/30">عودة للعام</button>}
+            {activeTagId && (
+                <button onClick={() => setActiveTagId(null)} className="relative z-10 text-[10px] font-bold bg-white text-sap-primary px-3 py-1.5 rounded-full shadow-sm hover:bg-gray-50 transition-colors">
+                    عودة للعام
+                </button>
+            )}
         </div>
         
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#F9FAFB]">
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/50">
             
             {/* 1. Structural Templates */}
             <AccordionHeader title="هيكل وتصميم الملصق" isOpen={openSections.templates} onClick={() => toggleSection('templates')} icon={LayoutGrid} />
             {openSections.templates && (
-                <div className="p-3 bg-white border-b border-sap-border">
-                    <div className="grid grid-cols-1 gap-2">
+                <div className="p-4 bg-white border-b border-gray-100">
+                    <div className="grid grid-cols-1 gap-3">
                         {templatesList.map(t => (
                             <button
                                 key={t.id}
@@ -594,20 +703,28 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     handleStyleChange('template', t.id);
                                     if (t.id === 'yellow_shelf_label') {
                                         handleStyleChange('backgroundColor', '#fde047');
+                                    } else if (t.id === 'big_impact') {
+                                        handleStyleChange('backgroundColor', '#1e293b'); // Dark Slate
+                                        handleStyleChange('nameBackgroundColor', '#1e293b');
+                                        handleStyleChange('priceColor', '#ffffff');
+                                        handleStyleChange('currencyColor', '#ffffff');
                                     } else {
                                         handleStyleChange('backgroundColor', '#ffffff');
+                                        handleStyleChange('nameBackgroundColor', '#ffffff');
+                                        handleStyleChange('priceColor', '#DC2626'); // Default Red
+                                        handleStyleChange('currencyColor', '#000000');
                                     }
                                 }}
-                                className={`p-3 border rounded-[2px] flex items-center gap-3 transition-all ${currentScopeStyles.template === t.id ? 'bg-sap-highlight border-sap-primary ring-1 ring-sap-primary' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                                className={`p-3 border rounded-xl flex items-center gap-3 transition-all duration-200 group ${currentScopeStyles.template === t.id ? 'bg-sap-primary/5 border-sap-primary ring-1 ring-sap-primary shadow-sm' : 'bg-white border-gray-200 hover:border-sap-primary/50 hover:bg-gray-50'}`}
                             >
-                                <div className={`p-2 rounded ${currentScopeStyles.template === t.id ? 'bg-sap-primary text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                    <t.icon size={18} />
+                                <div className={`p-2.5 rounded-lg transition-colors ${currentScopeStyles.template === t.id ? 'bg-sap-primary text-white shadow-md shadow-sap-primary/20' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-sap-primary'}`}>
+                                    <t.icon size={20} />
                                 </div>
-                                <div className="text-right">
-                                    <div className="font-bold text-xs">{t.name}</div>
-                                    <div className="text-[10px] text-gray-400">{t.desc}</div>
+                                <div className="text-right flex-1">
+                                    <div className={`font-bold text-sm mb-0.5 ${currentScopeStyles.template === t.id ? 'text-sap-primary' : 'text-gray-700'}`}>{t.name}</div>
+                                    <div className="text-[10px] text-gray-400 font-medium">{t.desc}</div>
                                 </div>
-                                {currentScopeStyles.template === t.id && <CheckCircle2 size={16} className="mr-auto text-sap-primary"/>}
+                                {currentScopeStyles.template === t.id && <div className="w-2 h-2 rounded-full bg-sap-primary shadow-sm"></div>}
                             </button>
                         ))}
                     </div>
@@ -617,30 +734,54 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             {/* 2. Page Setup */}
             <AccordionHeader title="إعدادات الهوامش والأبعاد" isOpen={openSections.pageSetup} onClick={() => toggleSection('pageSetup')} icon={AppWindow} />
             {openSections.pageSetup && (
-                <div className="p-3 space-y-4 border-b border-sap-border bg-white">
-                    <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
+                    <div className="grid grid-cols-2 gap-4">
                         <PropertyRow label="الهامش العلوي">
-                            <input type="number" step="0.1" value={globalStyles.topMargin} onChange={e => setGlobalStyles({...globalStyles, topMargin: Number(e.target.value)})} className="w-full p-1 border border-sap-border focus:border-sap-primary font-mono text-center bg-gray-50" />
+                            <div className="relative">
+                                <input type="number" step="0.1" value={globalStyles.topMargin} onChange={e => setGlobalStyles({...globalStyles, topMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                            </div>
                         </PropertyRow>
                         <PropertyRow label="الهامش السفلي">
-                            <input type="number" step="0.1" value={globalStyles.bottomMargin} onChange={e => setGlobalStyles({...globalStyles, bottomMargin: Number(e.target.value)})} className="w-full p-1 border border-sap-border focus:border-sap-primary font-mono text-center bg-gray-50" />
+                            <div className="relative">
+                                <input type="number" step="0.1" value={globalStyles.bottomMargin} onChange={e => setGlobalStyles({...globalStyles, bottomMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                            </div>
                         </PropertyRow>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                         <PropertyRow label="الهامش الأيمن">
-                            <input type="number" step="0.1" value={globalStyles.rightMargin} onChange={e => setGlobalStyles({...globalStyles, rightMargin: Number(e.target.value)})} className="w-full p-1 border border-sap-border focus:border-sap-primary font-mono text-center bg-gray-50" />
+                            <div className="relative">
+                                <input type="number" step="0.1" value={globalStyles.rightMargin} onChange={e => setGlobalStyles({...globalStyles, rightMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                            </div>
                         </PropertyRow>
                         <PropertyRow label="الهامش الأيسر">
-                            <input type="number" step="0.1" value={globalStyles.leftMargin} onChange={e => setGlobalStyles({...globalStyles, leftMargin: Number(e.target.value)})} className="w-full p-1 border border-sap-border focus:border-sap-primary font-mono text-center bg-gray-50" />
+                            <div className="relative">
+                                <input type="number" step="0.1" value={globalStyles.leftMargin} onChange={e => setGlobalStyles({...globalStyles, leftMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                            </div>
                         </PropertyRow>
                     </div>
                     <PropertyRow label="ارتفاع الملصق">
-                        <input type="number" step="0.1" value={globalStyles.tagHeight} onChange={e => setGlobalStyles({...globalStyles, tagHeight: Number(e.target.value)})} className="w-full p-1 border border-sap-border focus:border-sap-primary font-mono text-center bg-gray-50" />
+                        <div className="relative">
+                            <input type="number" step="0.1" value={globalStyles.tagHeight} onChange={e => setGlobalStyles({...globalStyles, tagHeight: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                        </div>
                     </PropertyRow>
                     
-                    <div className="pt-2 border-t border-dashed border-sap-border">
-                        <div onClick={() => logoInputRef.current?.click()} className="h-16 border-2 border-dashed border-sap-border bg-gray-50 flex items-center justify-center cursor-pointer hover:bg-sap-highlight hover:border-sap-primary transition-all rounded-sap-s">
-                            {globalStyles.logoUrl ? <img src={globalStyles.logoUrl} className="h-full object-contain p-1" /> : <div className="text-center text-sap-text-variant"><span className="text-[10px] font-bold">تغيير الشعار</span></div>}
+                    <div className="pt-3 border-t border-dashed border-gray-200">
+                        <div onClick={() => logoInputRef.current?.click()} className="h-20 border-2 border-dashed border-gray-300 bg-gray-50/50 flex flex-col items-center justify-center cursor-pointer hover:bg-sap-primary/5 hover:border-sap-primary transition-all rounded-xl group">
+                            {globalStyles.logoUrl ? (
+                                <img src={globalStyles.logoUrl} className="h-full object-contain p-2" />
+                            ) : (
+                                <>
+                                    <div className="p-2 bg-white rounded-full shadow-sm mb-1 group-hover:scale-110 transition-transform">
+                                        <ImageIcon size={16} className="text-gray-400 group-hover:text-sap-primary" />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-500 group-hover:text-sap-primary">تغيير الشعار</span>
+                                </>
+                            )}
                             <input type="file" ref={logoInputRef} className="hidden" onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) { const reader = new FileReader(); reader.onload = (re) => setGlobalStyles({...globalStyles, logoUrl: re.target?.result as string}); reader.readAsDataURL(file); }
@@ -653,32 +794,39 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             {/* 3. Item Data */}
             <AccordionHeader title="بيانات العنصر" isOpen={openSections.itemProps} onClick={() => toggleSection('itemProps')} icon={SlidersHorizontal} />
             {openSections.itemProps && (
-                <div className="p-3 space-y-3 border-b border-sap-border bg-white min-h-[150px]">
+                <div className="p-4 space-y-4 border-b border-gray-100 bg-white min-h-[150px]">
                     {activeTag ? (
                         <>
                             <div className="mb-2">
-                                <label className="block text-[10px] font-bold text-sap-text-variant mb-1">اسم المنتج</label>
-                                <textarea ref={nameInputRef} value={activeTag.name} onChange={e => updateTag(activeTag.id, { name: e.target.value })} className="w-full p-2 border border-sap-border text-xs h-12 resize-none focus:border-sap-primary font-bold" />
+                                <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">اسم المنتج</label>
+                                <textarea ref={nameInputRef} value={activeTag.name} onChange={e => updateTag(activeTag.id, { name: e.target.value })} className="w-full p-3 border border-gray-200 rounded-lg text-sm h-20 resize-none focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-bold transition-all" placeholder="أدخل اسم المنتج..." />
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-[10px] font-bold text-sap-text-variant mb-1 text-sap-primary">السعر الحالي</label>
-                                    <input type="text" value={activeTag.price} onChange={e => updateTag(activeTag.id, { price: e.target.value })} className="w-full p-1 border border-sap-primary font-mono font-black text-sap-primary text-center bg-green-50" />
+                                    <label className="block text-[10px] font-bold text-sap-primary mb-1.5 uppercase tracking-wider">السعر الحالي</label>
+                                    <div className="relative">
+                                        <input type="text" value={activeTag.price} onChange={e => updateTag(activeTag.id, { price: e.target.value })} className="w-full p-2 border border-sap-primary/30 rounded-lg font-mono font-black text-sap-primary text-center bg-sap-primary/5 focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                                    </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-bold text-sap-text-variant mb-1 text-red-500">السعر السابق</label>
-                                    <input type="text" value={activeTag.originalPrice || ''} onChange={e => updateTag(activeTag.id, { originalPrice: e.target.value })} className="w-full p-1 border border-red-200 font-mono font-bold text-red-500 text-center bg-red-50" placeholder="مثال: 50.00" />
+                                    <label className="block text-[10px] font-bold text-red-500 mb-1.5 uppercase tracking-wider">السعر السابق</label>
+                                    <div className="relative">
+                                        <input type="text" value={activeTag.originalPrice || ''} onChange={e => updateTag(activeTag.id, { originalPrice: e.target.value })} className="w-full p-2 border border-red-200 rounded-lg font-mono font-bold text-red-500 text-center bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all" placeholder="0.00" />
+                                    </div>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-sap-text-variant mb-1">الوحدة</label>
-                                <input type="text" value={activeTag.unitName || ''} onChange={e => updateTag(activeTag.id, { unitName: e.target.value })} className="w-full p-1 border border-sap-border text-center font-bold" />
+                                <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">الوحدة</label>
+                                <input type="text" value={activeTag.unitName || ''} onChange={e => updateTag(activeTag.id, { unitName: e.target.value })} className="w-full p-2 border border-gray-200 rounded-lg text-center font-bold text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" placeholder="مثال: حبة، كجم..." />
                             </div>
                         </>
                     ) : (
-                        <div className="text-center py-8 opacity-50 flex flex-col items-center">
-                            <MousePointer2 size={24} className="mb-2"/>
-                            <p className="font-bold">حدد ملصقاً لتعديل بياناته</p>
+                        <div className="text-center py-10 opacity-60 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                            <div className="p-3 bg-white rounded-full shadow-sm mb-3">
+                                <MousePointer2 size={20} className="text-gray-400"/>
+                            </div>
+                            <p className="font-bold text-gray-600 text-sm">حدد ملصقاً لتعديل بياناته</p>
+                            <p className="text-[10px] text-gray-400 mt-1">اضغط على أي ملصق في المعاينة</p>
                         </div>
                     )}
                 </div>
@@ -687,30 +835,111 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             {/* 4. Colors & Fonts */}
             <AccordionHeader title="الألوان والخطوط" isOpen={openSections.typography} onClick={() => toggleSection('typography')} icon={Palette} />
             {openSections.typography && (
-                <div className="p-3 space-y-3 border-b border-sap-border bg-white">
+                <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
                     <PropertyRow label="حجم الاسم">
-                        <input type="number" value={currentScopeStyles.nameFontSize} onChange={e => handleStyleChange('nameFontSize', Number(e.target.value))} className="w-full p-1 border border-sap-border text-center" />
+                        <div className="flex items-center gap-2">
+                             <input type="range" min="8" max="72" value={currentScopeStyles.nameFontSize} onChange={e => handleStyleChange('nameFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.nameFontSize} onChange={e => handleStyleChange('nameFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                        </div>
                     </PropertyRow>
                     <PropertyRow label="حجم السعر">
-                        <input type="number" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="w-full p-1 border border-sap-border text-center" />
+                        <div className="flex items-center gap-2">
+                             <input type="range" min="12" max="120" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                        </div>
                     </PropertyRow>
                     
-                    <div className="border-t border-dashed border-gray-200 pt-2 mt-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold">لون المنتج</span>
-                            <input type="color" value={currentScopeStyles.nameColor} onChange={e => handleStyleChange('nameColor', e.target.value)} className="w-6 h-6 border-none cursor-pointer" />
+                    <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">خصائص العملة</div>
+                        <PropertyRow label="حجم الرمز">
+                            <input type="number" value={currentScopeStyles.currencySymbolSize || 14} onChange={e => handleStyleChange('currencySymbolSize', Number(e.target.value))} className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" />
+                        </PropertyRow>
+                        <PropertyRow label="الموقع">
+                            <select 
+                                value={currentScopeStyles.currencySymbolPosition || 'after'} 
+                                onChange={e => handleStyleChange('currencySymbolPosition', e.target.value)}
+                                className="w-full p-2 border border-gray-200 rounded-lg text-xs font-bold focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all bg-white"
+                            >
+                                <option value="after">بعد السعر (يسار)</option>
+                                <option value="before">قبل السعر (يمين)</option>
+                                <option value="superscript_after">علوي بعد السعر</option>
+                                <option value="superscript_before">علوي قبل السعر</option>
+                            </select>
+                        </PropertyRow>
+                        <PropertyRow label="المسافة">
+                            <input type="number" value={currentScopeStyles.currencySymbolMargin || 4} onChange={e => handleStyleChange('currencySymbolMargin', Number(e.target.value))} className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" />
+                        </PropertyRow>
+                    </div>
+
+                    <div className="border-t border-dashed border-gray-200 pt-4 mt-2 space-y-3">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">نوع العملة</span>
+                            <select 
+                                value={currentScopeStyles.currencySymbolType} 
+                                onChange={e => handleStyleChange('currencySymbolType', e.target.value)}
+                                className="text-xs p-1.5 border border-gray-200 rounded-lg font-bold focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all bg-white"
+                            >
+                                <option value="icon">رمز (أيقونة)</option>
+                                <option value="text">نص (ر.س)</option>
+                                <option value="custom_image">صورة مخصصة</option>
+                            </select>
                         </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold">لون السعر</span>
-                            <input type="color" value={currentScopeStyles.priceColor} onChange={e => handleStyleChange('priceColor', e.target.value)} className="w-6 h-6 border-none cursor-pointer" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold">لون الوحدة</span>
-                            <input type="color" value={currentScopeStyles.unitColor} onChange={e => handleStyleChange('unitColor', e.target.value)} className="w-6 h-6 border-none cursor-pointer" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold">لون الخلفية</span>
-                            <input type="color" value={currentScopeStyles.backgroundColor} onChange={e => handleStyleChange('backgroundColor', e.target.value)} className="w-6 h-6 border-none cursor-pointer" />
+                        
+                        {currentScopeStyles.currencySymbolType === 'custom_image' && (
+                            <div className="flex items-center justify-between mb-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                <span className="text-[10px] font-bold text-gray-500">صورة العملة</span>
+                                <div className="flex items-center gap-2">
+                                    {currentScopeStyles.currencySymbolImage && <img src={currentScopeStyles.currencySymbolImage} className="w-8 h-8 object-contain border border-gray-200 rounded bg-white" />}
+                                    <label className="cursor-pointer bg-white hover:bg-gray-50 px-3 py-1.5 rounded-md text-[10px] font-bold border border-gray-200 shadow-sm transition-all">
+                                        رفع صورة
+                                        <input type="file" className="hidden" onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) { const reader = new FileReader(); reader.onload = (re) => handleStyleChange('currencySymbolImage', re.target?.result as string); reader.readAsDataURL(file); }
+                                        }} />
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                <span className="text-[10px] font-bold text-gray-600">العملة</span>
+                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                    <input type="color" value={currentScopeStyles.currencyColor} onChange={e => handleStyleChange('currencyColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                <span className="text-[10px] font-bold text-gray-600">المنتج</span>
+                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                    <input type="color" value={currentScopeStyles.nameColor} onChange={e => handleStyleChange('nameColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                <span className="text-[10px] font-bold text-gray-600">السعر</span>
+                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                    <input type="color" value={currentScopeStyles.priceColor} onChange={e => handleStyleChange('priceColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                <span className="text-[10px] font-bold text-gray-600">الوحدة</span>
+                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                    <input type="color" value={currentScopeStyles.unitColor} onChange={e => handleStyleChange('unitColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors col-span-2">
+                                <span className="text-[10px] font-bold text-gray-600">خلفية السعر</span>
+                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                    <input type="color" value={currentScopeStyles.backgroundColor} onChange={e => handleStyleChange('backgroundColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                </div>
+                            </div>
+                            {currentScopeStyles.template === 'big_impact' && (
+                                <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors col-span-2">
+                                    <span className="text-[10px] font-bold text-gray-600">خلفية الاسم</span>
+                                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                        <input type="color" value={currentScopeStyles.nameBackgroundColor || currentScopeStyles.backgroundColor} onChange={e => handleStyleChange('nameBackgroundColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -719,23 +948,35 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             {/* 5. Visibility */}
             <AccordionHeader title="إظهار / إخفاء" isOpen={openSections.visibility} onClick={() => toggleSection('visibility')} icon={Eye} />
             {openSections.visibility && (
-                <div className="p-3 space-y-2 border-b border-sap-border bg-white">
-                    <label className="flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-50 rounded">
-                        <input type="checkbox" checked={currentScopeStyles.showLogo} onChange={e => handleStyleChange('showLogo', e.target.checked)} className="accent-sap-primary" />
-                        <span className="font-bold">إظهار الشعار</span>
+                <div className="p-4 space-y-2 border-b border-gray-100 bg-white">
+                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
+                        <div className="relative flex items-center">
+                            <input type="checkbox" checked={currentScopeStyles.showLogo} onChange={e => handleStyleChange('showLogo', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        </div>
+                        <span className="font-bold text-xs text-gray-700">إظهار الشعار</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-50 rounded">
-                        <input type="checkbox" checked={currentScopeStyles.showUnit} onChange={e => handleStyleChange('showUnit', e.target.checked)} className="accent-sap-primary" />
-                        <span className="font-bold">إظهار الوحدة</span>
+                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
+                        <div className="relative flex items-center">
+                            <input type="checkbox" checked={currentScopeStyles.showUnit} onChange={e => handleStyleChange('showUnit', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        </div>
+                        <span className="font-bold text-xs text-gray-700">إظهار الوحدة</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-50 rounded">
-                        <input type="checkbox" checked={currentScopeStyles.showBorder} onChange={e => handleStyleChange('showBorder', e.target.checked)} className="accent-sap-primary" />
-                        <span className="font-bold">إطار الملصق</span>
+                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
+                        <div className="relative flex items-center">
+                            <input type="checkbox" checked={currentScopeStyles.showBorder} onChange={e => handleStyleChange('showBorder', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        </div>
+                        <span className="font-bold text-xs text-gray-700">إطار الملصق</span>
                     </label>
                     <div className="border-t border-dashed border-gray-200 my-2"></div>
-                    <label className="flex items-center gap-2 cursor-pointer p-1 hover:bg-red-50 rounded">
-                        <input type="checkbox" checked={currentScopeStyles.showOriginalPrice} onChange={e => handleStyleChange('showOriginalPrice', e.target.checked)} className="accent-red-500" />
-                        <span className="font-bold text-red-600">إظهار السعر السابق</span>
+                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100">
+                        <div className="relative flex items-center">
+                            <input type="checkbox" checked={currentScopeStyles.showOriginalPrice} onChange={e => handleStyleChange('showOriginalPrice', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-red-300 shadow-sm checked:border-red-500 checked:bg-red-500 focus:ring-2 focus:ring-red-500/20 transition-all" />
+                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        </div>
+                        <span className="font-bold text-xs text-red-600">إظهار السعر السابق</span>
                     </label>
                 </div>
             )}
@@ -743,17 +984,17 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             {/* 6. Actions */}
             <AccordionHeader title="إجراءات" isOpen={openSections.actions} onClick={() => toggleSection('actions')} icon={Layers} />
             {openSections.actions && (
-                <div className="p-3 space-y-2 bg-white">
-                    <button onClick={() => setShowProductPicker(true)} className="w-full py-2 bg-sap-primary text-white font-bold shadow-sm hover:bg-sap-primary-hover flex items-center justify-center gap-2 rounded-sap-s">
-                        <Plus size={16}/> إضافة منتج جديد
+                <div className="p-4 space-y-3 bg-white">
+                    <button onClick={() => setShowProductPicker(true)} className="w-full py-2.5 bg-sap-primary text-white font-bold shadow-md shadow-sap-primary/20 hover:bg-sap-primary-hover hover:shadow-lg hover:shadow-sap-primary/30 flex items-center justify-center gap-2 rounded-xl transition-all transform active:scale-[0.98]">
+                        <Plus size={18}/> إضافة منتج جديد
                     </button>
                     {activeTag && (
-                        <div className="flex gap-2">
-                            <button onClick={() => { setSelectedTags(prev => prev.filter(t => t.id !== activeTag.id)); setActiveTagId(null); }} className="flex-1 py-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold rounded-sap-s text-xs">
-                                حذف
+                        <div className="flex gap-3">
+                            <button onClick={() => { setSelectedTags(prev => prev.filter(t => t.id !== activeTag.id)); setActiveTagId(null); }} className="flex-1 py-2.5 bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:border-red-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
+                                <Trash2 size={14} /> حذف
                             </button>
-                            <button onClick={() => setActiveTagId(null)} className="flex-1 py-2 border border-sap-border hover:bg-gray-50 font-bold rounded-sap-s text-xs">
-                                إلغاء
+                            <button onClick={() => setActiveTagId(null)} className="flex-1 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 font-bold rounded-xl text-xs transition-all shadow-sm">
+                                إلغاء التحديد
                             </button>
                         </div>
                     )}
@@ -764,24 +1005,46 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       {/* Main Canvas */}
       <main className="flex-1 flex flex-col overflow-hidden relative print:hidden">
-        <div className="h-12 bg-white border-b border-sap-border flex items-center justify-between px-4 shrink-0 z-20 shadow-sm">
-            <div className="flex items-center gap-3">
-                <span className="text-xs text-sap-text font-black">المشروع:</span>
-                <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="bg-gray-50 border border-sap-border px-3 py-1 text-xs w-56 focus:border-sap-primary font-bold rounded-sap-s" />
-                <button onClick={handleSaveProject} disabled={isSaving} className="p-2 hover:bg-sap-highlight rounded-sap-s text-sap-primary border border-transparent hover:border-sap-primary transition-all">{isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18}/>}</button>
-                <button onClick={() => setShowSavedLists(true)} className="p-2 hover:bg-sap-highlight rounded-sap-s text-sap-primary border border-transparent hover:border-sap-primary transition-all"><FolderOpen size={18}/></button>
-                <button onClick={() => window.print()} className="p-2 bg-sap-primary text-white rounded-sap-s hover:bg-sap-primary-hover shadow-sm transition-all flex items-center gap-2 px-4"><Printer size={18}/> <span className="text-xs font-bold">طباعة</span></button>
+        <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm relative">
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                    <div className="bg-white shadow-sm border border-gray-100 p-1.5 rounded-md">
+                        <LayoutGrid size={18} className="text-sap-primary"/>
+                    </div>
+                    <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="bg-transparent border-none text-sm w-56 focus:ring-0 font-bold text-gray-700 placeholder-gray-400" placeholder="اسم المشروع..." />
+                </div>
+                
+                <div className="h-8 w-px bg-gray-200 mx-2"></div>
+
+                <div className="flex items-center gap-2">
+                    <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all shadow-sm text-xs font-bold">
+                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
+                        <span>حفظ</span>
+                    </button>
+                    <button onClick={() => setShowSavedLists(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all shadow-sm text-xs font-bold">
+                        <FolderOpen size={16}/>
+                        <span>فتح</span>
+                    </button>
+                </div>
             </div>
-            <div className="flex items-center gap-2 bg-gray-50 border border-sap-border px-2 py-1 rounded-sap-s">
-                <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="hover:text-sap-primary"><ZoomOut size={16}/></button>
-                <span className="text-xs font-black w-10 text-center font-mono">{globalStyles.previewZoom}%</span>
-                <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="hover:text-sap-primary"><ZoomIn size={16}/></button>
+
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 bg-white border border-gray-200 p-1 rounded-lg shadow-sm">
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><ZoomOut size={16}/></button>
+                    <span className="text-xs font-black w-12 text-center font-mono text-gray-700">{globalStyles.previewZoom}%</span>
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><ZoomIn size={16}/></button>
+                </div>
+                
+                <button onClick={() => window.print()} className="flex items-center gap-2 px-5 py-2.5 bg-sap-primary text-white rounded-lg hover:bg-sap-primary-hover shadow-lg shadow-sap-primary/20 transition-all text-xs font-black tracking-wide">
+                    <Printer size={18}/> 
+                    <span>طباعة الملصقات</span>
+                </button>
             </div>
         </div>
 
-        <div className="flex-1 bg-[#808080] overflow-auto p-8 relative flex justify-center custom-scrollbar">
+        <div className="flex-1 bg-slate-100 overflow-auto p-8 relative flex justify-center custom-scrollbar">
             <div 
-              className="bg-white shadow-2xl transition-all"
+              className="bg-white shadow-2xl transition-all ring-1 ring-black/5"
               style={{
                 width: '210mm', height: '297mm', transform: `scale(${globalStyles.previewZoom / 100})`, transformOrigin: 'top center',
                 display: 'grid', 
@@ -816,23 +1079,71 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       {/* Modals: Saved Lists & Product Picker */}
       {showSavedLists && (
-          <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-10 backdrop-blur-sm">
-              <div className="bg-white w-[500px] border border-sap-primary shadow-2xl rounded-sap-m overflow-hidden">
-                <div className="bg-sap-primary text-white px-4 py-3 flex justify-between items-center text-sm font-black shadow-md"><span>فتح مشروع محفوظ</span><button onClick={() => setShowSavedLists(false)} className="hover:bg-white/20 p-1 rounded"><X size={16}/></button></div>
-                <div className="p-0 max-h-[400px] overflow-y-auto">
-                    {savedLists.length === 0 ? <div className="p-12 text-center text-gray-400 italic">لا توجد مشاريع محفوظة</div> : (
-                        <table className="w-full text-right text-xs"><thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-300"><tr><th className="p-3">اسم المشروع</th><th className="p-3">التاريخ</th><th className="p-3 w-16 text-center">إجراء</th></tr></thead><tbody>{savedLists.map(list => (<tr key={list.id} className="border-b border-gray-100 hover:bg-sap-highlight cursor-pointer transition-colors" onClick={() => loadProject(list)}><td className="p-3 font-bold text-sap-text">{list.name}</td><td className="p-3 text-gray-500 font-mono">{new Date(list.date).toLocaleDateString('ar-SA')}</td><td className="p-3 text-center"><button onClick={(e) => { e.stopPropagation(); deleteProject(list.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded transition-all"><Trash2 size={14}/></button></td></tr>))}</tbody></table>
+          <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-10 backdrop-blur-sm transition-all">
+              <div className="bg-white w-[500px] shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                <div className="bg-gray-900 text-white px-5 py-4 flex justify-between items-center text-sm font-black shadow-md">
+                    <div className="flex items-center gap-2"><FolderOpen size={18}/> <span>فتح مشروع محفوظ</span></div>
+                    <button onClick={() => setShowSavedLists(false)} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={16}/></button>
+                </div>
+                <div className="p-0 overflow-y-auto custom-scrollbar bg-gray-50">
+                    {savedLists.length === 0 ? <div className="p-12 text-center text-gray-400 italic flex flex-col items-center gap-2"><FolderOpen size={32} className="opacity-20"/>لا توجد مشاريع محفوظة</div> : (
+                        <div className="divide-y divide-gray-100">
+                            {savedLists.map(list => (
+                                <div key={list.id} onClick={() => loadProject(list)} className="p-4 bg-white hover:bg-sap-highlight/5 cursor-pointer flex justify-between items-center group transition-all">
+                                    <div>
+                                        <div className="font-bold text-gray-800 text-sm group-hover:text-sap-primary transition-colors">{list.name}</div>
+                                        <div className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-1"><Clock size={10}/> {new Date(list.date).toLocaleDateString('ar-SA')}</div>
+                                    </div>
+                                    <button onClick={(e) => { e.stopPropagation(); deleteProject(list.id); }} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                                </div>
+                            ))}
+                        </div>
                     )}
                 </div>
               </div>
           </div>
       )}
       {showProductPicker && (
-          <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-             <div className="bg-white w-[600px] border border-sap-primary shadow-2xl rounded-sap-m overflow-hidden">
-                <div className="bg-sap-primary text-white px-4 py-3 flex justify-between items-center text-sm font-black shadow-md"><span>قاعدة البيانات: اختيار منتج</span><button onClick={() => setShowProductPicker(false)} className="hover:bg-white/20 p-1 rounded"><X size={16}/></button></div>
-                <div className="p-4 bg-gray-50 border-b border-gray-200"><div className="flex gap-2"><div className="relative flex-1"><input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyDown={handlePickerKeyDown} placeholder="بحث باسم المنتج أو الكود..." className="w-full pl-2 pr-8 py-2 border border-gray-300 text-xs focus:border-sap-primary font-bold rounded-sap-s" autoFocus /><Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={14}/></div><button onClick={() => addTag()} className="px-4 py-2 bg-white border border-gray-300 hover:border-sap-primary text-xs font-bold hover:bg-sap-highlight rounded-sap-s transition-all">إضافة يدوي</button></div></div>
-                <div className="max-h-[350px] overflow-y-auto bg-white custom-scrollbar"><table className="w-full text-xs text-right"><thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-300 sticky top-0"><tr><th className="p-3">الكود</th><th className="p-3">اسم المنتج</th><th className="p-3">الوحدة</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredProducts.map((p, index) => (<tr key={p.id} onClick={() => addTag(p)} className={`cursor-pointer transition-colors ${pickerSelectedIndex === index + 1 ? 'bg-sap-primary text-white' : 'hover:bg-sap-highlight'}`}><td className={`p-3 font-mono font-bold ${pickerSelectedIndex === index + 1 ? 'text-white' : 'text-sap-primary'}`}>{p.code}</td><td className="p-3 font-bold">{p.name}</td><td className={`p-3 ${pickerSelectedIndex === index + 1 ? 'text-white/80' : 'text-gray-500'}`}>{(units.find(u => u.id === p.unitId))?.name}</td></tr>))}</tbody></table></div>
+          <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
+             <div className="bg-white w-[600px] shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                <div className="bg-gray-900 text-white px-5 py-4 flex justify-between items-center text-sm font-black shadow-md shrink-0">
+                    <div className="flex items-center gap-2"><Search size={18}/> <span>قاعدة البيانات: اختيار منتج</span></div>
+                    <button onClick={() => setShowProductPicker(false)} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={16}/></button>
+                </div>
+                
+                <div className="p-4 bg-gray-50 border-b border-gray-200 shrink-0">
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyDown={handlePickerKeyDown} placeholder="بحث باسم المنتج أو الكود..." className="w-full pl-3 pr-9 py-2.5 border border-gray-300 text-sm focus:border-sap-primary focus:ring-1 focus:ring-sap-primary font-bold rounded-lg shadow-sm" autoFocus />
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                        </div>
+                        <button onClick={() => addTag()} className="px-4 py-2 bg-white border border-gray-300 hover:border-sap-primary text-xs font-bold hover:bg-sap-highlight hover:text-sap-primary rounded-lg transition-all shadow-sm flex items-center gap-2">
+                            <Plus size={16}/>
+                            <span>إضافة يدوي</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="overflow-y-auto bg-white custom-scrollbar flex-1">
+                    <table className="w-full text-xs text-right">
+                        <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100 sticky top-0 z-10">
+                            <tr>
+                                <th className="p-4 w-24">الكود</th>
+                                <th className="p-4">اسم المنتج</th>
+                                <th className="p-4 w-24">الوحدة</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {filteredProducts.map((p, index) => (
+                                <tr key={p.id} onClick={() => addTag(p)} className={`cursor-pointer transition-colors group ${pickerSelectedIndex === index + 1 ? 'bg-sap-primary text-white' : 'hover:bg-gray-50'}`}>
+                                    <td className={`p-4 font-mono font-bold ${pickerSelectedIndex === index + 1 ? 'text-white' : 'text-sap-primary'}`}>{p.code}</td>
+                                    <td className="p-4 font-bold text-sm">{p.name}</td>
+                                    <td className={`p-4 ${pickerSelectedIndex === index + 1 ? 'text-white/80' : 'text-gray-400'}`}>{(units.find(u => u.id === p.unitId))?.name}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
              </div>
           </div>
       )}

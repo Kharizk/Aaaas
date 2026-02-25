@@ -1,13 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, Building2, Layout, CheckCircle2, ShieldCheck, Sparkles, Loader2, Lock, UserCog, AlertCircle, CalendarClock } from 'lucide-react';
+import { Save, Building2, Layout, CheckCircle2, ShieldCheck, Sparkles, Loader2, Lock, UserCog, AlertCircle, CalendarClock, Coins } from 'lucide-react';
 import { db } from '../services/supabase';
+import { useSystemSettings } from './SystemSettingsContext';
 
 export const Settings: React.FC = () => {
+    const { settings, updateSettings, isLoading: isSettingsLoading } = useSystemSettings();
     const [orgName, setOrgName] = useState('');
-    const [expiryAlertDays, setExpiryAlertDays] = useState(60); // Default 60 days
+    const [expiryAlertDays, setExpiryAlertDays] = useState(60);
+    const [currencySymbolType, setCurrencySymbolType] = useState<'text' | 'icon' | 'custom_image'>('text');
+    const [currencySymbolImage, setCurrencySymbolImage] = useState<string | null>(null);
+
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
     const [isSaved, setIsSaved] = useState(false);
 
     // Password State
@@ -19,24 +23,23 @@ export const Settings: React.FC = () => {
     const [isPassSaving, setIsPassSaving] = useState(false);
 
     useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const settings = await db.settings.get();
-                setOrgName(settings.orgName || 'مؤسسة إدارة المتجر');
-                setExpiryAlertDays(settings.expiryAlertDays || 60);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadSettings();
-    }, []);
+        if (!isSettingsLoading) {
+            setOrgName(settings.orgName);
+            setExpiryAlertDays(settings.expiryAlertDays);
+            setCurrencySymbolType(settings.currencySymbolType);
+            setCurrencySymbolImage(settings.currencySymbolImage);
+        }
+    }, [settings, isSettingsLoading]);
 
     const handleSaveOrg = async () => {
         setIsSaving(true);
         try {
-            await db.settings.upsert({ orgName, expiryAlertDays: Number(expiryAlertDays) });
+            await updateSettings({ 
+                orgName, 
+                expiryAlertDays: Number(expiryAlertDays),
+                currencySymbolType,
+                currencySymbolImage
+            });
             setIsSaved(true);
             setTimeout(() => setIsSaved(false), 2000);
             localStorage.setItem('print_org_name', orgName);
@@ -85,7 +88,7 @@ export const Settings: React.FC = () => {
         }
     };
 
-    if (isLoading) {
+    if (isSettingsLoading) {
         return (
             <div className="h-64 flex items-center justify-center">
                 <Loader2 className="animate-spin text-md-primary" size={32} />
@@ -131,6 +134,47 @@ export const Settings: React.FC = () => {
                                   <p className="text-sm text-md-on-secondary-container font-medium leading-relaxed">
                                     سيتم حفظ هذا الاسم ليظهر في ترويسة جميع التقارير والملصقات لجميع المستخدمين.
                                   </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
+                                <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1 flex items-center gap-2">
+                                    <Coins size={16} /> رمز العملة (الريال السعودي)
+                                </label>
+                                <div className="space-y-3">
+                                    <select 
+                                        value={currencySymbolType} 
+                                        onChange={(e) => setCurrencySymbolType(e.target.value as any)}
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm"
+                                    >
+                                        <option value="text">نص (ر.س)</option>
+                                        <option value="icon">رمز (أيقونة)</option>
+                                        <option value="custom_image">صورة مخصصة</option>
+                                    </select>
+
+                                    {currencySymbolType === 'custom_image' && (
+                                        <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200 border-dashed">
+                                            {currencySymbolImage ? (
+                                                <img src={currencySymbolImage} className="w-12 h-12 object-contain" alt="Currency" />
+                                            ) : (
+                                                <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs font-bold">لا توجد</div>
+                                            )}
+                                            <label className="cursor-pointer bg-white border border-gray-300 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
+                                                رفع صورة
+                                                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onload = (re) => setCurrencySymbolImage(re.target?.result as string);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }} />
+                                            </label>
+                                            {currencySymbolImage && (
+                                                <button onClick={() => setCurrencySymbolImage(null)} className="text-red-500 text-xs font-bold hover:underline">حذف</button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

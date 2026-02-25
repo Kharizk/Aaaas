@@ -3,6 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { PriceGroup, PriceGroupBoard, PriceGroupItem, Product, Unit, PriceGroupStyles, PriceGroupTheme } from '../types';
 import { db } from '../services/supabase';
+import { useSystemSettings } from './SystemSettingsContext';
+import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
 import { 
   Plus, Trash2, Save, Printer, FolderOpen, Loader2, 
   X, ZoomIn, ZoomOut, Search, Copy, 
@@ -14,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export const PriceGroupManager: React.FC = () => {
+  const { settings } = useSystemSettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [projects, setProjects] = useState<PriceGroup[]>([]);
@@ -56,10 +59,21 @@ export const PriceGroupManager: React.FC = () => {
     borderWidth: 10,
     padding: 30,
     boardsPerPage: 2,
-    showGeometricPattern: true
+    showGeometricPattern: true,
+    currencySymbolType: 'icon',
+    currencySymbolImage: null
   });
 
   useEffect(() => { fetchData(); }, []);
+
+  // Sync styles with global settings
+  useEffect(() => {
+    setStyles(prev => ({
+      ...prev,
+      currencySymbolType: settings.currencySymbolType,
+      currencySymbolImage: settings.currencySymbolImage
+    }));
+  }, [settings.currencySymbolType, settings.currencySymbolImage]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -226,7 +240,7 @@ export const PriceGroupManager: React.FC = () => {
                         <div className="font-black" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, WebkitPrintColorAdjust: 'exact' }}>{item.label}</div>
                         <div className="flex items-baseline gap-1 bg-gray-50/50 px-4 py-1 rounded-lg">
                             <span className="font-black font-mono" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor, WebkitPrintColorAdjust: 'exact' }}>{item.price}</span>
-                            <span className="font-bold opacity-30 text-[10px]" style={{ color: s.textColor }}>SR</span>
+                            <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color={s.textColor} className="opacity-50" style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
                         </div>
                     </div>
                 </div>
@@ -439,6 +453,7 @@ export const PriceGroupManager: React.FC = () => {
 
                     <div className="space-y-6 pt-6 border-t border-slate-100">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">باليتة الألوان المخصصة</label>
+                        
                         <div className="grid grid-cols-2 gap-4">
                             {[
                                 { label: 'خلفية اللوحة', key: 'backgroundColor' },

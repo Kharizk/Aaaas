@@ -3,6 +3,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Product, Unit, CatalogProject, CatalogItem, CatalogStyleConfig, CatalogLayoutType, CatalogBadgeType } from '../types';
 import { db } from '../services/supabase';
 import { GoogleGenAI } from "@google/genai";
+import { useSystemSettings } from './SystemSettingsContext';
+import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
 import { 
   Plus, Image as ImageIcon, Trash2, Search, X, Palette, Upload, 
   ShoppingCart, Sparkles, Save, FolderOpen, Loader2, Printer, 
@@ -20,6 +22,7 @@ interface CatalogGeneratorProps {
 }
 
 export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, units, viewModeData }) => {
+  const { settings } = useSystemSettings();
   // --- STATE ---
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
@@ -40,7 +43,18 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     borderRadius: 16,
     layoutType: 'app_modern',
     showHeader: true,
+    currencySymbolType: 'icon',
+    currencySymbolImage: null
   });
+
+  // Sync styleConfig with global settings
+  useEffect(() => {
+    setStyleConfig(prev => ({
+      ...prev,
+      currencySymbolType: settings.currencySymbolType,
+      currencySymbolImage: settings.currencySymbolImage
+    }));
+  }, [settings.currencySymbolType, settings.currencySymbolImage]);
 
   // UI State
   const [zoom, setZoom] = useState(100);
@@ -314,7 +328,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                                     <span className="text-2xl font-black tracking-tighter">{int}</span>
                                     <div className="flex flex-col items-start leading-none -mt-1">
                                         <span className="text-[10px] font-bold">.{dec||'00'}</span>
-                                        <span className="text-[6px] text-black font-black uppercase">SR</span>
+                                        <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="black" className="w-3 h-3" />
                                     </div>
                                 </div>
                                 {item.originalPrice && (
@@ -385,7 +399,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                     <span className="text-2xl font-black">{int}</span>
                     <div className="flex flex-col items-start ml-0.5">
                        <span className="text-[9px] font-black mt-0.5">.{dec||'00'}</span>
-                       <span className="text-[7px] font-bold text-gray-400">ريال</span>
+                       <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="gray" className="w-3 h-3 opacity-50" />
                     </div>
                  </div>
               </div>
