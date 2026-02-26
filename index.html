@@ -118,6 +118,11 @@
         /* Odoo Table Style Override */
         table { border-collapse: separate; border-spacing: 0; }
         
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
         @media print {
             body * { visibility: hidden !important; }
             #print-container, #print-container * { visibility: visible !important; }

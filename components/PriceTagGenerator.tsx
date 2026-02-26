@@ -20,6 +20,37 @@ const SaudiRiyalIcon = ({ className, style, color }: { className?: string, style
   </svg>
 );
 
+const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info' | 'warning', onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColors = {
+    success: 'bg-emerald-500',
+    error: 'bg-red-500',
+    info: 'bg-blue-500',
+    warning: 'bg-amber-500'
+  };
+
+  const icons = {
+    success: <CheckCircle2 size={18} />,
+    error: <X size={18} />,
+    info: <Zap size={18} />,
+    warning: <Zap size={18} />
+  };
+
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg shadow-black/5 text-white ${bgColors[type]} transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 min-w-[300px] justify-between`}>
+      <div className="flex items-center gap-3">
+          {icons[type]}
+          <span className="text-sm font-bold">{message}</span>
+      </div>
+      <button onClick={onClose} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={14} /></button>
+    </div>
+  );
+};
+
 interface PriceTagGeneratorProps {
   products: Product[];
   units: Unit[];
@@ -28,6 +59,13 @@ interface PriceTagGeneratorProps {
 export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, units }) => {
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    const id = crypto.randomUUID();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+  const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
   const [listName, setListName] = useState('مشروع ملصقات جديد');
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [savedLists, setSavedLists] = useState<SavedTagList[]>([]);
@@ -110,8 +148,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   };
 
   const handleSaveProject = async () => {
-    if (!listName.trim()) { alert("الرجاء إدخل اسم المشروع"); return; }
-    if (selectedTags.length === 0) { alert("المشروع فارغ"); return; }
+    if (!listName.trim()) { addToast("الرجاء إدخل اسم المشروع", "error"); return; }
+    if (selectedTags.length === 0) { addToast("المشروع فارغ", "warning"); return; }
     setIsSaving(true);
     try {
       const listData = { 
@@ -124,8 +162,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       await db.tagLists.upsert(listData);
       setActiveListId(listData.id);
       fetchSavedLists();
-      alert("تم الحفظ بنجاح");
-    } catch (e) { alert("خطأ في الحفظ"); }
+      addToast("تم الحفظ بنجاح", "success");
+    } catch (e) { addToast("خطأ في الحفظ", "error"); }
     finally { setIsSaving(false); }
   };
 
@@ -139,6 +177,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     setShowSavedLists(false);
     setActiveTagId(null);
     setHasStarted(true);
+    addToast("تم تحميل المشروع", "success");
   };
 
   const deleteProject = async (id: string) => {
@@ -147,11 +186,12 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       await db.tagLists.delete(id);
       if (activeListId === id) { setActiveListId(null); setListName('مشروع جديد'); setSelectedTags([]); }
       fetchSavedLists();
-    } catch (e) { alert("فشل الحذف"); }
+      addToast("تم الحذف بنجاح", "success");
+    } catch (e) { addToast("فشل الحذف", "error"); }
   };
 
   const addTag = (product?: Product) => {
-    if (selectedTags.length >= 16) { alert("الصفحة ممتلئة (16 ملصق كحد أقصى)"); return; }
+    if (selectedTags.length >= 16) { addToast("الصفحة ممتلئة (16 ملصق كحد أقصى)", "warning"); return; }
     let unitName = '';
     if (product && product.unitId) {
         const u = units.find(unit => unit.id === product.unitId);
@@ -273,10 +313,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   const renderTagLayout = (tag: SelectedTag | undefined, s: any) => {
       if (!tag) {
           return (
-            <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <button onClick={() => setShowProductPicker(true)} className="text-sap-primary text-xs font-bold bg-white border border-sap-primary px-3 py-1.5 shadow-sm rounded-sap-s flex items-center gap-1">
-                    <Plus size={14}/> إضافة
-                </button>
+            <div className="h-full w-full flex items-center justify-center group cursor-pointer bg-gray-50/30 hover:bg-gray-50 transition-colors duration-300" onClick={() => setShowProductPicker(true)}>
+                <div className="w-10 h-10 rounded-full bg-white border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 group-hover:border-sap-primary group-hover:text-sap-primary group-hover:scale-110 transition-all duration-300 shadow-sm">
+                    <Plus size={20} strokeWidth={2.5} />
+                </div>
             </div>
           );
       }
@@ -451,40 +491,48 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       if (s.template === 'big_impact') {
           return (
-            <div className="flex h-full w-full bg-white relative overflow-hidden border border-gray-200">
-                {/* Side Strip - VAT (Right Side) */}
-                <div className="w-[24px] h-full flex items-center justify-center bg-gray-50 border-l border-gray-100 absolute right-0 top-0 bottom-0 z-20">
-                     <span className="text-[9px] font-black -rotate-90 whitespace-nowrap tracking-wide text-gray-800" style={{ transform: 'rotate(-90deg) translateX(0%)' }}>السعر شامل الضريبة</span>
+            <div className="flex flex-col h-full w-full bg-white relative overflow-hidden border border-gray-200 shadow-sm group">
+                {/* Top Section - Price */}
+                <div 
+                    className="h-[65%] flex items-center justify-center relative overflow-hidden"
+                    style={{ backgroundColor: s.backgroundColor }}
+                >
+                     {/* Subtle Background Pattern */}
+                     <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, black 1px, transparent 0)', backgroundSize: '12px 12px' }}></div>
+                     
+                     {/* Shine Effect */}
+                     <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-br from-white/30 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+                     
+                     <div className="flex flex-col items-center z-10 relative transform transition-transform group-hover:scale-105 duration-300">
+                        {s.showOriginalPrice && tag.originalPrice && (
+                            <div className="relative mb-0.5">
+                                <span className="text-lg font-bold opacity-60 line-through decoration-red-500/50 decoration-2" style={{ color: s.priceColor }}>{tag.originalPrice}</span>
+                            </div>
+                        )}
+                        <div className="flex items-start leading-none drop-shadow-sm">
+                            <PriceWithCurrency scale={1.8} />
+                        </div>
+                        <span className="text-[10px] font-bold mt-1 opacity-70" style={{ color: s.priceColor }}>السعر شامل الضريبة</span>
+                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col h-full mr-[24px]">
-                    {/* Top Section - Price */}
-                    <div 
-                        className="h-[65%] flex items-center justify-center relative overflow-hidden"
-                        style={{ backgroundColor: s.backgroundColor }}
-                    >
-                         <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[150%] bg-white/10 rounded-full blur-xl"></div>
-                         <div className="flex flex-col items-center z-10">
-                            {s.showOriginalPrice && tag.originalPrice && (
-                                <span className="text-sm font-bold opacity-80 line-through mb-1" style={{ color: s.priceColor }}>{tag.originalPrice}</span>
-                            )}
-                            <div className="flex items-start leading-none" style={{ color: s.priceColor }}>
-                                <PriceWithCurrency scale={1.5} />
-                            </div>
-                         </div>
+                {/* Bottom Section - Name */}
+                <div className="h-[35%] p-2 flex flex-col items-center justify-center text-center relative border-t border-black/5" style={{ backgroundColor: s.nameBackgroundColor || '#f8fafc' }}>
+                    <div style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor, fontWeight: '800' }} className="leading-tight line-clamp-2 font-sans w-full px-1">
+                        {tag.name}
                     </div>
+                    
+                    {s.showUnit && tag.unitName && (
+                        <span className="absolute bottom-1 right-2 text-[9px] font-bold bg-gray-200/50 px-1.5 py-0.5 rounded text-gray-600">
+                            {tag.unitName}
+                        </span>
+                    )}
 
-                    {/* Bottom Section - Name */}
-                    <div className="h-[35%] p-2 flex items-center justify-center text-center relative" style={{ backgroundColor: s.nameBackgroundColor || s.backgroundColor }}>
-                        <div style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor, fontWeight: 'bold' }} className="leading-tight line-clamp-2">
-                            {tag.name}
+                    {s.showLogo && globalStyles.logoUrl && (
+                        <div className="absolute bottom-1 left-2 opacity-40 grayscale hover:grayscale-0 transition-all">
+                            <img src={globalStyles.logoUrl} alt="Logo" className="h-3 object-contain" />
                         </div>
-                         {s.showUnit && tag.unitName && (
-                            <span className="absolute bottom-1 left-2 text-[8px] font-bold bg-gray-50 px-1 rounded" style={{ color: s.unitColor }}>
-                                {tag.unitName}
-                            </span>
-                        )}
-                    </div>
+                    )}
                 </div>
             </div>
           );
@@ -667,6 +715,15 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       
       {/* --- PORTAL FOR PRINTING --- */}
       <FullPagePrint />
+
+      {/* Toasts */}
+      <div className="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none">
+        <div className="pointer-events-auto flex flex-col gap-2">
+            {toasts.map(t => (
+                <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+            ))}
+        </div>
+      </div>
 
       {/* Sidebar */}
       <aside className="w-[340px] bg-white border-l border-gray-200 flex flex-col shrink-0 print:hidden z-30 shadow-xl shadow-gray-200/50 h-full font-sans">
@@ -1066,8 +1123,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <div 
                           key={i} 
                           onClick={() => tag ? setActiveTagId(tag.id) : null}
-                          className={`relative overflow-hidden transition-all ${tag ? 'cursor-pointer hover:bg-sap-highlight/20' : 'bg-gray-100 opacity-50'} ${isActive ? 'outline outline-2 outline-sap-primary z-10 shadow-lg' : ''}`}
-                          style={{ width: `${labelWidth}mm`, height: `${globalStyles.tagHeight}mm`, boxSizing: 'border-box', border: s.showBorder ? '1px solid #ccc' : '1px dashed #e0e0e0', backgroundColor: s.backgroundColor }}
+                          className={`relative overflow-hidden transition-all ${tag ? 'cursor-pointer hover:shadow-md' : ''} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
+                          style={{ 
+                              width: `${labelWidth}mm`, 
+                              height: `${globalStyles.tagHeight}mm`, 
+                              boxSizing: 'border-box', 
+                              border: s.showBorder ? '1px solid #e5e7eb' : '1px dashed #e5e7eb', 
+                              backgroundColor: tag ? s.backgroundColor : 'transparent' 
+                          }}
                         >
                             {renderTagLayout(tag, s)}
                         </div>
