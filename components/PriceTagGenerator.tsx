@@ -11,8 +11,8 @@ import {
   ScanLine, Tag as TagIcon, Zap, CheckCircle2, LayoutTemplate, Columns, Rows, Barcode as BarcodeIcon
 } from 'lucide-react';
 
-const SaudiRiyalIcon = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} xmlns="http://www.w3.org/2000/svg">
+const SaudiRiyalIcon = ({ className, style, color }: { className?: string, style?: React.CSSProperties, color?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} xmlns="http://www.w3.org/2000/svg">
     <path d="M16 3v18" />
     <path d="M8 3v14c0 2.5-2 4-4 4" />
     <path d="M3 10h18" />
@@ -267,7 +267,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       if (type === 'text') {
           return <span className={className} style={{ ...style, color, fontFamily: 'sans-serif', fontWeight: 'bold', fontSize: size ? `${size}pt` : 'inherit' }}>ر.س</span>;
       }
-      return <SaudiRiyalIcon className={className} style={{ ...style, ...sizeStyle, color }} />;
+      return <SaudiRiyalIcon className={className} style={{ ...style, ...sizeStyle }} color={color} />;
   };
 
   const renderTagLayout = (tag: SelectedTag | undefined, s: any) => {
