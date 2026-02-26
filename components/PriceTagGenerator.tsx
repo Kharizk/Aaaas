@@ -8,7 +8,7 @@ import {
   ZoomIn, ZoomOut, Image as ImageIcon, X, Save, FolderOpen, Loader2,
   Monitor, Paintbrush, AlignCenter, AlignRight, AlignLeft,
   MousePointer2, AppWindow, Type as TypeIcon, Hash, Receipt, LayoutGrid, Clock, FilePlus, SlidersHorizontal, Palette, Frame, Layers, ChevronDown, ChevronUp, Settings, Eye,
-  ScanLine, Tag as TagIcon, Zap, CheckCircle2, LayoutTemplate, Columns, Rows, Barcode as BarcodeIcon
+  ScanLine, Tag as TagIcon, Zap, CheckCircle2, LayoutTemplate, Columns, Rows, Barcode as BarcodeIcon, Copy
 } from 'lucide-react';
 
 const SaudiRiyalIcon = ({ className, style, color }: { className?: string, style?: React.CSSProperties, color?: string }) => (
@@ -58,7 +58,7 @@ interface PriceTagGeneratorProps {
 
 export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, units }) => {
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
-  const [activeTagId, setActiveTagId] = useState<string | null>(null);
+  const [activeTagIds, setActiveTagIds] = useState<string[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const addToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
@@ -135,7 +135,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   ];
 
   useEffect(() => { fetchSavedLists(); }, []);
-  useEffect(() => { if (activeTagId && nameInputRef.current) nameInputRef.current.focus(); }, [activeTagId]);
+  useEffect(() => { if (activeTagIds.length === 1 && nameInputRef.current) nameInputRef.current.focus(); }, [activeTagIds]);
   useEffect(() => { setPickerSelectedIndex(0); }, [searchTerm]);
 
   const fetchSavedLists = async () => {
@@ -175,7 +175,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       setGlobalStyles(prev => ({ ...prev, ...list.styles, previewZoom: prev.previewZoom }));
     }
     setShowSavedLists(false);
-    setActiveTagId(null);
+    setActiveTagIds([]);
     setHasStarted(true);
     addToast("تم تحميل المشروع", "success");
   };
@@ -184,7 +184,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     if (!confirm('هل أنت متأكد من الحذف؟')) return;
     try {
       await db.tagLists.delete(id);
-      if (activeListId === id) { setActiveListId(null); setListName('مشروع جديد'); setSelectedTags([]); }
+      if (activeListId === id) { setActiveListId(null); setListName('مشروع جديد'); setSelectedTags([]); setActiveTagIds([]); }
       fetchSavedLists();
       addToast("تم الحذف بنجاح", "success");
     } catch (e) { addToast("فشل الحذف", "error"); }
@@ -216,9 +216,9 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   };
 
   const handleStyleChange = (key: keyof TagStyleOverrides | keyof TagStyles, value: any) => {
-      if (activeTagId) {
+      if (activeTagIds.length > 0) {
           setSelectedTags(prev => prev.map(tag => {
-              if (tag.id === activeTagId) {
+              if (activeTagIds.includes(tag.id)) {
                   return { ...tag, styles: { ...(tag.styles || {}), [key]: value } };
               }
               return tag;
@@ -228,7 +228,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       }
   };
 
-  const activeTag = useMemo(() => selectedTags.find(t => t.id === activeTagId), [selectedTags, activeTagId]);
+  const activeTag = useMemo(() => activeTagIds.length === 1 ? selectedTags.find(t => t.id === activeTagIds[0]) : null, [selectedTags, activeTagIds]);
 
   const getEffectiveStyle = (tag?: SelectedTag) => {
     if (!tag) return { ...globalStyles, textAlign: 'center', nameWeight: '700', priceWeight: '700' };
@@ -615,7 +615,15 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       return <div>Error</div>;
   };
 
-  const currentScopeStyles = activeTag ? getEffectiveStyle(activeTag) : globalStyles;
+  const currentScopeStyles = activeTagIds.length === 1 
+    ? getEffectiveStyle(selectedTags.find(t => t.id === activeTagIds[0])) 
+    : (activeTagIds.length > 1 ? globalStyles : globalStyles); // If multiple selected, show global styles (or mixed state in future) but apply to all. For now, showing global defaults when multiple selected is safer or maybe show the first one's style? Let's stick to global for simplicity in UI display, but edits apply to all.
+    
+  // Better approach for UI: If multiple selected, we might want to show "Mixed" or just the Global Styles as a base. 
+  // Let's use the first selected tag's style as the "preview" in the sidebar, but knowing edits apply to all.
+  const sidebarStyles = activeTagIds.length > 0 
+    ? getEffectiveStyle(selectedTags.find(t => t.id === activeTagIds[0])) 
+    : globalStyles;
 
   // Calculate Label Width based on margins
   const labelWidth = useMemo(() => {
@@ -727,20 +735,24 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       {/* Sidebar */}
       <aside className="w-[340px] bg-white border-l border-gray-200 flex flex-col shrink-0 print:hidden z-30 shadow-xl shadow-gray-200/50 h-full font-sans">
-        <div className={`px-5 py-4 flex items-center justify-between transition-colors relative overflow-hidden ${activeTagId ? 'bg-sap-primary' : 'bg-white border-b border-gray-100'}`}>
-            {activeTagId && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none"></div>}
+        <div className={`px-5 py-4 flex items-center justify-between transition-colors relative overflow-hidden ${activeTagIds.length > 0 ? 'bg-sap-primary' : 'bg-white border-b border-gray-100'}`}>
+            {activeTagIds.length > 0 && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none"></div>}
             
             <div className="flex items-center gap-3 relative z-10">
-                <div className={`p-2 rounded-lg ${activeTagId ? 'bg-white/20 text-white' : 'bg-sap-primary/10 text-sap-primary'}`}>
+                <div className={`p-2 rounded-lg ${activeTagIds.length > 0 ? 'bg-white/20 text-white' : 'bg-sap-primary/10 text-sap-primary'}`}>
                     <Settings size={18} strokeWidth={2.5}/> 
                 </div>
                 <div>
-                    <div className={`text-xs font-bold uppercase tracking-wider ${activeTagId ? 'text-white/80' : 'text-gray-400'}`}>الإعدادات</div>
-                    <div className={`font-black text-sm ${activeTagId ? 'text-white' : 'text-gray-800'}`}>{activeTagId ? 'تخصيص الملصق' : 'الإعدادات العامة'}</div>
+                    <div className={`text-xs font-bold uppercase tracking-wider ${activeTagIds.length > 0 ? 'text-white/80' : 'text-gray-400'}`}>الإعدادات</div>
+                    <div className={`font-black text-sm ${activeTagIds.length > 0 ? 'text-white' : 'text-gray-800'}`}>
+                        {activeTagIds.length > 0 
+                            ? (activeTagIds.length > 1 ? `تخصيص ${activeTagIds.length} ملصقات` : 'تخصيص الملصق') 
+                            : 'الإعدادات العامة'}
+                    </div>
                 </div>
             </div>
-            {activeTagId && (
-                <button onClick={() => setActiveTagId(null)} className="relative z-10 text-[10px] font-bold bg-white text-sap-primary px-3 py-1.5 rounded-full shadow-sm hover:bg-gray-50 transition-colors">
+            {activeTagIds.length > 0 && (
+                <button onClick={() => setActiveTagIds([])} className="relative z-10 text-[10px] font-bold bg-white text-sap-primary px-3 py-1.5 rounded-full shadow-sm hover:bg-gray-50 transition-colors">
                     عودة للعام
                 </button>
             )}
@@ -852,7 +864,15 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             <AccordionHeader title="بيانات العنصر" isOpen={openSections.itemProps} onClick={() => toggleSection('itemProps')} icon={SlidersHorizontal} />
             {openSections.itemProps && (
                 <div className="p-4 space-y-4 border-b border-gray-100 bg-white min-h-[150px]">
-                    {activeTag ? (
+                    {activeTagIds.length > 1 ? (
+                        <div className="text-center py-10 opacity-60 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                            <div className="p-3 bg-white rounded-full shadow-sm mb-3">
+                                <Layers size={20} className="text-gray-400"/>
+                            </div>
+                            <p className="font-bold text-gray-600 text-sm">تم تحديد {activeTagIds.length} ملصقات</p>
+                            <p className="text-[10px] text-gray-400 mt-1">يمكنك تعديل الألوان والخطوط لجميع الملصقات المحددة</p>
+                        </div>
+                    ) : activeTag ? (
                         <>
                             <div className="mb-2">
                                 <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">اسم المنتج</label>
@@ -1045,12 +1065,12 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     <button onClick={() => setShowProductPicker(true)} className="w-full py-2.5 bg-sap-primary text-white font-bold shadow-md shadow-sap-primary/20 hover:bg-sap-primary-hover hover:shadow-lg hover:shadow-sap-primary/30 flex items-center justify-center gap-2 rounded-xl transition-all transform active:scale-[0.98]">
                         <Plus size={18}/> إضافة منتج جديد
                     </button>
-                    {activeTag && (
+                    {activeTagIds.length > 0 && (
                         <div className="flex gap-3">
-                            <button onClick={() => { setSelectedTags(prev => prev.filter(t => t.id !== activeTag.id)); setActiveTagId(null); }} className="flex-1 py-2.5 bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:border-red-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
-                                <Trash2 size={14} /> حذف
+                            <button onClick={() => { setSelectedTags(prev => prev.filter(t => !activeTagIds.includes(t.id))); setActiveTagIds([]); }} className="flex-1 py-2.5 bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:border-red-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
+                                <Trash2 size={14} /> حذف ({activeTagIds.length})
                             </button>
-                            <button onClick={() => setActiveTagId(null)} className="flex-1 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 font-bold rounded-xl text-xs transition-all shadow-sm">
+                            <button onClick={() => setActiveTagIds([])} className="flex-1 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 font-bold rounded-xl text-xs transition-all shadow-sm">
                                 إلغاء التحديد
                             </button>
                         </div>
@@ -1082,10 +1102,51 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <FolderOpen size={16}/>
                         <span>فتح</span>
                     </button>
+                    <button 
+                        onClick={() => { if(confirm('هل أنت متأكد من مسح جميع الملصقات؟')) { setSelectedTags([]); setActiveTagIds([]); addToast("تم مسح الصفحة", "info"); } }} 
+                        className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-all shadow-sm text-xs font-bold"
+                        title="مسح الكل"
+                    >
+                        <Trash2 size={16}/>
+                    </button>
+                    <button 
+                        onClick={() => {
+                            if (selectedTags.length > 0) {
+                                if (activeTagIds.length === selectedTags.length) {
+                                    setActiveTagIds([]);
+                                } else {
+                                    setActiveTagIds(selectedTags.map(t => t.id));
+                                }
+                            }
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all shadow-sm text-xs font-bold ${activeTagIds.length === selectedTags.length && selectedTags.length > 0 ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                        title={activeTagIds.length === selectedTags.length ? "إلغاء تحديد الكل" : "تحديد الكل"}
+                    >
+                        <CheckCircle2 size={16}/>
+                        <span>{activeTagIds.length === selectedTags.length ? "إلغاء الكل" : "تحديد الكل"}</span>
+                    </button>
                 </div>
             </div>
 
             <div className="flex items-center gap-4">
+                {activeTagIds.length === 1 && (
+                    <button 
+                        onClick={() => {
+                            const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
+                            if (currentTag && selectedTags.length < 16) {
+                                const newTag = { ...currentTag, id: crypto.randomUUID() };
+                                setSelectedTags(prev => [...prev, newTag]);
+                                addToast("تم تكرار الملصق", "success");
+                            } else if (selectedTags.length >= 16) {
+                                addToast("الصفحة ممتلئة", "warning");
+                            }
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 transition-all shadow-sm text-xs font-bold animate-in fade-in"
+                    >
+                        <Copy size={16}/>
+                        <span>تكرار</span>
+                    </button>
+                )}
                 <div className="flex items-center gap-1 bg-white border border-gray-200 p-1 rounded-lg shadow-sm">
                     <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><ZoomOut size={16}/></button>
                     <span className="text-xs font-black w-12 text-center font-mono text-gray-700">{globalStyles.previewZoom}%</span>
@@ -1118,11 +1179,18 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 {Array.from({ length: 16 }).map((_, i) => {
                     const tag = selectedTags[i];
                     const s = getEffectiveStyle(tag);
-                    const isActive = tag && activeTagId === tag.id;
+                    const isActive = tag && activeTagIds.includes(tag.id);
                     return (
                         <div 
                           key={i} 
-                          onClick={() => tag ? setActiveTagId(tag.id) : null}
+                          onClick={(e) => {
+                              if (!tag) return;
+                              if (e.ctrlKey || e.metaKey) {
+                                  setActiveTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]);
+                              } else {
+                                  setActiveTagIds(prev => prev.includes(tag.id) && prev.length === 1 ? [] : [tag.id]);
+                              }
+                          }}
                           className={`relative overflow-hidden transition-all ${tag ? 'cursor-pointer hover:shadow-md' : ''} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
                           style={{ 
                               width: `${labelWidth}mm`, 

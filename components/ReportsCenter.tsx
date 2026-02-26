@@ -7,7 +7,7 @@ import { ReportLayout } from './ReportLayout';
 import { db } from '../services/supabase';
 import { 
   FileLineChart, LayoutGrid, BarChart3, TrendingUp, Package, Printer, 
-  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft 
+  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle 
 } from 'lucide-react';
 
 interface ReportsCenterProps {
@@ -18,9 +18,187 @@ interface ReportsCenterProps {
 }
 
 export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, products, units }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'standard' | 'matrix' | 'products' | 'inventory'>('standard');
+  const [activeSubTab, setActiveSubTab] = useState<'standard' | 'matrix' | 'products' | 'inventory' | 'expiry'>('standard');
   const [showHeader, setShowHeader] = useState(true);
   const [productSearch, setProductSearch] = useState('');
+
+  // --- Expiry Report Sub-Component ---
+  const ExpiryReportView = () => {
+    const [lists, setLists] = useState<SavedList[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [daysThreshold, setDaysThreshold] = useState(90);
+
+    useEffect(() => {
+        const fetchLists = async () => {
+            try {
+                const data = await db.lists.getAll();
+                setLists(data as SavedList[]);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLists();
+    }, []);
+
+    const expiryData = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const thresholdDate = new Date(today);
+        thresholdDate.setDate(today.getDate() + daysThreshold);
+
+        let alerts: {
+            productName: string;
+            code: string;
+            expiryDate: string;
+            daysRemaining: number;
+            qty: number;
+            listName: string;
+            listDate: string;
+            unitName: string;
+        }[] = [];
+
+        lists.forEach(list => {
+            if (list.rows && Array.isArray(list.rows)) {
+                list.rows.forEach(row => {
+                    if (row.expiryDate) {
+                        const exp = new Date(row.expiryDate);
+                        exp.setHours(0, 0, 0, 0);
+                        
+                        // Calculate difference in days
+                        const diffTime = exp.getTime() - today.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        // Check if within threshold (or expired)
+                        if (diffDays <= daysThreshold) {
+                            alerts.push({
+                                productName: row.name,
+                                code: row.code,
+                                expiryDate: row.expiryDate,
+                                daysRemaining: diffDays,
+                                qty: Number(row.qty) || 0,
+                                listName: list.name,
+                                listDate: list.date.split('T')[0],
+                                unitName: units.find(u => u.id === row.unitId)?.name || '-'
+                            });
+                        }
+                    }
+                });
+            }
+        });
+
+        // Sort: Expired first, then soonest to expire
+        return alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
+    }, [lists, daysThreshold, units]);
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
+                <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-[2rem] flex items-center justify-center shadow-lg">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-sap-text">تنبيهات الصلاحية</h2>
+                            <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">المنتجات التي قاربت على الانتهاء</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                        <div className="flex items-center gap-2 px-2">
+                            <Filter size={16} className="text-sap-primary"/>
+                            <span className="text-[10px] font-bold text-gray-500">نطاق التنبيه:</span>
+                        </div>
+                        <select 
+                            value={daysThreshold} 
+                            onChange={e => setDaysThreshold(Number(e.target.value))} 
+                            className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[120px]"
+                        >
+                            <option value={30}>أقل من 30 يوم</option>
+                            <option value={60}>أقل من 60 يوم</option>
+                            <option value={90}>أقل من 90 يوم</option>
+                            <option value={180}>أقل من 6 أشهر</option>
+                            <option value={365}>أقل من سنة</option>
+                        </select>
+                        
+                        <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg">
+                            <Printer size={16}/> طباعة التقرير
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <ReportLayout 
+                title="تقرير صلاحية المنتجات" 
+                subtitle={`المنتجات التي تنتهي صلاحيتها خلال ${daysThreshold} يوم`}
+                showHeader={showHeader}
+            >
+                 <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                        <div className="text-[10px] font-black text-red-400 uppercase">منتهية الصلاحية</div>
+                        <div className="text-2xl font-black text-red-600 mt-1">{expiryData.filter(i => i.daysRemaining < 0).length}</div>
+                    </div>
+                    <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                        <div className="text-[10px] font-black text-orange-400 uppercase">تنتهي خلال 30 يوم</div>
+                        <div className="text-2xl font-black text-orange-600 mt-1">{expiryData.filter(i => i.daysRemaining >= 0 && i.daysRemaining <= 30).length}</div>
+                    </div>
+                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <div className="text-[10px] font-black text-blue-400 uppercase">إجمالي التنبيهات</div>
+                        <div className="text-2xl font-black text-blue-600 mt-1">{expiryData.length}</div>
+                    </div>
+                </div>
+
+                <div className="border-2 border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm">
+                    {loading ? (
+                        <div className="p-10 text-center text-gray-400">جاري تحميل البيانات...</div>
+                    ) : (
+                        <table className="w-full text-right border-collapse">
+                            <thead>
+                                <tr className="bg-sap-shell text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
+                                    <th className="px-6 py-4 border-l border-white/5 w-32">تاريخ الانتهاء</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-32">المتبقي (يوم)</th>
+                                    <th className="px-6 py-4 border-l border-white/5">اسم المنتج</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-32">كود الصنف</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-24 text-center">الكمية</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-24">الوحدة</th>
+                                    <th className="px-6 py-4">المصدر</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-xs font-bold divide-y divide-gray-50">
+                                {expiryData.length === 0 ? (
+                                    <tr><td colSpan={7} className="p-10 text-center text-gray-400 italic">لا توجد منتجات قاربت على الانتهاء</td></tr>
+                                ) : (
+                                    expiryData.map((item, idx) => {
+                                        const isExpired = item.daysRemaining < 0;
+                                        const isUrgent = item.daysRemaining <= 30;
+                                        return (
+                                            <tr key={idx} className={`hover:bg-gray-50 transition-all group ${isExpired ? 'bg-red-50/30' : ''}`}>
+                                                <td className={`px-6 py-3 font-mono font-black ${isExpired ? 'text-red-600' : 'text-gray-700'}`}>{item.expiryDate}</td>
+                                                <td className="px-6 py-3">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-black ${isExpired ? 'bg-red-100 text-red-700' : (isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700')}`}>
+                                                        {isExpired ? `منتهي منذ ${Math.abs(item.daysRemaining)}` : `باقي ${item.daysRemaining}`}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-3 text-gray-800">{item.productName}</td>
+                                                <td className="px-6 py-3 font-mono text-gray-500">{item.code || '-'}</td>
+                                                <td className="px-6 py-3 text-center font-black text-sap-text bg-gray-50/50">{item.qty}</td>
+                                                <td className="px-6 py-3 text-gray-500">{item.unitName}</td>
+                                                <td className="px-6 py-3 text-gray-400 text-[10px]">{item.listName} ({item.listDate})</td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </ReportLayout>
+        </div>
+    );
+  };
 
   // --- Inventory Report Sub-Component ---
   const InventoryReportView = () => {
@@ -306,6 +484,9 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         <button onClick={() => setActiveSubTab('products')} className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeSubTab === 'products' ? 'bg-sap-primary text-white shadow-lg' : 'text-gray-500 hover:bg-sap-highlight hover:text-sap-primary'}`}>
           <Package size={18} /> كشف المنتجات
         </button>
+        <button onClick={() => setActiveSubTab('expiry')} className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeSubTab === 'expiry' ? 'bg-sap-primary text-white shadow-lg' : 'text-gray-500 hover:bg-sap-highlight hover:text-sap-primary'}`}>
+          <AlertTriangle size={18} /> تنبيهات الصلاحية
+        </button>
       </div>
 
       <div className="min-h-[700px] overflow-visible">
@@ -313,6 +494,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         {activeSubTab === 'matrix' && <SalesMatrixReport branches={branches} sales={sales} />}
         {activeSubTab === 'inventory' && <InventoryReportView />}
         {activeSubTab === 'products' && <ProductReport />}
+        {activeSubTab === 'expiry' && <ExpiryReportView />}
       </div>
     </div>
   );
