@@ -77,6 +77,13 @@ export interface Branch {
 export type PaymentMethod = 'cash' | 'card' | 'transfer';
 export type TransactionType = 'sale' | 'return' | 'collection'; 
 
+export interface CartItem {
+  productId: string;
+  quantity: number;
+  price: number;
+  name?: string;
+}
+
 export interface DailySales {
   id: string;
   branchId?: string;
@@ -100,6 +107,8 @@ export interface DailySales {
   
   amount: number; 
   notes?: string;
+  
+  cart?: CartItem[];
 }
 
 export interface Expense {

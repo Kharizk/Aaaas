@@ -78,7 +78,7 @@ export const SalesMatrixReport: React.FC<SalesMatrixReportProps> = ({ branches, 
   const getBranchName = (id: string) => branches.find(b => b.id === id)?.name || 'كافة الفروع المتاحة';
 
   return (
-    <div className="space-y-6 pb-20 overflow-visible relative animate-in fade-in duration-700">
+    <div className="space-y-6 pb-20 overflow-visible relative animate-in fade-in duration-700 printable">
       
       {/* Controls Card */}
       <div className="bg-white border border-sap-border rounded-[2rem] p-6 space-y-6 print:hidden shadow-sm">

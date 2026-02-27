@@ -104,7 +104,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-20 print:p-0 print:m-0 print:block">
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20 print:p-0 print:m-0 print:block printable">
       
       {/* Search & Header UI */}
       <div className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-white p-6 border border-sap-border rounded-[2.5rem] shadow-sm print:hidden">

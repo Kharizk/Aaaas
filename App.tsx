@@ -638,11 +638,11 @@ const AppContent: React.FC = () => {
       <KeyboardShortcuts isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       {/* Main Content Area with Sidebar */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative print:overflow-visible print:h-auto">
           <FavoritesSidebar />
-          <main className="flex-1 relative overflow-hidden print:p-0 print:block">
+          <main className="flex-1 relative overflow-hidden print:p-0 print:block print:overflow-visible print:h-auto">
               {/* Launcher */}
-              <div className="absolute inset-0" style={{ display: activeTab === 'launcher' ? 'block' : 'none', zIndex: activeTab === 'launcher' ? 10 : 0 }}>
+              <div className="absolute inset-0 print:hidden" style={{ display: activeTab === 'launcher' ? 'block' : 'none', zIndex: activeTab === 'launcher' ? 10 : 0 }}>
                   <AppLauncher />
               </div>
 
@@ -650,11 +650,11 @@ const AppContent: React.FC = () => {
               {openApps.map(appId => (
                   <div 
                     key={appId} 
-                    className="absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.99] duration-200"
+                    className="absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.99] duration-200 print:static print:h-auto print:overflow-visible"
                     style={{ display: activeTab === appId ? 'flex' : 'none', zIndex: activeTab === appId ? 20 : 5 }}
                   >
-                      <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0">
-                          {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
+                      <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0 print:overflow-visible print:h-auto">
+                          {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in print:hidden"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
                           
                           {appId === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => handleOpenApp(t)} onNavigateToList={handleNavigateToList} />}
                           {appId === 'pos' && <POSInterface products={products} setDailySales={setDailySales} />}

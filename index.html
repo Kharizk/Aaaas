@@ -124,6 +124,7 @@
         }
 
         @media print {
+            body { overflow: visible !important; height: auto !important; }
             body * { visibility: hidden; }
             #print-container, #print-container * { visibility: visible !important; }
             .printable, .printable * { visibility: visible !important; }

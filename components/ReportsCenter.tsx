@@ -87,7 +87,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
       }, [sales, expenses, dateFrom, dateTo]);
 
       return (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 printable">
               <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
                   <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
                       <div className="flex items-center gap-5">
@@ -225,7 +225,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     }, [lists, daysThreshold, units]);
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 printable">
             <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
                 <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
                     <div className="flex items-center gap-5">
@@ -410,7 +410,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     const totalQty = filteredData.reduce((acc, curr) => acc + (Number(curr.row.qty) || 0), 0);
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 printable">
             {/* Controls */}
             <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
                 <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
@@ -534,7 +534,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
   }, [products, productSearch]);
 
   const ProductReport = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 printable">
         <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 flex flex-col md:flex-row justify-between items-center print:hidden shadow-sm gap-6">
             <div className="flex items-center gap-5">
                 <div className="w-16 h-16 bg-gradient-to-br from-sap-shell to-slate-900 text-white rounded-[2rem] flex items-center justify-center shadow-lg">
@@ -664,7 +664,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     }, [products, lists, sales]);
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 printable">
             <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
                 <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
                     <div className="flex items-center gap-5">
