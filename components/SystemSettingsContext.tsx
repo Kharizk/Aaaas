@@ -7,6 +7,9 @@ interface SystemSettings {
   expiryAlertDays: number;
   currencySymbolType: CurrencySymbolType;
   currencySymbolImage: string | null;
+  taxRate: number;
+  receiptHeader: string;
+  receiptFooter: string;
 }
 
 interface SystemSettingsContextType {
@@ -19,7 +22,10 @@ const defaultSettings: SystemSettings = {
   orgName: 'مؤسسة إدارة المتجر',
   expiryAlertDays: 60,
   currencySymbolType: 'text',
-  currencySymbolImage: null
+  currencySymbolImage: null,
+  taxRate: 15,
+  receiptHeader: '',
+  receiptFooter: ''
 };
 
 const SystemSettingsContext = createContext<SystemSettingsContextType>({

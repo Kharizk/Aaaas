@@ -51,6 +51,12 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
   );
 };
 
+interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
+
 interface PriceTagGeneratorProps {
   products: Product[];
   units: Unit[];
@@ -206,7 +212,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       unitName: unitName
     };
     setSelectedTags([...selectedTags, newTag]);
-    setActiveTagId(newTag.id);
+    setActiveTagIds([newTag.id]);
     setShowProductPicker(false);
     setHasStarted(true);
   };

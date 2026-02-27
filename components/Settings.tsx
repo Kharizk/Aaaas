@@ -10,6 +10,11 @@ export const Settings: React.FC = () => {
     const [expiryAlertDays, setExpiryAlertDays] = useState(60);
     const [currencySymbolType, setCurrencySymbolType] = useState<'text' | 'icon' | 'custom_image'>('text');
     const [currencySymbolImage, setCurrencySymbolImage] = useState<string | null>(null);
+    
+    // New Settings
+    const [taxRate, setTaxRate] = useState(15);
+    const [receiptHeader, setReceiptHeader] = useState('');
+    const [receiptFooter, setReceiptFooter] = useState('');
 
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -30,6 +35,9 @@ export const Settings: React.FC = () => {
             setExpiryAlertDays(settings.expiryAlertDays);
             setCurrencySymbolType(settings.currencySymbolType);
             setCurrencySymbolImage(settings.currencySymbolImage);
+            setTaxRate(settings.taxRate || 15);
+            setReceiptHeader(settings.receiptHeader || '');
+            setReceiptFooter(settings.receiptFooter || '');
         }
     }, [settings, isSettingsLoading]);
 
@@ -40,7 +48,10 @@ export const Settings: React.FC = () => {
                 orgName, 
                 expiryAlertDays: Number(expiryAlertDays),
                 currencySymbolType,
-                currencySymbolImage
+                currencySymbolImage,
+                taxRate: Number(taxRate),
+                receiptHeader,
+                receiptFooter
             });
             setIsSaved(true);
             setTimeout(() => setIsSaved(false), 2000);
@@ -151,7 +162,7 @@ export const Settings: React.FC = () => {
                 ]);
 
                 if (data.settings) {
-                    await db.settings.update(data.settings);
+                    await db.settings.upsert(data.settings);
                 }
 
                 alert('تم استعادة البيانات بنجاح! يرجى تحديث الصفحة.');
@@ -252,6 +263,38 @@ export const Settings: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
+                                <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1">نسبة الضريبة (VAT)</label>
+                                <div className="flex items-center gap-4">
+                                    <input 
+                                        type="number" 
+                                        value={taxRate} 
+                                        onChange={(e) => setTaxRate(Number(e.target.value))}
+                                        className="w-32 !text-lg !font-black !p-3 text-center"
+                                        min="0" max="100"
+                                    />
+                                    <span className="text-sm font-bold text-gray-500">%</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
+                                <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1">تخصيص الإيصال</label>
+                                <input 
+                                    type="text" 
+                                    value={receiptHeader} 
+                                    onChange={(e) => setReceiptHeader(e.target.value)}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm mb-2"
+                                    placeholder="نص الترويسة (مثل: أهلاً بكم في متجرنا)"
+                                />
+                                <input 
+                                    type="text" 
+                                    value={receiptFooter} 
+                                    onChange={(e) => setReceiptFooter(e.target.value)}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm"
+                                    placeholder="نص التذييل (مثل: شكراً لزيارتكم)"
+                                />
                             </div>
 
                             <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">

@@ -7,7 +7,7 @@ import { ReportLayout } from './ReportLayout';
 import { 
   Package, Ruler, FileText, Clock, 
   ArrowUpRight, AlertCircle, ShoppingBag, Plus, DollarSign, Crown,
-  AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink, TrendingUp, TrendingDown
+  AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink, TrendingUp, TrendingDown, Truck
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -158,7 +158,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
               <QuickAction label="جرد جديد" icon={Plus} action="list" />
               <QuickAction label="مصروفات" icon={TrendingDown} action="expenses" />
               <QuickAction label="طباعة ملصقات" icon={Printer} action="price_tags" />
-              <QuickAction label="العملاء" icon={Wallet} action="customers" />
+              <QuickAction label="الموردين" icon={Truck} action="suppliers" />
               <QuickAction label="التقارير" icon={FileText} action="reports_center" />
           </div>
       </div>
@@ -166,7 +166,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Sales Chart */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-[2.5rem] shadow-sm p-8 relative overflow-hidden">
+        <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white border border-gray-200 rounded-[2.5rem] shadow-sm p-8 relative overflow-hidden">
             <h3 className="font-black text-gray-800 mb-6 flex items-center gap-2 text-lg"><TrendingUp size={22} className="text-sap-primary"/> منحنى المبيعات (7 أيام)</h3>
             <div className="h-56 flex items-end justify-between relative z-10 px-2">
                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible drop-shadow-md">
@@ -183,12 +184,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
             <div className="flex justify-between mt-4 text-[10px] font-black text-gray-400 border-t border-gray-100 pt-4">
                 {chartData.map(d => <div key={d.day} className="text-center"><div className="mb-1">{new Date(d.day).toLocaleDateString('ar-SA', {weekday: 'short'})}</div><div className="text-sap-primary opacity-60">{d.total > 0 ? d.total : '-'}</div></div>)}
             </div>
+            </div>
+
+            {/* Low Stock Widget */}
+            <div className="bg-amber-50 border border-amber-100 rounded-[2.5rem] shadow-sm p-6">
+                <h3 className="font-black text-amber-800 mb-4 flex items-center gap-2 text-sm"><AlertTriangle size={18}/> تنبيهات المخزون المنخفض</h3>
+                <div className="space-y-2">
+                    {products.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0).slice(0, 3).map(p => (
+                        <div key={p.id} className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-amber-100/50">
+                            <div>
+                                <div className="font-bold text-gray-800 text-xs">{p.name}</div>
+                                <div className="text-[10px] text-gray-400 font-mono">Stock: {p.stock || 0}</div>
+                            </div>
+                            <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-black">منخفض</span>
+                        </div>
+                    ))}
+                    {products.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0).length === 0 && (
+                        <div className="text-center text-amber-400 text-xs py-4">المخزون في حالة جيدة</div>
+                    )}
+                </div>
+            </div>
+        </div>
+
+        {/* Action Card & Recent Transactions */}
+        <div className="flex flex-col gap-6">
+            <div className="bg-[#1e293b] text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[300px] group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-sap-primary/20 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-sap-primary/30 transition-all duration-1000"></div>
+                <div className="relative z-10">
+                    <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md mb-6 border border-white/10 shadow-inner"><Zap size={28} className="text-sap-secondary fill-current" /></div>
+                    <h3 className="text-3xl font-black mb-3 leading-tight">جاهز للبدء؟</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed font-medium">ابدأ ببيع منتجاتك الآن.</p>
+                </div>
+                <div className="relative z-10 space-y-3 mt-8">
+                    <button onClick={() => switchToTab('pos')} className="w-full py-4 bg-white text-gray-900 rounded-2xl font-black text-sm hover:bg-gray-100 shadow-xl transition-all flex items-center justify-center gap-3 transform hover:-translate-y-1"><ShoppingBag size={18}/> فتح الكاشير</button>
+                </div>
+            </div>
 
             {/* Recent Transactions List */}
-            <div className="mt-8 pt-6 border-t border-gray-100">
-                <h4 className="font-black text-gray-600 text-sm mb-4 flex items-center gap-2"><Clock size={16}/> آخر العمليات المسجلة</h4>
+            <div className="bg-white border border-gray-200 rounded-[2.5rem] shadow-sm p-6 flex-1">
+                <h4 className="font-black text-gray-600 text-sm mb-4 flex items-center gap-2"><Clock size={16}/> آخر العمليات</h4>
                 <div className="space-y-3">
-                    {salesData.slice(0, 3).map(sale => (
+                    {salesData.slice(0, 5).map(sale => (
                         <div key={sale.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${sale.amount >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}>
@@ -206,19 +242,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                     ))}
                     {salesData.length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد عمليات حديثة</div>}
                 </div>
-            </div>
-        </div>
-
-        {/* Action Card */}
-        <div className="bg-[#1e293b] text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[340px] group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-sap-primary/20 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-sap-primary/30 transition-all duration-1000"></div>
-            <div className="relative z-10">
-                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md mb-6 border border-white/10 shadow-inner"><Zap size={28} className="text-sap-secondary fill-current" /></div>
-                <h3 className="text-3xl font-black mb-3 leading-tight">جاهز للبدء؟</h3>
-                <p className="text-gray-400 text-sm leading-relaxed font-medium">ابدأ ببيع منتجاتك الآن. النظام مهيأ لتسجيل العمليات بسرعة فائقة.</p>
-            </div>
-            <div className="relative z-10 space-y-3 mt-8">
-                <button onClick={() => switchToTab('pos')} className="w-full py-4 bg-white text-gray-900 rounded-2xl font-black text-sm hover:bg-gray-100 shadow-xl transition-all flex items-center justify-center gap-3 transform hover:-translate-y-1"><ShoppingBag size={18}/> فتح الكاشير</button>
             </div>
         </div>
       </div>

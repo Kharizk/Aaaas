@@ -407,6 +407,39 @@ export interface SavedTagList {
   styles: Omit<TagStyles, 'previewZoom'>;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  supplierId: string;
+  date: string;
+  status: 'pending' | 'received' | 'cancelled';
+  totalAmount: number;
+  items: {
+    productId: string;
+    quantity: number;
+    costPrice: number;
+  }[];
+  notes?: string;
+}
+
+export interface Settings {
+  orgName: string;
+  taxRate?: number; // VAT %
+  receiptHeader?: string;
+  receiptFooter?: string;
+  currency?: string;
+  enableLowStockAlerts?: boolean;
+}
+
 // --- NEW TYPES FOR UPGRADES ---
 
 export interface ToastMessage {

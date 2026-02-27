@@ -29,14 +29,19 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [showHeldOrders, setShowHeldOrders] = useState(false);
 
+  const [settings, setSettings] = useState<any>({});
+  const [discount, setDiscount] = useState(0);
+
   useEffect(() => {
       const load = async () => {
-          const [pp, cust] = await Promise.all([
+          const [pp, cust, sett] = await Promise.all([
               db.posPoints.getAll(),
-              db.customers.getAll()
+              db.customers.getAll(),
+              db.settings.get()
           ]);
           setPosPoints(pp);
           setCustomers(cust);
+          setSettings(sett);
           if (pp.length > 0) setSelectedPosId(pp[0].id);
 
           // Load held orders from local storage
@@ -47,6 +52,23 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       };
       load();
   }, []);
+
+  const applyDiscount = (percent: number) => {
+      if (!cashAmount) return;
+      const current = parseFloat(cashAmount);
+      const discountAmount = current * (percent / 100);
+      setCashAmount((current - discountAmount).toFixed(2));
+      notify(`تم تطبيق خصم ${percent}%`, 'info');
+  };
+
+  const addTax = () => {
+      if (!cashAmount) return;
+      const current = parseFloat(cashAmount);
+      const tax = settings.taxRate || 15;
+      const withTax = current * (1 + tax / 100);
+      setCashAmount(withTax.toFixed(2));
+      notify(`تم إضافة ضريبة ${tax}%`, 'info');
+  };
 
   const saveHeldOrders = (orders: HeldOrder[]) => {
       setHeldOrders(orders);
@@ -181,6 +203,12 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         </div>
                     </div>
                 )}
+
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                    <button onClick={() => applyDiscount(5)} className="flex-1 bg-rose-50 text-rose-600 py-2 rounded-lg text-xs font-bold hover:bg-rose-100 whitespace-nowrap">-5% خصم</button>
+                    <button onClick={() => applyDiscount(10)} className="flex-1 bg-rose-50 text-rose-600 py-2 rounded-lg text-xs font-bold hover:bg-rose-100 whitespace-nowrap">-10% خصم</button>
+                    <button onClick={addTax} className="flex-1 bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 whitespace-nowrap">+ضريبة ({settings.taxRate || 15}%)</button>
+                </div>
 
                 <div className="grid grid-cols-4 gap-3 mb-8">
                     {[1, 5, 10, 50, 100, 500].map(v => (

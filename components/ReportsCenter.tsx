@@ -225,7 +225,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     }, [lists, daysThreshold, units]);
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 printable">
+        <div className="space-y-6 print:space-y-0 animate-in fade-in slide-in-from-bottom-4 duration-500 print:animate-none printable">
             <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
                 <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
                     <div className="flex items-center gap-5">
@@ -267,38 +267,38 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                 subtitle={`المنتجات التي تنتهي صلاحيتها خلال ${daysThreshold} يوم`}
                 showHeader={showHeader}
             >
-                 <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                    <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                 <div className="mb-6 print:mb-4 grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-4 text-center">
+                    <div className="p-4 print:p-2 bg-red-50 rounded-2xl border border-red-100 print:border-red-200">
                         <div className="text-[10px] font-black text-red-400 uppercase">منتهية الصلاحية</div>
-                        <div className="text-2xl font-black text-red-600 mt-1">{expiryData.filter(i => i.daysRemaining < 0).length}</div>
+                        <div className="text-2xl print:text-xl font-black text-red-600 mt-1">{expiryData.filter(i => i.daysRemaining < 0).length}</div>
                     </div>
-                    <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                    <div className="p-4 print:p-2 bg-orange-50 rounded-2xl border border-orange-100 print:border-orange-200">
                         <div className="text-[10px] font-black text-orange-400 uppercase">تنتهي خلال 30 يوم</div>
-                        <div className="text-2xl font-black text-orange-600 mt-1">{expiryData.filter(i => i.daysRemaining >= 0 && i.daysRemaining <= 30).length}</div>
+                        <div className="text-2xl print:text-xl font-black text-orange-600 mt-1">{expiryData.filter(i => i.daysRemaining >= 0 && i.daysRemaining <= 30).length}</div>
                     </div>
-                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                    <div className="p-4 print:p-2 bg-blue-50 rounded-2xl border border-blue-100 print:border-blue-200">
                         <div className="text-[10px] font-black text-blue-400 uppercase">إجمالي التنبيهات</div>
-                        <div className="text-2xl font-black text-blue-600 mt-1">{expiryData.length}</div>
+                        <div className="text-2xl print:text-xl font-black text-blue-600 mt-1">{expiryData.length}</div>
                     </div>
                 </div>
 
-                <div className="border-2 border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm">
+                <div className="border-2 border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm print:border print:rounded-none print:shadow-none">
                     {loading ? (
                         <div className="p-10 text-center text-gray-400">جاري تحميل البيانات...</div>
                     ) : (
                         <table className="w-full text-right border-collapse">
                             <thead>
-                                <tr className="bg-sap-shell text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
-                                    <th className="px-6 py-4 border-l border-white/5 w-32">تاريخ الانتهاء</th>
-                                    <th className="px-6 py-4 border-l border-white/5 w-32">المتبقي (يوم)</th>
-                                    <th className="px-6 py-4 border-l border-white/5">اسم المنتج</th>
-                                    <th className="px-6 py-4 border-l border-white/5 w-32">كود الصنف</th>
-                                    <th className="px-6 py-4 border-l border-white/5 w-24 text-center">الكمية</th>
-                                    <th className="px-6 py-4 border-l border-white/5 w-24">الوحدة</th>
-                                    <th className="px-6 py-4">المصدر</th>
+                                <tr className="bg-sap-shell text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10 print:bg-gray-100 print:text-black print:border-gray-300">
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">تاريخ الانتهاء</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">المتبقي (يوم)</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">اسم المنتج</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">كود الصنف</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الكمية</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24">الوحدة</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2">المصدر</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-xs font-bold divide-y divide-gray-50">
+                            <tbody className="text-xs font-bold divide-y divide-gray-50 print:divide-gray-200">
                                 {expiryData.length === 0 ? (
                                     <tr><td colSpan={7} className="p-10 text-center text-gray-400 italic">لا توجد منتجات قاربت على الانتهاء</td></tr>
                                 ) : (
@@ -306,18 +306,18 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                         const isExpired = item.daysRemaining < 0;
                                         const isUrgent = item.daysRemaining <= 30;
                                         return (
-                                            <tr key={idx} className={`hover:bg-gray-50 transition-all group ${isExpired ? 'bg-red-50/30' : ''}`}>
-                                                <td className={`px-6 py-3 font-mono font-black ${isExpired ? 'text-red-600' : 'text-gray-700'}`}>{item.expiryDate}</td>
-                                                <td className="px-6 py-3">
-                                                    <span className={`px-2 py-1 rounded text-[10px] font-black ${isExpired ? 'bg-red-100 text-red-700' : (isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700')}`}>
+                                            <tr key={idx} className={`hover:bg-gray-50 transition-all group ${isExpired ? 'bg-red-50/30' : ''} print:bg-transparent`}>
+                                                <td className={`px-6 py-3 print:px-2 print:py-1 font-mono font-black ${isExpired ? 'text-red-600' : 'text-gray-700'} print:text-black print:border print:border-gray-200`}>{item.expiryDate}</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 print:border print:border-gray-200">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-black ${isExpired ? 'bg-red-100 text-red-700' : (isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700')} print:bg-transparent print:text-black print:p-0`}>
                                                         {isExpired ? `منتهي منذ ${Math.abs(item.daysRemaining)}` : `باقي ${item.daysRemaining}`}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-3 text-gray-800">{item.productName}</td>
-                                                <td className="px-6 py-3 font-mono text-gray-500">{item.code || '-'}</td>
-                                                <td className="px-6 py-3 text-center font-black text-sap-text bg-gray-50/50">{item.qty}</td>
-                                                <td className="px-6 py-3 text-gray-500">{item.unitName}</td>
-                                                <td className="px-6 py-3 text-gray-400 text-[10px]">{item.listName} ({item.listDate})</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 text-gray-800 print:text-black print:border print:border-gray-200">{item.productName}</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 font-mono text-gray-500 print:text-black print:border print:border-gray-200">{item.code || '-'}</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.qty}</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 text-gray-500 print:text-black print:border print:border-gray-200">{item.unitName}</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 text-gray-400 text-[10px] print:text-black print:border print:border-gray-200">{item.listName} ({item.listDate})</td>
                                             </tr>
                                         );
                                     })

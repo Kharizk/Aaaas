@@ -434,7 +434,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                           unitName: units.find(u => u.id === p.unitId)?.name || '', originalPrice: ''
                       })),
                       styles: {
-                          nameFontSize: 14, priceFontSize: 28, nameColor: '#000000', priceColor: '#DC2626', unitColor: '#6B7280', currencyColor: '#000000', originalPriceColor: '#EF4444', showLogo: true, logoUrl: null, logoSize: 30, topMargin: 0, bottomMargin: 0, leftMargin: 0, rightMargin: 0, tagHeight: 37, showBorder: true, showUnit: true, showOriginalPrice: false, template: 'classic_vertical', backgroundColor: '#ffffff'
+                          nameFontSize: 14, priceFontSize: 28, nameColor: '#000000', priceColor: '#DC2626', unitColor: '#6B7280', currencyColor: '#000000', originalPriceColor: '#EF4444', showLogo: true, logoUrl: null, logoSize: 30, topMargin: 0, bottomMargin: 0, leftMargin: 0, rightMargin: 0, tagHeight: 37, showBorder: true, showUnit: true, showOriginalPrice: false, template: 'classic_vertical', backgroundColor: '#ffffff',
+                          currencySymbolType: 'icon', currencySymbolImage: null, currencySymbolSize: 14, currencySymbolPosition: 'after', currencySymbolMargin: 4
                       }
                   };
                   await db.tagLists.upsert(tagList);

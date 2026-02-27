@@ -17,6 +17,7 @@ import { SettlementManager } from './components/SettlementManager';
 import { POSManagement } from './components/POSManagement';
 import { POSInterface } from './components/POSInterface';
 import { ExpenseManager } from './components/ExpenseManager';
+import { SupplierManager } from './components/SupplierManager';
 import { CustomerManager } from './components/CustomerManager';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManager } from './components/UserManager';
@@ -77,7 +78,10 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
 
 import { KeyboardShortcuts } from './components/KeyboardShortcuts';
 
+import { Calculator as CalculatorComponent } from './components/Calculator';
+
 const AppContent: React.FC = () => {
+  const [showCalculator, setShowCalculator] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [viewCatalogId, setViewCatalogId] = useState<string | null>(null);
@@ -85,8 +89,7 @@ const AppContent: React.FC = () => {
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // 'launcher' means the main grid view. Any other value is a specific app.
-  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers'>('launcher');
+  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers'>('launcher');
   const [openApps, setOpenApps] = useState<string[]>([]);
 
   const handleOpenApp = (appId: string) => {
@@ -204,6 +207,7 @@ const AppContent: React.FC = () => {
             { id: 'products', label: 'المنتجات', icon: Package, color: COLORS.DARK_GRAY, permissions: ['view_products', 'manage_products'] },
             { id: 'list', label: 'الجرد', icon: ClipboardListIcon, color: COLORS.BURGUNDY, permission: 'manage_products' },
             { id: 'units', label: 'الوحدات', icon: Ruler, color: COLORS.SLATE, permission: 'manage_products' },
+            { id: 'suppliers', label: 'الموردين', icon: Truck, color: COLORS.GOLD, permission: 'manage_products' },
         ]
     },
     {
@@ -298,9 +302,10 @@ const AppContent: React.FC = () => {
         const isConnected = await db.testConnection();
         setDbStatus(isConnected ? 'connected' : 'error');
         const [u, p, b, s] = await Promise.all([db.units.getAll(), db.products.getAll(), db.branches.getAll(), db.dailySales.getAll()]);
-        setUnits(u); setProducts(p); setBranches(b);
-        if (currentUser.role === 'admin') setDailySales(s);
-        else if (currentUser.branchId) setDailySales(s.filter(sale => sale.branchId === currentUser.branchId));
+        setUnits(u as Unit[]); setProducts(p as Product[]); setBranches(b as Branch[]);
+        const sales = s as DailySales[];
+        if (currentUser.role === 'admin') setDailySales(sales);
+        else if (currentUser.branchId) setDailySales(sales.filter(sale => sale.branchId === currentUser.branchId));
         else setDailySales([]);
     } catch (error) { setDbStatus('error'); } finally { setIsLoading(false); }
   }, [currentUser]);
@@ -623,6 +628,10 @@ const AppContent: React.FC = () => {
           <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="الوضع الليلي">
               {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
           </button>
+
+          <button onClick={() => setShowCalculator(!showCalculator)} className={`p-1.5 rounded-[4px] transition-colors ${showCalculator ? 'bg-white text-sap-primary' : 'hover:bg-white/10 text-white/80 hover:text-white'}`} title="الآلة الحاسبة">
+              <Calculator size={16}/>
+          </button>
           
           <div className="h-4 w-px bg-white/20 mx-1"></div>
 
@@ -639,7 +648,9 @@ const AppContent: React.FC = () => {
 
       {/* Main Content Area with Sidebar */}
       <div className="flex-1 flex overflow-hidden relative print:overflow-visible print:h-auto">
-          <FavoritesSidebar />
+          <div className="print:hidden">
+            <FavoritesSidebar />
+          </div>
           <main className="flex-1 relative overflow-hidden print:p-0 print:block print:overflow-visible print:h-auto">
               {/* Launcher */}
               <div className="absolute inset-0 print:hidden" style={{ display: activeTab === 'launcher' ? 'block' : 'none', zIndex: activeTab === 'launcher' ? 10 : 0 }}>
@@ -661,6 +672,7 @@ const AppContent: React.FC = () => {
                           {appId === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
                           {appId === 'expenses' && <ExpenseManager />}
                           {appId === 'customers' && <CustomerManager />}
+                          {appId === 'suppliers' && <SupplierManager />}
                           {appId === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
                           {appId === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
                           {appId === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
@@ -679,6 +691,12 @@ const AppContent: React.FC = () => {
                       </div>
                   </div>
               ))}
+              
+              {showCalculator && (
+                  <div className="fixed bottom-20 left-6 z-[100] print:hidden">
+                      <CalculatorComponent onClose={() => setShowCalculator(false)} />
+                  </div>
+              )}
           </main>
       </div>
     </div>

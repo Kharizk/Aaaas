@@ -12,7 +12,7 @@ import {
   Zap, MousePointer2, ZoomIn, ZoomOut, Box, Clock, ScanLine, 
   Maximize2, MoreHorizontal, Square, Hash, Ruler, MessageCircle,
   QrCode, ShoppingBag, Send, Minus, Share2, Download, ExternalLink, Info, AlertCircle, MapPin,
-  Smartphone, Layout, Type, Grid, Coffee, Gem, Flame, CheckCircle2, Eye, Paintbucket, Moon
+  Smartphone, Layout, Type, Grid, Coffee, Gem, Flame, CheckCircle2, Eye, PaintBucket, Moon
 } from 'lucide-react';
 
 interface CatalogGeneratorProps {
@@ -183,7 +183,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
           Hyper-realistic, 8k resolution, cinematic lighting, appetizing, isolated on a clean soft studio background. 
           High detailed texture, commercial look.` }],
         },
-        config: { imageConfig: { aspectRatio: "1:1", imageSize: "1K" } }
+        config: { imageConfig: { aspectRatio: "1:1", imageSize: "1K" } } as any
       });
 
       // Fix: Iterate through parts to find image part as per GenAI guidelines
