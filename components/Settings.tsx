@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Save, Building2, Layout, CheckCircle2, ShieldCheck, Sparkles, Loader2, Lock, UserCog, AlertCircle, CalendarClock, Coins } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Save, Building2, Layout, CheckCircle2, ShieldCheck, Sparkles, Loader2, Lock, UserCog, AlertCircle, CalendarClock, Coins, Download, Upload, Database, Trash2 } from 'lucide-react';
 import { db } from '../services/supabase';
 import { useSystemSettings } from './SystemSettingsContext';
 
@@ -21,6 +21,8 @@ export const Settings: React.FC = () => {
     const [passError, setPassError] = useState('');
     const [passSuccess, setPassSuccess] = useState('');
     const [isPassSaving, setIsPassSaving] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!isSettingsLoading) {
@@ -86,6 +88,80 @@ export const Settings: React.FC = () => {
         } finally {
             setIsPassSaving(false);
         }
+    };
+
+    const handleBackup = async () => {
+        try {
+            const data = {
+                products: await db.products.getAll(),
+                units: await db.units.getAll(),
+                branches: await db.branches.getAll(),
+                dailySales: await db.dailySales.getAll(),
+                customers: await db.customers.getAll(),
+                expenses: await db.expenses.getAll(),
+                settings: await db.settings.get(),
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `storeflow_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            alert('فشل إنشاء النسخة الاحتياطية');
+            console.error(e);
+        }
+    };
+
+    const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!confirm('تحذير: استعادة النسخة الاحتياطية سيقوم باستبدال البيانات الحالية. هل أنت متأكد؟')) {
+            e.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const data = JSON.parse(event.target?.result as string);
+                
+                // Basic validation
+                if (!data.products || !data.units || !data.timestamp) {
+                    throw new Error('ملف غير صالح');
+                }
+
+                // Restore logic (This is simplified, ideally should be transactional)
+                // In a real app, you might want to clear existing data first or merge
+                // For now, we'll just upsert everything which acts as a merge/overwrite
+                
+                await Promise.all([
+                    ...data.products.map((p: any) => db.products.upsert(p)),
+                    ...data.units.map((u: any) => db.units.upsert(u)),
+                    ...(data.branches || []).map((b: any) => db.branches.upsert(b)),
+                    ...(data.dailySales || []).map((s: any) => db.dailySales.upsert(s)),
+                    ...(data.customers || []).map((c: any) => db.customers.upsert(c)),
+                    ...(data.expenses || []).map((ex: any) => db.expenses.upsert(ex)),
+                ]);
+
+                if (data.settings) {
+                    await db.settings.update(data.settings);
+                }
+
+                alert('تم استعادة البيانات بنجاح! يرجى تحديث الصفحة.');
+                window.location.reload();
+            } catch (err) {
+                alert('فشل استعادة البيانات: ملف غير صالح أو تالف');
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
     };
 
     if (isSettingsLoading) {
@@ -207,9 +283,9 @@ export const Settings: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Account Settings */}
+                {/* Account Settings & Backup */}
                 <div className="space-y-8">
-                    <div className="bg-white rounded-[32px] border border-gray-200 p-8 shadow-sm h-full flex flex-col">
+                    <div className="bg-white rounded-[32px] border border-gray-200 p-8 shadow-sm flex flex-col">
                         <h3 className="text-xl font-black text-gray-800 mb-8 flex items-center gap-3">
                             <UserCog className="text-sap-secondary" size={24} />
                             أمان الحساب (المدير)
@@ -273,6 +349,82 @@ export const Settings: React.FC = () => {
                             {isPassSaving ? <Loader2 size={18} className="animate-spin" /> : <Lock size={18} />}
                             تحديث كلمة المرور
                         </button>
+                    </div>
+
+                    {/* Backup & Restore Section */}
+                    <div className="bg-white rounded-[32px] border border-gray-200 p-8 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                        <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-3">
+                            <Database className="text-blue-600" size={24} />
+                            النسخ الاحتياطي والاستعادة
+                        </h3>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <button 
+                                onClick={handleBackup}
+                                className="flex flex-col items-center justify-center gap-3 p-6 bg-blue-50 border border-blue-100 rounded-2xl hover:bg-blue-100 transition-colors group"
+                            >
+                                <div className="p-3 bg-white rounded-full text-blue-600 shadow-sm group-hover:scale-110 transition-transform">
+                                    <Download size={24} />
+                                </div>
+                                <span className="font-bold text-blue-800">تصدير نسخة احتياطية</span>
+                            </button>
+
+                            <div className="relative">
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef}
+                                    onChange={handleRestore}
+                                    accept=".json"
+                                    className="hidden"
+                                    id="restore-upload"
+                                />
+                                <label 
+                                    htmlFor="restore-upload"
+                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-purple-50 border border-purple-100 rounded-2xl hover:bg-purple-100 transition-colors group cursor-pointer h-full"
+                                >
+                                    <div className="p-3 bg-white rounded-full text-purple-600 shadow-sm group-hover:scale-110 transition-transform">
+                                        <Upload size={24} />
+                                    </div>
+                                    <span className="font-bold text-purple-800">استعادة بيانات</span>
+                                </label>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-4 text-center">
+                            تنبيه: عملية الاستعادة ستقوم بدمج البيانات الجديدة مع الموجودة، وقد تستبدل البيانات المتطابقة.
+                        </p>
+                    </div>
+
+                    {/* Danger Zone */}
+                    <div className="bg-red-50 rounded-[32px] border border-red-100 p-8 shadow-sm relative overflow-hidden">
+                        <h3 className="text-xl font-black text-red-800 mb-6 flex items-center gap-3">
+                            <AlertCircle className="text-red-600" size={24} />
+                            منطقة الخطر
+                        </h3>
+                        
+                        <div className="space-y-4">
+                            <button 
+                                onClick={async () => {
+                                    if (confirm('تحذير شديد: هل أنت متأكد من حذف جميع سجلات المبيعات؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                                        if (confirm('تأكيد نهائي: سيتم مسح كل تاريخ المبيعات. هل تريد الاستمرار؟')) {
+                                            try {
+                                                const sales = await db.dailySales.getAll();
+                                                const ids = sales.map((s: any) => s.id);
+                                                await db.dailySales.deleteMany(ids);
+                                                alert('تم حذف سجلات المبيعات بنجاح.');
+                                                window.location.reload();
+                                            } catch (e) {
+                                                alert('حدث خطأ أثناء الحذف');
+                                            }
+                                        }
+                                    }
+                                }}
+                                className="w-full py-4 bg-white border border-red-200 text-red-600 rounded-xl font-black text-sm hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
+                            >
+                                <Trash2 size={18} />
+                                حذف جميع المبيعات
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

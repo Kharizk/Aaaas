@@ -6,7 +6,7 @@ import { EmptyState } from './UIStates';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
   Barcode, LayoutGrid, DollarSign, FileSpreadsheet, Ruler, 
-  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft
+  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft, Copy, AlertTriangle
 } from 'lucide-react';
 
 interface ProductManagerProps {
@@ -32,6 +32,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [price, setPrice] = useState('');
   const [costPrice, setCostPrice] = useState(''); 
   const [color, setColor] = useState('#ffffff');
+  const [lowStockThreshold, setLowStockThreshold] = useState<string>('');
 
   const canEdit = currentUser?.role === 'admin' || currentUser?.permissions.includes('manage_products');
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -50,11 +51,29 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setEditingProduct(product);
       setCode(product.code); setName(product.name); setUnitId(product.unitId);
       setPrice(product.price || ''); setCostPrice(product.costPrice || ''); setColor(product.color || '#ffffff');
+      setLowStockThreshold(product.lowStockThreshold?.toString() || '');
     } else {
       setEditingProduct(null);
       setCode(''); setName(''); setUnitId(''); setPrice(''); setCostPrice(''); setColor('#ffffff');
+      setLowStockThreshold('');
     }
     setIsModalOpen(true);
+  };
+
+  const handleDuplicate = (product: Product, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!canEdit) return;
+      
+      setEditingProduct(null); // New product mode
+      setCode(`${product.code}-copy`); 
+      setName(`${product.name} (نسخة)`); 
+      setUnitId(product.unitId);
+      setPrice(product.price || ''); 
+      setCostPrice(product.costPrice || ''); 
+      setColor(product.color || '#ffffff');
+      setLowStockThreshold(product.lowStockThreshold?.toString() || '');
+      
+      setIsModalOpen(true);
   };
 
   const handleSave = async () => {
@@ -64,7 +83,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
         const productData: Product = {
           id: editingProduct ? editingProduct.id : crypto.randomUUID(),
           code: code.trim(), name: name.trim(), unitId,
-          price: price.trim(), costPrice: costPrice.trim(), color
+          price: price.trim(), costPrice: costPrice.trim(), color,
+          lowStockThreshold: lowStockThreshold ? Number(lowStockThreshold) : undefined
         };
         await db.products.upsert(productData);
         if (editingProduct) setProducts(prev => prev.map(p => p.id === editingProduct.id ? productData : p));
@@ -169,8 +189,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                   </td>
                                   <td className="p-3 font-bold">{p.price}</td>
                                   <td className="p-3 text-gray-400">{p.costPrice || '-'}</td>
-                                  <td className="p-3 text-center">
-                                      <MoreHorizontal size={16} className="text-gray-400 mx-auto opacity-0 group-hover:opacity-100" />
+                                  <td className="p-3 text-center flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button 
+                                        onClick={(e) => handleDuplicate(p, e)}
+                                        className="p-1 text-gray-400 hover:text-sap-primary hover:bg-blue-50 rounded"
+                                        title="تكرار المنتج"
+                                      >
+                                          <Copy size={16} />
+                                      </button>
+                                      <MoreHorizontal size={16} className="text-gray-400" />
                                   </td>
                               </tr>
                           ))}
@@ -184,7 +211,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                           <div className="absolute top-0 right-0 w-1 h-full" style={{ backgroundColor: p.color || '#ccc' }}></div>
                           <div className="flex justify-between items-start mb-2 pl-2 pr-3">
                               <h3 className="font-bold text-gray-800 line-clamp-2 text-sm">{p.name}</h3>
-                              <input type="checkbox" checked={selectedIds.has(p.id)} onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }} className="accent-sap-primary" />
+                              <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={(e) => handleDuplicate(p, e)}
+                                    className="p-1 text-gray-400 hover:text-sap-primary hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="تكرار المنتج"
+                                >
+                                    <Copy size={14} />
+                                </button>
+                                <input type="checkbox" checked={selectedIds.has(p.id)} onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }} className="accent-sap-primary" />
+                              </div>
                           </div>
                           <div className="mt-auto pr-3">
                               <div className="text-xs text-gray-500 font-mono mb-1">{p.code}</div>
@@ -278,16 +314,37 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                           </div>
 
                           <div className="mt-8 pt-6 border-t border-gray-100">
-                              <label className="block text-sm font-bold text-gray-600 mb-2">لون التمييز (في الشبكة)</label>
-                              <div className="flex gap-3">
-                                  {['#ffffff', '#fecaca', '#bbf7d0', '#bfdbfe', '#fde68a', '#e9d5ff'].map(c => (
-                                      <button 
-                                        key={c} 
-                                        onClick={() => setColor(c)}
-                                        className={`w-8 h-8 rounded-full border border-gray-300 ${color === c ? 'ring-2 ring-offset-2 ring-sap-primary' : ''}`}
-                                        style={{ backgroundColor: c }}
-                                      />
-                                  ))}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                                  <div>
+                                      <label className="block text-sm font-bold text-gray-600 mb-2">لون التمييز (في الشبكة)</label>
+                                      <div className="flex gap-3">
+                                          {['#ffffff', '#fecaca', '#bbf7d0', '#bfdbfe', '#fde68a', '#e9d5ff'].map(c => (
+                                              <button 
+                                                key={c} 
+                                                onClick={() => setColor(c)}
+                                                className={`w-8 h-8 rounded-full border border-gray-300 ${color === c ? 'ring-2 ring-offset-2 ring-sap-primary' : ''}`}
+                                                style={{ backgroundColor: c }}
+                                              />
+                                          ))}
+                                      </div>
+                                  </div>
+                                  
+                                  <div>
+                                      <label className="block text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+                                          <AlertTriangle size={14} className="text-amber-500" />
+                                          حد التنبيه للمخزون المنخفض
+                                      </label>
+                                      <div className="flex items-center border-b border-gray-300 focus-within:border-sap-primary">
+                                          <input 
+                                            type="number" 
+                                            value={lowStockThreshold} 
+                                            onChange={e => setLowStockThreshold(e.target.value)} 
+                                            className="w-full outline-none py-1 text-gray-700" 
+                                            placeholder="مثال: 10" 
+                                          />
+                                      </div>
+                                      <p className="text-[10px] text-gray-400 mt-1">سيظهر تنبيه عندما يقل المخزون عن هذا العدد</p>
+                                  </div>
                               </div>
                           </div>
                       </div>

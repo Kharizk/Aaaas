@@ -124,8 +124,10 @@
         }
 
         @media print {
-            body * { visibility: hidden !important; }
+            body * { visibility: hidden; }
             #print-container, #print-container * { visibility: visible !important; }
+            .printable, .printable * { visibility: visible !important; }
+            
             #print-container {
                 position: absolute !important;
                 left: 0 !important; top: 0 !important;
@@ -135,6 +137,17 @@
                 width: 100% !important; height: 100% !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                z-index: 9999;
+            }
+            
+            .printable {
+                position: absolute !important;
+                left: 0 !important; top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                z-index: 9999;
             }
         }
 

@@ -75,12 +75,15 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
   }
 }
 
+import { KeyboardShortcuts } from './components/KeyboardShortcuts';
+
 const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [viewCatalogId, setViewCatalogId] = useState<string | null>(null);
   const [viewCatalogData, setViewCatalogData] = useState<CatalogProject | null>(null);
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // 'launcher' means the main grid view. Any other value is a specific app.
   const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers'>('launcher');
@@ -108,6 +111,18 @@ const AppContent: React.FC = () => {
       }
   };
 
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((e) => {
+        console.error(`Error attempting to enable full-screen mode: ${e.message} (${e.name})`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
   // Keyboard Shortcuts & Auto-Scroll
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -124,6 +139,7 @@ const AppContent: React.FC = () => {
           setActiveTab(openApps[index] as any);
         }
       }
+      // F11 handled by browser usually, but we can add custom logic if needed
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -596,7 +612,15 @@ const AppContent: React.FC = () => {
         )}
 
         <div className="flex items-center gap-2 text-xs font-bold">
-          <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white">
+          <button onClick={() => setShowShortcuts(true)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="اختصارات لوحة المفاتيح">
+              <Keyboard size={16}/>
+          </button>
+          
+          <button onClick={toggleFullScreen} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="ملء الشاشة">
+              <Monitor size={16}/>
+          </button>
+
+          <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="الوضع الليلي">
               {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
           </button>
           
@@ -610,6 +634,8 @@ const AppContent: React.FC = () => {
           </button>
         </div>
       </header>
+
+      <KeyboardShortcuts isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       {/* Main Content Area with Sidebar */}
       <div className="flex-1 flex overflow-hidden relative">

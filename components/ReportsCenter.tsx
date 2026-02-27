@@ -1,14 +1,15 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Branch, DailySales, Product, Unit, SavedList, ListRow } from '../types';
+import { Branch, DailySales, Product, Unit, SavedList, ListRow, Expense } from '../types';
 import { SalesReports } from './SalesReports';
 import { SalesMatrixReport } from './SalesMatrixReport';
 import { ReportLayout } from './ReportLayout';
 import { db } from '../services/supabase';
 import { 
-  FileLineChart, LayoutGrid, BarChart3, TrendingUp, Package, Printer, 
-  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle 
+  FileLineChart, LayoutGrid, BarChart3, TrendingUp, TrendingDown, Package, Printer, 
+  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet 
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ReportsCenterProps {
   branches: Branch[];
@@ -18,9 +19,139 @@ interface ReportsCenterProps {
 }
 
 export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, products, units }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'standard' | 'matrix' | 'products' | 'inventory' | 'expiry'>('standard');
+  const [activeSubTab, setActiveSubTab] = useState<'standard' | 'matrix' | 'products' | 'inventory' | 'expiry' | 'low_stock' | 'profit'>('standard');
   const [showHeader, setShowHeader] = useState(true);
   const [productSearch, setProductSearch] = useState('');
+
+  // --- Profit Report Sub-Component ---
+  const ProfitReportView = () => {
+      const [expenses, setExpenses] = useState<Expense[]>([]);
+      const [loading, setLoading] = useState(true);
+      const [dateFrom, setDateFrom] = useState(() => {
+          const d = new Date();
+          d.setMonth(d.getMonth() - 1);
+          return d.toISOString().split('T')[0];
+      });
+      const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
+
+      useEffect(() => {
+          const load = async () => {
+              try {
+                  const exp = await db.expenses.getAll();
+                  setExpenses(exp as Expense[]);
+              } catch (e) { console.error(e); }
+              finally { setLoading(false); }
+          };
+          load();
+      }, []);
+
+      const profitData = useMemo(() => {
+          // Filter by date
+          const filteredSales = sales.filter(s => s.date >= dateFrom && s.date <= dateTo);
+          const filteredExpenses = expenses.filter(e => e.date >= dateFrom && e.date <= dateTo);
+
+          const totalSales = filteredSales.reduce((sum, s) => sum + (s.amount || 0), 0);
+          const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+          const netProfit = totalSales - totalExpenses;
+
+          // Group by Day for Chart
+          const daysMap = new Map<string, { date: string, sales: number, expenses: number, profit: number }>();
+          
+          // Init days
+          const start = new Date(dateFrom);
+          const end = new Date(dateTo);
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              const dateStr = d.toISOString().split('T')[0];
+              daysMap.set(dateStr, { date: dateStr, sales: 0, expenses: 0, profit: 0 });
+          }
+
+          filteredSales.forEach(s => {
+              const d = daysMap.get(s.date);
+              if (d) d.sales += (s.amount || 0);
+          });
+
+          filteredExpenses.forEach(e => {
+              const d = daysMap.get(e.date);
+              if (d) d.expenses += (e.amount || 0);
+          });
+
+          // Calculate profit per day
+          daysMap.forEach(v => v.profit = v.sales - v.expenses);
+
+          return {
+              totalSales,
+              totalExpenses,
+              netProfit,
+              chartData: Array.from(daysMap.values())
+          };
+      }, [sales, expenses, dateFrom, dateTo]);
+
+      return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
+                  <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+                      <div className="flex items-center gap-5">
+                          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-[2rem] flex items-center justify-center shadow-lg">
+                              <Wallet size={32} />
+                          </div>
+                          <div>
+                              <h2 className="text-2xl font-black text-sap-text">تحليل الربحية</h2>
+                              <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">صافي الدخل = المبيعات - المصروفات</p>
+                          </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold" />
+                          <ArrowLeft size={14} className="text-gray-400"/>
+                          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold" />
+                          <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg">
+                              <Printer size={16}/> طباعة
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              <ReportLayout 
+                  title="تقرير صافي الدخل والربحية" 
+                  subtitle={`الفترة من ${dateFrom} إلى ${dateTo}`}
+                  showHeader={showHeader}
+              >
+                  <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                      <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 shadow-sm">
+                          <div className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-2">إجمالي المبيعات</div>
+                          <div className="text-3xl font-black text-emerald-700 font-mono">{profitData.totalSales.toLocaleString()}</div>
+                      </div>
+                      <div className="p-6 bg-rose-50 rounded-[2rem] border border-rose-100 shadow-sm">
+                          <div className="text-xs font-black text-rose-600 uppercase tracking-widest mb-2">إجمالي المصروفات</div>
+                          <div className="text-3xl font-black text-rose-700 font-mono">{profitData.totalExpenses.toLocaleString()}</div>
+                      </div>
+                      <div className={`p-6 rounded-[2rem] border shadow-sm ${profitData.netProfit >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
+                          <div className={`text-xs font-black uppercase tracking-widest mb-2 ${profitData.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>صافي الربح / الخسارة</div>
+                          <div className={`text-3xl font-black font-mono ${profitData.netProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{profitData.netProfit.toLocaleString()}</div>
+                      </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm h-[400px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={profitData.chartData}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                              <XAxis dataKey="date" tick={{fontSize: 10, fontWeight: 'bold'}} stroke="#9ca3af" />
+                              <YAxis tick={{fontSize: 10, fontWeight: 'bold'}} stroke="#9ca3af" />
+                              <Tooltip 
+                                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)'}}
+                                  cursor={{fill: '#f3f4f6'}}
+                              />
+                              <Legend />
+                              <Bar dataKey="sales" name="المبيعات" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                              <Bar dataKey="expenses" name="المصروفات" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={20} />
+                              <Bar dataKey="profit" name="الصافي" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                          </BarChart>
+                      </ResponsiveContainer>
+                  </div>
+              </ReportLayout>
+          </div>
+      );
+  };
 
   // --- Expiry Report Sub-Component ---
   const ExpiryReportView = () => {
@@ -469,6 +600,152 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     </div>
   );
 
+  // --- Low Stock Report Sub-Component ---
+  const LowStockReportView = () => {
+    const [lists, setLists] = useState<SavedList[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLists = async () => {
+            try {
+                const data = await db.lists.getAll();
+                setLists(data as SavedList[]);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLists();
+    }, []);
+
+    const lowStockData = useMemo(() => {
+        const stockMap = new Map<string, number>();
+
+        // Initialize with 0
+        products.forEach(p => stockMap.set(p.id, 0));
+
+        // Add from Lists (Inventory/Receipts)
+        lists.forEach(list => {
+            if (list.rows && Array.isArray(list.rows)) {
+                list.rows.forEach(row => {
+                    // Try to find product by code
+                    const product = products.find(p => p.code === row.code);
+                    if (product) {
+                        const current = stockMap.get(product.id) || 0;
+                        stockMap.set(product.id, current + (Number(row.qty) || 0));
+                    }
+                });
+            }
+        });
+
+        // Subtract Sales
+        sales.forEach(sale => {
+            if (sale.cart && Array.isArray(sale.cart)) {
+                sale.cart.forEach(item => {
+                    const current = stockMap.get(item.productId) || 0;
+                    stockMap.set(item.productId, current - (item.quantity || 0));
+                });
+            }
+        });
+
+        // Filter for Low Stock
+        const alerts = products
+            .map(p => ({
+                ...p,
+                currentStock: stockMap.get(p.id) || 0
+            }))
+            .filter(p => {
+                const threshold = p.lowStockThreshold || 0;
+                return threshold > 0 && p.currentStock <= threshold;
+            });
+
+        return alerts.sort((a, b) => a.currentStock - b.currentStock);
+    }, [products, lists, sales]);
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
+                <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-[2rem] flex items-center justify-center shadow-lg">
+                            <TrendingDown size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-sap-text">تنبيهات نقص المخزون</h2>
+                            <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">المنتجات التي وصلت للحد الأدنى</p>
+                        </div>
+                    </div>
+                    <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg">
+                        <Printer size={16}/> طباعة التقرير
+                    </button>
+                </div>
+            </div>
+
+            <ReportLayout 
+                title="تقرير نواقص المخزون" 
+                subtitle="المنتجات التي تتطلب إعادة طلب"
+                showHeader={showHeader}
+            >
+                 <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                        <div className="text-[10px] font-black text-red-400 uppercase">نفذت من المخزون</div>
+                        <div className="text-2xl font-black text-red-600 mt-1">{lowStockData.filter(i => i.currentStock <= 0).length}</div>
+                    </div>
+                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                        <div className="text-[10px] font-black text-amber-400 uppercase">تحت الحد الأدنى</div>
+                        <div className="text-2xl font-black text-amber-600 mt-1">{lowStockData.filter(i => i.currentStock > 0).length}</div>
+                    </div>
+                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <div className="text-[10px] font-black text-blue-400 uppercase">إجمالي التنبيهات</div>
+                        <div className="text-2xl font-black text-blue-600 mt-1">{lowStockData.length}</div>
+                    </div>
+                </div>
+
+                <div className="border-2 border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm">
+                    {loading ? (
+                        <div className="p-10 text-center text-gray-400">جاري تحميل البيانات...</div>
+                    ) : (
+                        <table className="w-full text-right border-collapse">
+                            <thead>
+                                <tr className="bg-sap-shell text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10">
+                                    <th className="px-6 py-4 border-l border-white/5 w-32">كود الصنف</th>
+                                    <th className="px-6 py-4 border-l border-white/5">اسم المنتج</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-32 text-center">المخزون الحالي</th>
+                                    <th className="px-6 py-4 border-l border-white/5 w-32 text-center">الحد الأدنى</th>
+                                    <th className="px-6 py-4 w-32 text-center">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-xs font-bold divide-y divide-gray-50">
+                                {lowStockData.length === 0 ? (
+                                    <tr><td colSpan={5} className="p-10 text-center text-gray-400 italic">لا توجد منتجات تحت الحد الأدنى</td></tr>
+                                ) : (
+                                    lowStockData.map((item, idx) => {
+                                        const isZero = item.currentStock <= 0;
+                                        return (
+                                            <tr key={idx} className={`hover:bg-gray-50 transition-all group ${isZero ? 'bg-red-50/30' : ''}`}>
+                                                <td className="px-6 py-3 font-mono text-gray-500">{item.code}</td>
+                                                <td className="px-6 py-3 text-gray-800">{item.name}</td>
+                                                <td className={`px-6 py-3 text-center font-black ${isZero ? 'text-red-600' : 'text-sap-text'}`}>{item.currentStock}</td>
+                                                <td className="px-6 py-3 text-center text-gray-500">{item.lowStockThreshold}</td>
+                                                <td className="px-6 py-3 text-center">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-black ${isZero ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                        {isZero ? 'نفذت الكمية' : 'منخفض'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </ReportLayout>
+        </div>
+    );
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700 overflow-visible relative">
       <div className="bg-white/80 backdrop-blur-md border border-sap-border rounded-[2rem] p-2 flex flex-wrap items-center gap-2 shadow-sm w-fit print:hidden sticky top-0 z-50">
@@ -487,6 +764,12 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         <button onClick={() => setActiveSubTab('expiry')} className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeSubTab === 'expiry' ? 'bg-sap-primary text-white shadow-lg' : 'text-gray-500 hover:bg-sap-highlight hover:text-sap-primary'}`}>
           <AlertTriangle size={18} /> تنبيهات الصلاحية
         </button>
+        <button onClick={() => setActiveSubTab('low_stock')} className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeSubTab === 'low_stock' ? 'bg-sap-primary text-white shadow-lg' : 'text-gray-500 hover:bg-sap-highlight hover:text-sap-primary'}`}>
+          <TrendingDown size={18} /> نواقص المخزون
+        </button>
+        <button onClick={() => setActiveSubTab('profit')} className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeSubTab === 'profit' ? 'bg-sap-primary text-white shadow-lg' : 'text-gray-500 hover:bg-sap-highlight hover:text-sap-primary'}`}>
+          <Wallet size={18} /> تحليل الربحية
+        </button>
       </div>
 
       <div className="min-h-[700px] overflow-visible">
@@ -495,6 +778,8 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         {activeSubTab === 'inventory' && <InventoryReportView />}
         {activeSubTab === 'products' && <ProductReport />}
         {activeSubTab === 'expiry' && <ExpiryReportView />}
+        {activeSubTab === 'low_stock' && <LowStockReportView />}
+        {activeSubTab === 'profit' && <ProfitReportView />}
       </div>
     </div>
   );

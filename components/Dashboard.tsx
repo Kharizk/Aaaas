@@ -183,6 +183,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
             <div className="flex justify-between mt-4 text-[10px] font-black text-gray-400 border-t border-gray-100 pt-4">
                 {chartData.map(d => <div key={d.day} className="text-center"><div className="mb-1">{new Date(d.day).toLocaleDateString('ar-SA', {weekday: 'short'})}</div><div className="text-sap-primary opacity-60">{d.total > 0 ? d.total : '-'}</div></div>)}
             </div>
+
+            {/* Recent Transactions List */}
+            <div className="mt-8 pt-6 border-t border-gray-100">
+                <h4 className="font-black text-gray-600 text-sm mb-4 flex items-center gap-2"><Clock size={16}/> آخر العمليات المسجلة</h4>
+                <div className="space-y-3">
+                    {salesData.slice(0, 3).map(sale => (
+                        <div key={sale.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${sale.amount >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                                    {sale.amount >= 0 ? '+' : '-'}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-800 text-xs">{sale.customerName || 'مبيعات عامة'}</div>
+                                    <div className="text-[10px] text-gray-400 font-mono">{sale.date}</div>
+                                </div>
+                            </div>
+                            <div className={`font-black font-mono text-sm ${sale.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {sale.amount.toLocaleString()}
+                            </div>
+                        </div>
+                    ))}
+                    {salesData.length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد عمليات حديثة</div>}
+                </div>
+            </div>
         </div>
 
         {/* Action Card */}

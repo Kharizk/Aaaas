@@ -40,7 +40,7 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
   }, []);
 
   return (
-    <div className="report-container bg-white p-12 print:p-0 print:m-0 overflow-visible relative text-right font-sans" dir="rtl">
+    <div className="report-container printable bg-white p-12 print:p-0 print:m-0 overflow-visible relative text-right font-sans" dir="rtl">
       
       {showHeader && (
         <div className="report-header mb-10 print:mb-6">

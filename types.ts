@@ -37,6 +37,14 @@ export interface Product {
   color?: string;
   category?: string;
   description?: string;
+  lowStockThreshold?: number; // New field for alerts
+  stock?: number; // New field for inventory tracking
+}
+
+export interface KeyboardShortcut {
+  keys: string[];
+  description: string;
+  action?: () => void;
 }
 
 export type ListType = 'inventory' | 'receipt';
