@@ -22,6 +22,7 @@ import { CustomerManager } from './components/CustomerManager';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManager } from './components/UserManager';
 import { UserProfile } from './components/UserProfile';
+import { ActivityLogViewer } from './components/ActivityLog';
 import { InstallApp } from './components/InstallApp';
 import { NotificationProvider } from './components/Notifications';
 import { SystemSettingsProvider } from './components/SystemSettingsContext';
@@ -33,7 +34,7 @@ import {
   Percent, FileLineChart, Wallet, Crown, LogOut, Users, UserCircle, BookOpen, Monitor,
   ShoppingBag, TrendingDown, Bell, Moon, Sun, Loader2, Command, Keyboard, Search,
   Grid, ArrowRight, Home, Menu, X, ChevronRight, Building2,
-  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2
+  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History
 } from 'lucide-react';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -89,7 +90,7 @@ const AppContent: React.FC = () => {
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers'>('launcher');
+  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'activity_log'>('launcher');
   const [openApps, setOpenApps] = useState<string[]>([]);
 
   const handleOpenApp = (appId: string) => {
@@ -235,6 +236,7 @@ const AppContent: React.FC = () => {
             { id: 'pos_setup', label: 'تهيئة الكاشير', icon: Calculator, color: COLORS.SLATE, permission: 'manage_settlements' },
             { id: 'settings', label: 'الإعدادات', icon: SettingsIcon, color: COLORS.GOLD, permission: 'manage_settings' },
             { id: 'database', label: 'قاعدة البيانات', icon: Layout, color: COLORS.DARK_GRAY, permission: 'manage_database' },
+            { id: 'activity_log', label: 'سجل النشاط', icon: History, color: COLORS.BURGUNDY, permission: 'manage_settings' },
         ]
     }
   ];
@@ -658,39 +660,48 @@ const AppContent: React.FC = () => {
               </div>
 
               {/* Open Apps (Preserved State) */}
-              {openApps.map(appId => (
-                  <div 
-                    key={appId} 
-                    className="absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.99] duration-200 print:static print:h-auto print:overflow-visible"
-                    style={{ display: activeTab === appId ? 'flex' : 'none', zIndex: activeTab === appId ? 20 : 5 }}
-                  >
-                      <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0 print:overflow-visible print:h-auto">
-                          {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in print:hidden"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
-                          
-                          {appId === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => handleOpenApp(t)} onNavigateToList={handleNavigateToList} />}
-                          {appId === 'pos' && <POSInterface products={products} setDailySales={setDailySales} />}
-                          {appId === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
-                          {appId === 'expenses' && <ExpenseManager />}
-                          {appId === 'customers' && <CustomerManager />}
-                          {appId === 'suppliers' && <SupplierManager />}
-                          {appId === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
-                          {appId === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
-                          {appId === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
-                          {appId === 'settlement' && <SettlementManager currentUser={currentUser} />}
-                          {appId === 'pos_setup' && <POSManagement branches={branches} />}
-                          {appId === 'branches' && <BranchManager branches={branches} setBranches={setBranches} sales={dailySales} />}
-                          {appId === 'units' && <UnitManager units={units} setUnits={setUnits} />}
-                          {appId === 'database' && <DatabaseManager />}
-                          {appId === 'settings' && <Settings />}
-                          {appId === 'user_profile' && <UserProfile user={currentUser} onUpdate={handleProfileUpdate} />}
-                          {appId === 'users' && <UserManager currentUser={currentUser} branches={branches} />}
-                          {appId === 'price_tags' && <PriceTagGenerator products={products} units={units} />}
-                          {appId === 'offers' && <OfferGenerator products={products} units={units} />}
-                          {appId === 'price_groups' && <PriceGroupManager />}
-                          {appId === 'catalog' && <CatalogGenerator products={products} units={units} />}
-                      </div>
-                  </div>
-              ))}
+              {openApps.map(appId => {
+                  const isActive = activeTab === appId;
+                  return (
+                    <div 
+                        key={appId} 
+                        className={`
+                            absolute inset-0 bg-white dark:bg-slate-900 overflow-hidden flex-col animate-in fade-in zoom-in-[0.99] duration-200 
+                            ${isActive ? 'flex' : 'hidden'} 
+                            print:static print:h-auto print:overflow-visible print:block
+                            ${isActive ? 'print:block' : 'print:hidden'}
+                        `}
+                        style={{ zIndex: isActive ? 20 : 5 }}
+                    >
+                        <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0 print:overflow-visible print:h-auto print:block">
+                            {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in print:hidden"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
+                            
+                            {appId === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => handleOpenApp(t)} onNavigateToList={handleNavigateToList} />}
+                            {appId === 'pos' && <POSInterface products={products} setDailySales={setDailySales} currentUser={currentUser} />}
+                            {appId === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
+                            {appId === 'expenses' && <ExpenseManager />}
+                            {appId === 'customers' && <CustomerManager />}
+                            {appId === 'suppliers' && <SupplierManager />}
+                            {appId === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
+                            {appId === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
+                            {appId === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
+                            {appId === 'settlement' && <SettlementManager currentUser={currentUser} />}
+                            {appId === 'pos_setup' && <POSManagement branches={branches} />}
+                            {appId === 'branches' && <BranchManager branches={branches} setBranches={setBranches} sales={dailySales} />}
+                            {appId === 'units' && <UnitManager units={units} setUnits={setUnits} />}
+                            {appId === 'database' && <DatabaseManager />}
+                            {appId === 'settings' && <Settings />}
+                            {appId === 'user_profile' && <UserProfile user={currentUser} onUpdate={handleProfileUpdate} />}
+                            {appId === 'users' && <UserManager currentUser={currentUser} branches={branches} />}
+                            {appId === 'price_tags' && <PriceTagGenerator products={products} units={units} />}
+                            {appId === 'offers' && <OfferGenerator products={products} units={units} />}
+                            {appId === 'price_groups' && <PriceGroupManager />}
+                            {appId === 'catalog' && <CatalogGenerator products={products} units={units} />}
+                            {appId === 'activity_log' && <ActivityLogViewer />}
+                        </div>
+                    </div>
+                  );
+              })}
               
               {showCalculator && (
                   <div className="fixed bottom-20 left-6 z-[100] print:hidden">

@@ -74,7 +74,7 @@ export interface Branch {
   location?: string;
 }
 
-export type PaymentMethod = 'cash' | 'card' | 'transfer';
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'credit';
 export type TransactionType = 'sale' | 'return' | 'collection'; 
 
 export interface CartItem {
@@ -93,7 +93,10 @@ export interface DailySales {
   paidAmount: number;       
   remainingAmount: number;  
   
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod | 'split';
+  cashAmount?: number;
+  cardAmount?: number;
+
   transactionType: TransactionType;
   
   isPending: boolean;       
@@ -101,12 +104,16 @@ export interface DailySales {
   
   linkedSaleId?: string;    
   customerName?: string;
+  customerId?: string;
   
   posPointId?: string;      
   networkId?: string;       
   
   amount: number; 
   notes?: string;
+  returnReason?: string;
+  discount?: number;
+  pointsRedeemed?: number;
   
   cart?: CartItem[];
 }
@@ -127,6 +134,9 @@ export interface Customer {
   phone: string;
   notes?: string;
   lastVisit?: string;
+  balance?: number; // Positive = Customer owes us
+  totalPurchases?: number;
+  loyaltyPoints?: number;
 }
 
 export interface Network {
@@ -158,15 +168,6 @@ export interface User {
   permissions: Permission[];
   isActive: boolean;
   lastLogin?: string;
-}
-
-export interface ActivityLog {
-  id?: string;
-  userId: string;
-  username: string;
-  action: string;
-  details: string;
-  timestamp: string;
 }
 
 export type OfferTemplate = 'modern_clean' | 'industrial' | 'vibrant_red' | 'discount' | '1plus1' | 'luxury' | 'mega_sale_50';
@@ -415,6 +416,31 @@ export interface Supplier {
   email?: string;
   address?: string;
   notes?: string;
+  balance?: number; // Positive = We owe supplier
+}
+
+export interface SupplierTransaction {
+  id: string;
+  supplierId: string;
+  date: string;
+  type: 'bill' | 'payment'; // bill = we owe more, payment = we paid
+  amount: number;
+  notes?: string;
+  reference?: string;
+}
+
+export interface Shift {
+  id: string;
+  userId: string;
+  userName: string;
+  startTime: string;
+  endTime?: string;
+  startCash: number;
+  endCash?: number;
+  expectedCash?: number;
+  difference?: number;
+  status: 'open' | 'closed';
+  notes?: string;
 }
 
 export interface PurchaseOrder {
@@ -438,6 +464,11 @@ export interface Settings {
   receiptFooter?: string;
   currency?: string;
   enableLowStockAlerts?: boolean;
+  showLogoOnReceipt?: boolean;
+  showHeaderOnReceipt?: boolean;
+  showFooterOnReceipt?: boolean;
+  enableSoundEffects?: boolean;
+  themeColor?: string;
 }
 
 // --- NEW TYPES FOR UPGRADES ---
@@ -454,6 +485,14 @@ export interface HeldOrder {
   customerName?: string;
   amount: number;
   note?: string;
-  // In a real app, this would contain the full cart items
-  rawCartData?: any; 
+  cart: CartItem[]; 
+}
+
+export interface ActivityLog {
+  id: string;
+  action: string;
+  details?: string;
+  timestamp: string;
+  user?: string;
+  type: 'info' | 'warning' | 'error' | 'success';
 }

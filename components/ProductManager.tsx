@@ -6,7 +6,7 @@ import { EmptyState } from './UIStates';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
   Barcode, LayoutGrid, DollarSign, FileSpreadsheet, Ruler, 
-  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft, Copy, AlertTriangle
+  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft, Copy, AlertTriangle, Upload
 } from 'lucide-react';
 
 interface ProductManagerProps {
@@ -33,6 +33,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [costPrice, setCostPrice] = useState(''); 
   const [color, setColor] = useState('#ffffff');
   const [lowStockThreshold, setLowStockThreshold] = useState<string>('');
+  
+  // Stock Adjustment State
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [stockAdjustmentQty, setStockAdjustmentQty] = useState('');
+  const [stockAdjustmentReason, setStockAdjustmentReason] = useState('');
+  const [stockAdjustmentType, setStockAdjustmentType] = useState<'add' | 'remove'>('add');
 
   const canEdit = currentUser?.role === 'admin' || currentUser?.permissions.includes('manage_products');
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +64,36 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setLowStockThreshold('');
     }
     setIsModalOpen(true);
+  };
+
+  const handleStockAdjustment = async () => {
+      if (!editingProduct || !stockAdjustmentQty) return;
+      const qty = parseInt(stockAdjustmentQty);
+      if (isNaN(qty) || qty <= 0) return alert('الكمية غير صحيحة');
+
+      const currentStock = editingProduct.stock || 0;
+      const newStock = stockAdjustmentType === 'add' ? currentStock + qty : currentStock - qty;
+
+      try {
+          const updatedProduct = { ...editingProduct, stock: newStock };
+          await db.products.upsert(updatedProduct);
+          setProducts(prev => prev.map(p => p.id === editingProduct.id ? updatedProduct : p));
+          
+          // Log Activity
+          await db.activityLogs.add({
+              action: 'تعديل مخزون',
+              details: `منتج: ${editingProduct.name} - ${stockAdjustmentType === 'add' ? 'إضافة' : 'خصم'} ${qty} - السبب: ${stockAdjustmentReason}`,
+              user: currentUser?.username || 'Admin',
+              type: 'warning'
+          });
+
+          setShowStockModal(false);
+          setStockAdjustmentQty('');
+          setStockAdjustmentReason('');
+          alert('تم تعديل المخزون بنجاح');
+      } catch (e) {
+          alert('حدث خطأ');
+      }
   };
 
   const handleDuplicate = (product: Product, e: React.MouseEvent) => {
@@ -104,6 +140,51 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       } catch (e) { alert("خطأ في الحذف"); }
   };
 
+  const handleExport = () => {
+      exportDataToExcel(products, `products_export_${new Date().toISOString().split('T')[0]}`);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+          const data = await parseExcelFile(file);
+          // Basic validation and mapping
+          const newProducts: Product[] = data.map((row: any) => ({
+              id: crypto.randomUUID(),
+              name: row['Name'] || row['name'] || row['الاسم'],
+              code: (row['Code'] || row['code'] || row['الكود'] || Math.floor(Math.random() * 1000000)).toString(),
+              price: (row['Price'] || row['price'] || row['السعر'] || '0').toString(),
+              costPrice: (row['Cost'] || row['cost'] || row['التكلفة'] || '0').toString(),
+              unitId: 'unit_piece', // Default unit
+              stock: Number(row['Stock'] || row['stock'] || row['المخزون'] || 0),
+              category: row['Category'] || row['category'] || row['التصنيف'] || 'General'
+          })).filter((p: Product) => p.name); // Filter out empty rows
+
+          if (newProducts.length === 0) throw new Error('No valid data found');
+
+          if (confirm(`تم العثور على ${newProducts.length} منتج. هل تريد استيرادها؟`)) {
+              // Batch insert
+              await Promise.all(newProducts.map(p => db.products.upsert(p)));
+              setProducts(prev => [...prev, ...newProducts]);
+              alert('تم الاستيراد بنجاح');
+              
+               // Log Activity
+              await db.activityLogs.add({
+                  action: 'استيراد منتجات',
+                  details: `تم استيراد ${newProducts.length} منتج من ملف Excel`,
+                  user: currentUser?.username || 'Admin',
+                  type: 'info'
+              });
+          }
+      } catch (err) {
+          alert('فشل قراءة الملف. تأكد من الصيغة.');
+          console.error(err);
+      }
+      if (excelInputRef.current) excelInputRef.current.value = '';
+  };
+
   return (
     <div className="h-full flex flex-col animate-in fade-in duration-300">
       
@@ -116,6 +197,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
         </div>
         
         <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Import/Export Buttons */}
+            <div className="flex items-center gap-2 border-l border-gray-200 pl-3 ml-1">
+                <button onClick={handleExport} className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors" title="تصدير Excel">
+                    <FileSpreadsheet size={18}/>
+                </button>
+                <label className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer" title="استيراد Excel">
+                    <Upload size={18}/>
+                    <input type="file" ref={excelInputRef} onChange={handleImport} accept=".xlsx, .xls, .csv" className="hidden"/>
+                </label>
+            </div>
+
             {/* Search Bar */}
             <div className="relative flex-1 md:w-80">
                 <input 
@@ -310,6 +402,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                           <span className="text-xs text-gray-400 font-bold ml-1">SAR</span>
                                       </div>
                                   </div>
+                                  {/* Profit Margin Display */}
+                                  {price && costPrice && (
+                                      <div className="flex items-center justify-end text-xs font-bold mt-2">
+                                          <span className="text-gray-500 ml-2">هامش الربح:</span>
+                                          <span className={`${((parseFloat(price) - parseFloat(costPrice)) / parseFloat(price)) * 100 > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                              {(((parseFloat(price) - parseFloat(costPrice)) / parseFloat(price)) * 100).toFixed(1)}%
+                                          </span>
+                                          <span className="mx-2 text-gray-300">|</span>
+                                          <span className="text-gray-700">
+                                              {(parseFloat(price) - parseFloat(costPrice)).toFixed(2)} SAR
+                                          </span>
+                                      </div>
+                                  )}
                               </div>
                           </div>
 
@@ -345,8 +450,84 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                       </div>
                                       <p className="text-[10px] text-gray-400 mt-1">سيظهر تنبيه عندما يقل المخزون عن هذا العدد</p>
                                   </div>
+                                  
+                                  {/* Barcode Generator */}
+                                  <div className="col-span-full mt-4 flex justify-between items-center">
+                                      <button 
+                                          onClick={() => setCode(Math.floor(Math.random() * 1000000000000).toString())}
+                                          className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                      >
+                                          <Barcode size={14} /> توليد باركود عشوائي
+                                      </button>
+
+                                      <button 
+                                          onClick={() => setShowStockModal(true)}
+                                          className="text-xs text-amber-600 hover:underline flex items-center gap-1 font-bold"
+                                      >
+                                          <Package size={14} /> تعديل المخزون (تالف / تسوية)
+                                      </button>
+                                  </div>
                               </div>
                           </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Stock Adjustment Modal */}
+      {showStockModal && (
+          <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden">
+                  <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                      <h3 className="font-bold text-gray-800">تعديل المخزون</h3>
+                      <button onClick={() => setShowStockModal(false)}><X size={20}/></button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                          <button 
+                              onClick={() => setStockAdjustmentType('add')}
+                              className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${stockAdjustmentType === 'add' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}`}
+                          >
+                              إضافة (+)
+                          </button>
+                          <button 
+                              onClick={() => setStockAdjustmentType('remove')}
+                              className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${stockAdjustmentType === 'remove' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}`}
+                          >
+                              خصم (-)
+                          </button>
+                      </div>
+                      
+                      <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">الكمية</label>
+                          <input 
+                              type="number" 
+                              value={stockAdjustmentQty} 
+                              onChange={e => setStockAdjustmentQty(e.target.value)} 
+                              className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-sap-primary font-bold"
+                              autoFocus
+                          />
+                      </div>
+
+                      <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">السبب (اختياري)</label>
+                          <input 
+                              type="text" 
+                              value={stockAdjustmentReason} 
+                              onChange={e => setStockAdjustmentReason(e.target.value)} 
+                              className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-sap-primary"
+                              placeholder="مثال: تالف، جرد، هدية..."
+                          />
+                      </div>
+
+                      <div className="pt-2">
+                          <button 
+                              onClick={handleStockAdjustment}
+                              className="w-full py-3 bg-sap-primary text-white rounded-xl font-bold hover:bg-sap-primary-hover shadow-lg"
+                          >
+                              تأكيد العملية
+                          </button>
                       </div>
                   </div>
               </div>

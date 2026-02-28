@@ -15,6 +15,11 @@ export const Settings: React.FC = () => {
     const [taxRate, setTaxRate] = useState(15);
     const [receiptHeader, setReceiptHeader] = useState('');
     const [receiptFooter, setReceiptFooter] = useState('');
+    const [showLogoOnReceipt, setShowLogoOnReceipt] = useState(true);
+    const [showHeaderOnReceipt, setShowHeaderOnReceipt] = useState(true);
+    const [showFooterOnReceipt, setShowFooterOnReceipt] = useState(true);
+    const [enableSoundEffects, setEnableSoundEffects] = useState(true);
+    const [themeColor, setThemeColor] = useState('#6366f1'); // Default Indigo
 
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -38,6 +43,11 @@ export const Settings: React.FC = () => {
             setTaxRate(settings.taxRate || 15);
             setReceiptHeader(settings.receiptHeader || '');
             setReceiptFooter(settings.receiptFooter || '');
+            setShowLogoOnReceipt(settings.showLogoOnReceipt ?? true);
+            setShowHeaderOnReceipt(settings.showHeaderOnReceipt ?? true);
+            setShowFooterOnReceipt(settings.showFooterOnReceipt ?? true);
+            setEnableSoundEffects(settings.enableSoundEffects ?? true);
+            setThemeColor(settings.themeColor || '#6366f1');
         }
     }, [settings, isSettingsLoading]);
 
@@ -51,8 +61,25 @@ export const Settings: React.FC = () => {
                 currencySymbolImage,
                 taxRate: Number(taxRate),
                 receiptHeader,
-                receiptFooter
+                receiptFooter,
+                showLogoOnReceipt,
+                showHeaderOnReceipt,
+                showFooterOnReceipt,
+                enableSoundEffects,
+                themeColor
             });
+
+            // Update CSS Variable
+            document.documentElement.style.setProperty('--sap-primary', themeColor);
+            
+            // Log Activity
+            await db.activityLogs.add({
+                action: 'تحديث الإعدادات',
+                details: 'تم تحديث إعدادات النظام وتخصيص الإيصال',
+                user: 'المدير',
+                type: 'info'
+            });
+
             setIsSaved(true);
             setTimeout(() => setIsSaved(false), 2000);
             localStorage.setItem('print_org_name', orgName);
@@ -90,6 +117,15 @@ export const Settings: React.FC = () => {
             }
 
             await db.auth.setAdminPassword(newPassword);
+            
+            // Log Activity
+            await db.activityLogs.add({
+                action: 'تغيير كلمة المرور',
+                details: 'تم تغيير كلمة مرور المدير العام',
+                user: 'المدير',
+                type: 'warning'
+            });
+
             setPassSuccess('تم تغيير كلمة المرور بنجاح');
             setCurrentPassword('');
             setNewPassword('');
@@ -123,6 +159,14 @@ export const Settings: React.FC = () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+
+            // Log Activity
+            await db.activityLogs.add({
+                action: 'نسخ احتياطي',
+                details: 'تم تصدير نسخة احتياطية من البيانات',
+                user: 'المدير',
+                type: 'info'
+            });
         } catch (e) {
             alert('فشل إنشاء النسخة الاحتياطية');
             console.error(e);
@@ -164,6 +208,14 @@ export const Settings: React.FC = () => {
                 if (data.settings) {
                     await db.settings.upsert(data.settings);
                 }
+
+                // Log Activity
+                await db.activityLogs.add({
+                    action: 'استعادة نسخة احتياطية',
+                    details: 'تم استعادة البيانات من ملف خارجي',
+                    user: 'المدير',
+                    type: 'warning'
+                });
 
                 alert('تم استعادة البيانات بنجاح! يرجى تحديث الصفحة.');
                 window.location.reload();
@@ -281,12 +333,51 @@ export const Settings: React.FC = () => {
 
                             <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
                                 <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1">تخصيص الإيصال</label>
+                                
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-white hover:shadow-sm transition-all">
+                                        <input type="checkbox" checked={showLogoOnReceipt} onChange={e => setShowLogoOnReceipt(e.target.checked)} className="w-5 h-5 accent-sap-primary rounded-md"/>
+                                        <span className="text-sm font-bold text-gray-700">إظهار الشعار</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-white hover:shadow-sm transition-all">
+                                        <input type="checkbox" checked={showHeaderOnReceipt} onChange={e => setShowHeaderOnReceipt(e.target.checked)} className="w-5 h-5 accent-sap-primary rounded-md"/>
+                                        <span className="text-sm font-bold text-gray-700">إظهار الترويسة</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-white hover:shadow-sm transition-all">
+                                        <input type="checkbox" checked={showFooterOnReceipt} onChange={e => setShowFooterOnReceipt(e.target.checked)} className="w-5 h-5 accent-sap-primary rounded-md"/>
+                                        <span className="text-sm font-bold text-gray-700">إظهار التذييل</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-white hover:shadow-sm transition-all">
+                                        <input type="checkbox" checked={enableSoundEffects} onChange={e => setEnableSoundEffects(e.target.checked)} className="w-5 h-5 accent-sap-primary rounded-md"/>
+                                        <span className="text-sm font-bold text-gray-700">تفعيل المؤثرات الصوتية</span>
+                                    </label>
+                                </div>
+
+                                <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
+                                    <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1 flex items-center gap-2">
+                                        <Sparkles size={16} /> لون النظام الرئيسي
+                                    </label>
+                                    <div className="flex items-center gap-4">
+                                        <input 
+                                            type="color" 
+                                            value={themeColor} 
+                                            onChange={(e) => setThemeColor(e.target.value)}
+                                            className="w-16 h-16 rounded-xl cursor-pointer border-4 border-white shadow-md"
+                                        />
+                                        <div className="flex-1">
+                                            <div className="text-sm font-bold text-gray-800 mb-1">اختر لون الهوية</div>
+                                            <div className="text-xs text-gray-400">سيتم تطبيق هذا اللون على الأزرار والقوائم والعناوين الرئيسية.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <input 
                                     type="text" 
                                     value={receiptHeader} 
                                     onChange={(e) => setReceiptHeader(e.target.value)}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm mb-2"
                                     placeholder="نص الترويسة (مثل: أهلاً بكم في متجرنا)"
+                                    disabled={!showHeaderOnReceipt}
                                 />
                                 <input 
                                     type="text" 
@@ -294,6 +385,7 @@ export const Settings: React.FC = () => {
                                     onChange={(e) => setReceiptFooter(e.target.value)}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm"
                                     placeholder="نص التذييل (مثل: شكراً لزيارتكم)"
+                                    disabled={!showFooterOnReceipt}
                                 />
                             </div>
 

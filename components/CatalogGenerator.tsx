@@ -188,14 +188,17 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
 
       // Fix: Iterate through parts to find image part as per GenAI guidelines
       let foundImage = false;
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          const compressed = await compressImage(`data:image/png;base64,${part.inlineData.data}`);
-          updateItem(item.id, { image: compressed });
-          foundImage = true;
-          break;
-        } else if (part.text) {
-          console.log("Model response text:", part.text);
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (parts) {
+        for (const part of parts) {
+          if (part.inlineData) {
+            const compressed = await compressImage(`data:image/png;base64,${part.inlineData.data}`);
+            updateItem(item.id, { image: compressed });
+            foundImage = true;
+            break;
+          } else if (part.text) {
+            console.log("Model response text:", part.text);
+          }
         }
       }
       

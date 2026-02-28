@@ -10,6 +10,11 @@ interface SystemSettings {
   taxRate: number;
   receiptHeader: string;
   receiptFooter: string;
+  showLogoOnReceipt?: boolean;
+  showHeaderOnReceipt?: boolean;
+  showFooterOnReceipt?: boolean;
+  enableSoundEffects?: boolean;
+  themeColor?: string;
 }
 
 interface SystemSettingsContextType {
@@ -25,7 +30,12 @@ const defaultSettings: SystemSettings = {
   currencySymbolImage: null,
   taxRate: 15,
   receiptHeader: '',
-  receiptFooter: ''
+  receiptFooter: '',
+  showLogoOnReceipt: true,
+  showHeaderOnReceipt: true,
+  showFooterOnReceipt: true,
+  enableSoundEffects: true,
+  themeColor: '#6366f1'
 };
 
 const SystemSettingsContext = createContext<SystemSettingsContextType>({

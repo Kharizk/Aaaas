@@ -7,9 +7,9 @@ import { ReportLayout } from './ReportLayout';
 import { db } from '../services/supabase';
 import { 
   FileLineChart, LayoutGrid, BarChart3, TrendingUp, TrendingDown, Package, Printer, 
-  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet 
+  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet, Download, PieChart 
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 interface ReportsCenterProps {
   branches: Branch[];
@@ -19,9 +19,150 @@ interface ReportsCenterProps {
 }
 
 export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, products, units }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'standard' | 'matrix' | 'products' | 'inventory' | 'expiry' | 'low_stock' | 'profit'>('standard');
+  const [activeSubTab, setActiveSubTab] = useState<'standard' | 'matrix' | 'products' | 'inventory' | 'expiry' | 'low_stock' | 'profit' | 'category'>('standard');
   const [showHeader, setShowHeader] = useState(true);
   const [productSearch, setProductSearch] = useState('');
+
+  // --- Category Report Sub-Component ---
+  const CategoryReportView = () => {
+      const [dateFrom, setDateFrom] = useState(() => {
+          const d = new Date();
+          d.setMonth(d.getMonth() - 1);
+          return d.toISOString().split('T')[0];
+      });
+      const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
+
+      const categoryData = useMemo(() => {
+          const filteredSales = sales.filter(s => s.date >= dateFrom && s.date <= dateTo);
+          const catMap = new Map<string, number>();
+
+          filteredSales.forEach(sale => {
+              if (sale.cart && Array.isArray(sale.cart)) {
+                  sale.cart.forEach(item => {
+                      // Find product to get category (using unit as proxy for now if no category field, or add category later)
+                      // For now, let's assume we don't have a specific category field, so we might group by "Unit" or just "Top Products"
+                      // Actually, let's group by Product Name for "Top Products" as a proxy for category if needed, 
+                      // OR better: let's add a "Category" field to products later. 
+                      // For this iteration, let's use "Unit" as a grouping or just show "Top Selling Products"
+                      
+                      const product = products.find(p => p.id === item.productId);
+                      const key = product ? product.name : 'Unknown'; // Group by Product Name (Top Selling)
+                      const current = catMap.get(key) || 0;
+                      catMap.set(key, current + (item.quantity * item.price));
+                  });
+              }
+          });
+
+          // Convert to array and sort
+          return Array.from(catMap.entries())
+              .map(([name, value]) => ({ name, value }))
+              .sort((a, b) => b.value - a.value)
+              .slice(0, 10); // Top 10
+      }, [sales, products, dateFrom, dateTo]);
+
+      const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1', '#a4de6c', '#d0ed57'];
+
+      const handleExportCSV = () => {
+          const headers = ['Product Name', 'Total Sales (SAR)'];
+          const rows = categoryData.map(d => [d.name, d.value.toFixed(2)]);
+          const csvContent = "data:text/csv;charset=utf-8," 
+              + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+          const encodedUri = encodeURI(csvContent);
+          const link = document.createElement("a");
+          link.setAttribute("href", encodedUri);
+          link.setAttribute("download", "top_products_sales.csv");
+          document.body.appendChild(link);
+          link.click();
+      };
+
+      return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 printable">
+              <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
+                  <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+                      <div className="flex items-center gap-5">
+                          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-[2rem] flex items-center justify-center shadow-lg">
+                              <PieChart size={32} />
+                          </div>
+                          <div>
+                              <h2 className="text-2xl font-black text-sap-text">أفضل المنتجات مبيعاً</h2>
+                              <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">تحليل المبيعات حسب المنتج</p>
+                          </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold" />
+                          <ArrowLeft size={14} className="text-gray-400"/>
+                          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold" />
+                          <button onClick={handleExportCSV} className="bg-green-600 text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-green-700 transition-all shadow-lg">
+                              <Download size={16}/> تصدير CSV
+                          </button>
+                          <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg">
+                              <Printer size={16}/> طباعة
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              <ReportLayout 
+                  title="تقرير أفضل المنتجات مبيعاً" 
+                  subtitle={`الفترة من ${dateFrom} إلى ${dateTo}`}
+                  showHeader={showHeader}
+              >
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {/* Chart */}
+                      <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm h-[400px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <RechartsPieChart>
+                                  <Pie
+                                      data={categoryData}
+                                      cx="50%"
+                                      cy="50%"
+                                      labelLine={false}
+                                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                      outerRadius={120}
+                                      fill="#8884d8"
+                                      dataKey="value"
+                                  >
+                                      {categoryData.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                      ))}
+                                  </Pie>
+                                  <Tooltip />
+                              </RechartsPieChart>
+                          </ResponsiveContainer>
+                      </div>
+
+                      {/* Table */}
+                      <div className="bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm">
+                          <table className="w-full text-right">
+                              <thead className="bg-gray-50 text-gray-500 text-xs font-black uppercase">
+                                  <tr>
+                                      <th className="px-6 py-4">المنتج</th>
+                                      <th className="px-6 py-4 text-left">إجمالي المبيعات</th>
+                                      <th className="px-6 py-4 text-left">النسبة</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                  {categoryData.map((item, idx) => (
+                                      <tr key={idx} className="hover:bg-gray-50">
+                                          <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-2">
+                                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                                              {item.name}
+                                          </td>
+                                          <td className="px-6 py-4 text-left font-mono font-black text-sap-primary">{item.value.toLocaleString()} SAR</td>
+                                          <td className="px-6 py-4 text-left text-xs text-gray-400">
+                                              {((item.value / categoryData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}%
+                                          </td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              </ReportLayout>
+          </div>
+      );
+  };
 
   // --- Profit Report Sub-Component ---
   const ProfitReportView = () => {
@@ -282,7 +423,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                     </div>
                 </div>
 
-                <div className="border-2 border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm print:border print:rounded-none print:shadow-none">
+                <div className="border-2 border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm print:border print:rounded-none print:shadow-none print:overflow-visible">
                     {loading ? (
                         <div className="p-10 text-center text-gray-400">جاري تحميل البيانات...</div>
                     ) : (
@@ -770,6 +911,9 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         <button onClick={() => setActiveSubTab('profit')} className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeSubTab === 'profit' ? 'bg-sap-primary text-white shadow-lg' : 'text-gray-500 hover:bg-sap-highlight hover:text-sap-primary'}`}>
           <Wallet size={18} /> تحليل الربحية
         </button>
+        <button onClick={() => setActiveSubTab('category')} className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeSubTab === 'category' ? 'bg-sap-primary text-white shadow-lg' : 'text-gray-500 hover:bg-sap-highlight hover:text-sap-primary'}`}>
+          <PieChart size={18} /> أفضل المنتجات
+        </button>
       </div>
 
       <div className="min-h-[700px] overflow-visible">
@@ -780,6 +924,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         {activeSubTab === 'expiry' && <ExpiryReportView />}
         {activeSubTab === 'low_stock' && <LowStockReportView />}
         {activeSubTab === 'profit' && <ProfitReportView />}
+        {activeSubTab === 'category' && <CategoryReportView />}
       </div>
     </div>
   );

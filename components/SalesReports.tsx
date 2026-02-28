@@ -265,6 +265,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
                             <th className="px-8 py-6">التاريخ اليومي</th>
                             <th className="px-8 py-6">الفرع / النقطة البيعية</th>
                             <th className="px-8 py-6 text-center">المبلغ المحصل</th>
+                            <th className="px-8 py-6 text-center">الخصم / النقاط</th>
                             <th className="px-8 py-6">الملاحظات والبيان</th>
                         </tr>
                     </thead>
@@ -277,6 +278,14 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
                                     <div className="text-[9px] text-gray-400 flex items-center gap-1 mt-0.5"><MapPin size={10}/> موقع مسجل</div>
                                 </td>
                                 <td className="px-8 py-5 text-center font-mono text-sap-primary text-lg">{(sale.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td className="px-8 py-5 text-center">
+                                    {(sale.discount || 0) > 0 ? (
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-red-500 font-mono text-xs">-{sale.discount} SAR</span>
+                                            {sale.pointsRedeemed && <span className="text-[9px] text-purple-500 bg-purple-50 px-1.5 rounded-full">{sale.pointsRedeemed} نقطة</span>}
+                                        </div>
+                                    ) : <span className="text-gray-300">-</span>}
+                                </td>
                                 <td className="px-8 py-5 text-gray-400 text-xs italic">{sale.notes || 'لا يوجد ملاحظات إضافية'}</td>
                             </tr>
                         ))}

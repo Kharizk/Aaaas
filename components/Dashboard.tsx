@@ -1,13 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Product, Unit, ListRow, DailySales, Expense } from '../types';
+import { Product, Unit, ListRow, DailySales, Expense, Shift } from '../types';
 import { db } from '../services/supabase';
 import { ReportLayout } from './ReportLayout';
+import { useNotification } from './Notifications';
 import { 
   Package, Ruler, FileText, Clock, 
   ArrowUpRight, AlertCircle, ShoppingBag, Plus, DollarSign, Crown,
-  AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink, TrendingUp, TrendingDown, Truck
+  AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink, TrendingUp, TrendingDown, Truck,
+  LogOut, LogIn
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -35,6 +37,60 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [isUpdatingAlert, setIsUpdatingAlert] = useState<string | null>(null);
   const [alertDaysThreshold, setAlertDaysThreshold] = useState(60);
   const [salesData, setSalesData] = useState<DailySales[]>([]);
+  const [currentShift, setCurrentShift] = useState<Shift | null>(null);
+  const { notify } = useNotification();
+
+  const checkOpenShift = async () => {
+      try {
+          const shifts = await db.shifts.getAll();
+          const open = shifts.find((s: Shift) => s.status === 'open');
+          setCurrentShift(open || null);
+      } catch (e) {
+          console.error(e);
+      }
+  };
+
+  const handleShiftAction = async () => {
+      if (currentShift) {
+          if (confirm('هل أنت متأكد من إغلاق الوردية الحالية؟')) {
+              const updatedShift: Shift = {
+                  ...currentShift,
+                  endTime: new Date().toISOString(),
+                  status: 'closed',
+                  endCash: 0 
+              };
+              await db.shifts.upsert(updatedShift);
+              setCurrentShift(null);
+              notify('تم إغلاق الوردية', 'success');
+              
+              await db.activityLogs.add({
+                  action: 'إغلاق وردية',
+                  details: `تم إغلاق الوردية رقم ${updatedShift.id.substring(0,8)}`,
+                  user: 'الكاشير',
+                  type: 'info'
+              });
+          }
+      } else {
+          const newShift: Shift = {
+              id: crypto.randomUUID(),
+              userId: 'current-user-id', 
+              userName: 'الكاشير', 
+              startTime: new Date().toISOString(),
+              startCash: 0, 
+              status: 'open'
+          };
+          await db.shifts.upsert(newShift);
+          setCurrentShift(newShift);
+          notify('تم فتح وردية جديدة', 'success');
+
+          await db.activityLogs.add({
+              action: 'فتح وردية',
+              details: `تم فتح وردية جديدة`,
+              user: 'الكاشير',
+              type: 'info'
+          });
+      }
+  };
 
   const fetchStats = async () => {
     try {
@@ -79,7 +135,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
     } catch (e) { console.error(e); }
   };
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => { 
+      fetchStats(); 
+      checkOpenShift();
+  }, []);
 
   const handleDismissAlert = async (e: React.MouseEvent, alertItem: ExpiryAlert) => {
       e.stopPropagation(); 
@@ -133,13 +192,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sap-primary to-emerald-700 flex items-center gap-3">
                 <Crown size={36} className="text-sap-secondary fill-current" /> لوحة القيادة
             </h1>
             <p className="text-gray-400 text-sm font-bold mt-1 pr-1">نظرة عامة على أداء المتجر والعمليات الحيوية</p>
         </div>
+        
+        <button 
+            onClick={handleShiftAction}
+            className={`px-6 py-3 rounded-2xl font-black text-sm shadow-lg flex items-center gap-3 transition-all ${
+                currentShift 
+                ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100' 
+                : 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+        >
+            {currentShift ? <LogOut size={20}/> : <LogIn size={20}/>}
+            {currentShift ? 'إغلاق الوردية' : 'بدء وردية جديدة'}
+        </button>
       </div>
 
       {/* Stats Tiles */}
@@ -189,21 +260,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
             {/* Low Stock Widget */}
             <div className="bg-amber-50 border border-amber-100 rounded-[2.5rem] shadow-sm p-6">
                 <h3 className="font-black text-amber-800 mb-4 flex items-center gap-2 text-sm"><AlertTriangle size={18}/> تنبيهات المخزون المنخفض</h3>
-                <div className="space-y-2">
-                    {products.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0).slice(0, 3).map(p => (
-                        <div key={p.id} className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-amber-100/50">
+                <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                    {products.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0).map(p => (
+                        <div key={p.id} className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-amber-100/50 hover:bg-white transition-colors">
                             <div>
                                 <div className="font-bold text-gray-800 text-xs">{p.name}</div>
-                                <div className="text-[10px] text-gray-400 font-mono">Stock: {p.stock || 0}</div>
+                                <div className="text-[10px] text-gray-400 font-mono">المتوفر: {p.stock || 0} / الحد: {p.lowStockThreshold}</div>
                             </div>
                             <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-black">منخفض</span>
                         </div>
                     ))}
                     {products.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0).length === 0 && (
-                        <div className="text-center text-amber-400 text-xs py-4">المخزون في حالة جيدة</div>
+                        <div className="text-center text-amber-400 text-xs py-4 flex flex-col items-center gap-2">
+                            <CheckCircle size={24} />
+                            المخزون في حالة جيدة
+                        </div>
                     )}
                 </div>
             </div>
+
+            {/* Shift Summary Widget */}
+            {currentShift && (
+                <div className="bg-blue-50 border border-blue-100 rounded-[2.5rem] shadow-sm p-6 mt-6">
+                    <h3 className="font-black text-blue-800 mb-4 flex items-center gap-2 text-sm"><Clock size={18}/> ملخص الوردية الحالية</h3>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-blue-100/50">
+                            <span className="text-xs text-gray-500 font-bold">وقت البدء</span>
+                            <span className="text-xs font-mono font-black text-blue-600">{new Date(currentShift.startTime).toLocaleTimeString('ar-SA')}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-blue-100/50">
+                            <span className="text-xs text-gray-500 font-bold">الكاشير</span>
+                            <span className="text-xs font-bold text-gray-800">{currentShift.userName}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-blue-100/50">
+                            <span className="text-xs text-gray-500 font-bold">المبيعات (تقريبي)</span>
+                            <span className="text-xs font-mono font-black text-emerald-600">
+                                {salesData
+                                    .filter(s => new Date(s.date) >= new Date(currentShift.startTime.split('T')[0])) // Rough filter by date
+                                    .reduce((acc, curr) => acc + curr.amount, 0)
+                                    .toLocaleString()} SAR
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Action Card & Recent Transactions */}

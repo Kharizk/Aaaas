@@ -1,263 +1,857 @@
-import React, { useState, useEffect } from 'react';
-import { Product, DailySales, Customer, POSPoint, Network, HeldOrder } from '../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import type { Product, DailySales, Customer, POSPoint, HeldOrder, CartItem, User, Shift } from '../types';
 import { db } from '../services/supabase';
 import { useNotification } from './Notifications';
 import { 
   DollarSign, Users, Save, Loader2, Monitor, Search, 
-  PauseCircle, PlayCircle, Trash2, LayoutGrid, CheckCircle2, ChevronRight, X, User
+  PauseCircle, PlayCircle, Trash2, LayoutGrid, CheckCircle2, ChevronRight, X, User as UserIcon,
+  ShoppingCart, Plus, Minus, Barcode, CreditCard, Banknote, RefreshCcw, Tag,
+  History, FileText, AlertCircle, Lock, Calculator, Printer, Maximize, HelpCircle, Keyboard
 } from 'lucide-react';
+import { playBeep, playError, playSuccess, playClick } from '../utils/sound';
 
 interface POSInterfaceProps {
   products: Product[]; 
   setDailySales: React.Dispatch<React.SetStateAction<DailySales[]>>;
+  currentUser: User | null;
 }
 
-export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySales }) => {
+export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySales, currentUser }) => {
   const { notify } = useNotification();
-  const [activeTab, setActiveTab] = useState<'general' | 'customer'>('general');
-  const [posPoints, setPosPoints] = useState<POSPoint[]>([]);
-  const [selectedPosId, setSelectedPosId] = useState<string>('');
+  
+  // --- State ---
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  
-  // Amounts
-  const [cashAmount, setCashAmount] = useState('');
-  const [notes, setNotes] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  // Held Orders
+  const [posPoints, setPosPoints] = useState<POSPoint[]>([]);
+  const [selectedPosId, setSelectedPosId] = useState<string>('');
+  const [isRefundMode, setIsRefundMode] = useState(false);
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
-  const [showHeldOrders, setShowHeldOrders] = useState(false);
+  const [showHeldModal, setShowHeldModal] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  
+  // Shift State
+  const [currentShift, setCurrentShift] = useState<Shift | null>(null);
+  const [loadingShift, setLoadingShift] = useState(true);
 
-  const [settings, setSettings] = useState<any>({});
-  const [discount, setDiscount] = useState(0);
+  // Checkout State
+  const [paidCash, setPaidCash] = useState('');
+  const [paidCard, setPaidCard] = useState('');
+  const [isCreditSale, setIsCreditSale] = useState(false);
+  const [checkoutNote, setCheckoutNote] = useState('');
+  const [returnReason, setReturnReason] = useState('');
+  const [redeemPoints, setRedeemPoints] = useState(false);
+  const [pointsToRedeem, setPointsToRedeem] = useState('');
+  
+  // Quick Add State
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdPrice, setNewProdPrice] = useState('');
+  const [newProdCode, setNewProdCode] = useState('');
 
-  useEffect(() => {
-      const load = async () => {
-          const [pp, cust, sett] = await Promise.all([
-              db.posPoints.getAll(),
-              db.customers.getAll(),
-              db.settings.get()
-          ]);
-          setPosPoints(pp);
-          setCustomers(cust);
-          setSettings(sett);
-          if (pp.length > 0) setSelectedPosId(pp[0].id);
+  // Calculator & Print State
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [calcInput, setCalcInput] = useState('');
+  const [lastReceiptId, setLastReceiptId] = useState<string | null>(null);
 
-          // Load held orders from local storage
-          const savedHeld = localStorage.getItem('pos_held_orders');
-          if (savedHeld) {
-              try { setHeldOrders(JSON.parse(savedHeld)); } catch (e) {}
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Fullscreen Toggle
+  const toggleFullscreen = () => {
+      if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch((e) => {
+              console.error(`Error attempting to enable fullscreen mode: ${e.message} (${e.name})`);
+          });
+      } else {
+          if (document.exitFullscreen) {
+              document.exitFullscreen();
           }
-      };
-      load();
+      }
+  };
+
+  // Calculator Logic
+  const handleCalcInput = (val: string) => {
+      if (val === 'C') setCalcInput('');
+      else if (val === '=') {
+          try {
+              // eslint-disable-next-line no-eval
+              setCalcInput(eval(calcInput).toString());
+          } catch (e) {
+              setCalcInput('Error');
+          }
+      } else {
+          setCalcInput(prev => prev + val);
+      }
+  };
+
+  const handlePrintLastReceipt = () => {
+      if (!lastReceiptId) return notify('لا توجد فاتورة سابقة', 'warning');
+      notify('جاري طباعة آخر فاتورة...', 'info');
+      playClick();
+  };
+
+  // --- Effects ---
+  useEffect(() => {
+    const load = async () => {
+      const [pp, cust] = await Promise.all([db.posPoints.getAll(), db.customers.getAll()]);
+      setPosPoints(pp);
+      setCustomers(cust);
+      if (pp.length > 0) setSelectedPosId(pp[0].id);
+      
+      const savedHeld = localStorage.getItem('pos_held_orders');
+      if (savedHeld) {
+        try { setHeldOrders(JSON.parse(savedHeld)); } catch (e) {}
+      }
+    };
+    load();
   }, []);
 
-  const applyDiscount = (percent: number) => {
-      if (!cashAmount) return;
-      const current = parseFloat(cashAmount);
-      const discountAmount = current * (percent / 100);
-      setCashAmount((current - discountAmount).toFixed(2));
-      notify(`تم تطبيق خصم ${percent}%`, 'info');
+  // Check Shift Status
+  useEffect(() => {
+    const checkShift = async () => {
+        if (!currentUser) return;
+        // If admin, maybe bypass? Or still require shift? Let's require shift for consistency.
+        try {
+            const shifts = await db.shifts.getAll();
+            const openShift = shifts.find((s: any) => s.userId === currentUser.id && s.status === 'open');
+            setCurrentShift(openShift || null);
+        } catch (e) {
+            console.error("Error checking shift", e);
+        } finally {
+            setLoadingShift(false);
+        }
+    };
+    checkShift();
+  }, [currentUser]);
+
+  // Barcode Scanner Listener (Global)
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+        // Disable scanner if no shift
+        if (!currentShift && !loadingShift) return;
+
+        const now = Date.now();
+        if (now - lastKeyTime > 100) buffer = ''; // Reset if slow (manual typing)
+        lastKeyTime = now;
+
+        if (e.key === 'Enter') {
+            if (buffer.length > 2) { // Minimum barcode length
+                handleScan(buffer);
+                buffer = '';
+            }
+        } else if (e.key.length === 1) {
+            buffer += e.key;
+        }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [products, cart, isRefundMode, currentShift, loadingShift]);
+
+  // --- Logic ---
+
+  const categories = useMemo(() => {
+      const cats = new Set(products.map(p => p.category).filter(Boolean));
+      return ['all', ...Array.from(cats)];
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+      return products.filter(p => {
+          const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                p.code.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
+          return matchesSearch && matchesCat;
+      });
+  }, [products, searchQuery, selectedCategory]);
+
+  const cartTotal = useMemo(() => {
+      return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }, [cart]);
+
+  const handleScan = (code: string) => {
+      const product = products.find(p => p.code === code);
+      if (product) {
+          addToCart(product);
+          playBeep();
+      } else {
+          playError();
+          notify('المنتج غير موجود', 'error');
+      }
   };
 
-  const addTax = () => {
-      if (!cashAmount) return;
-      const current = parseFloat(cashAmount);
-      const tax = settings.taxRate || 15;
-      const withTax = current * (1 + tax / 100);
-      setCashAmount(withTax.toFixed(2));
-      notify(`تم إضافة ضريبة ${tax}%`, 'info');
+  const addToCart = (product: Product) => {
+      setCart(prev => {
+          const existing = prev.find(i => i.productId === product.id);
+          const qtyMod = isRefundMode ? -1 : 1;
+          
+          if (existing) {
+              return prev.map(i => i.productId === product.id 
+                  ? { ...i, quantity: i.quantity + qtyMod } 
+                  : i
+              ).filter(i => i.quantity !== 0); // Remove if 0
+          }
+          return [...prev, { 
+              productId: product.id, 
+              quantity: qtyMod, 
+              price: parseFloat(product.price || '0'), 
+              name: product.name 
+          }];
+      });
+      playClick();
   };
 
-  const saveHeldOrders = (orders: HeldOrder[]) => {
-      setHeldOrders(orders);
-      localStorage.setItem('pos_held_orders', JSON.stringify(orders));
+  const updateQty = (productId: string, delta: number) => {
+      setCart(prev => prev.map(item => {
+          if (item.productId === productId) {
+              const newQty = item.quantity + delta;
+              return { ...item, quantity: newQty };
+          }
+          return item;
+      }).filter(i => i.quantity !== 0));
   };
 
-  const handleHoldSale = () => {
-      if (!cashAmount || parseFloat(cashAmount) <= 0) return notify('أدخل المبلغ للتعليق', 'warning');
+  const removeFromCart = (productId: string) => {
+      setCart(prev => prev.filter(i => i.productId !== productId));
+  };
+
+  const clearCart = () => {
+      setCart([]);
+      setPaidCash('');
+      setPaidCard('');
+      setCheckoutNote('');
+      setSelectedCustomerId('');
+      setIsRefundMode(false);
+      setRedeemPoints(false);
+      setPointsToRedeem('');
+  };
+
+  // --- Hold / Retrieve ---
+
+  const handleHold = () => {
+      if (cart.length === 0) return notify('السلة فارغة', 'warning');
       
       const order: HeldOrder = {
           id: crypto.randomUUID(),
           date: new Date().toISOString(),
-          amount: parseFloat(cashAmount),
-          note: notes,
-          customerName: customers.find(c => c.id === selectedCustomerId)?.name || 'عميل عام',
-          rawCartData: { selectedCustomerId, selectedPosId } // Store context
+          amount: cartTotal,
+          note: 'Suspended Sale',
+          customerName: customers.find(c => c.id === selectedCustomerId)?.name,
+          cart: cart
       };
 
-      saveHeldOrders([...heldOrders, order]);
-      setCashAmount('');
-      setNotes('');
-      setSelectedCustomerId('');
-      notify('تم تعليق العملية', 'success');
+      const newHeld = [...heldOrders, order];
+      setHeldOrders(newHeld);
+      localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+      clearCart();
+      notify('تم تعليق الطلب', 'success');
   };
 
-  const handleRetrieveOrder = (order: HeldOrder) => {
-      setCashAmount(order.amount.toString());
-      setNotes(order.note || '');
-      if (order.rawCartData?.selectedCustomerId) setSelectedCustomerId(order.rawCartData.selectedCustomerId);
-      if (order.rawCartData?.selectedPosId) setSelectedPosId(order.rawCartData.selectedPosId);
+  const handleRetrieve = (order: HeldOrder) => {
+      setCart(order.cart);
+      if (order.customerName) {
+          const c = customers.find(n => n.name === order.customerName);
+          if (c) setSelectedCustomerId(c.id);
+      }
       
-      // Remove from held
-      saveHeldOrders(heldOrders.filter(o => o.id !== order.id));
-      setShowHeldOrders(false);
-      notify('تم استرجاع العملية', 'info');
+      const newHeld = heldOrders.filter(o => o.id !== order.id);
+      setHeldOrders(newHeld);
+      localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+      setShowHeldModal(false);
+      notify('تم استرجاع الطلب', 'info');
   };
 
-  const handleDeleteHeldOrder = (id: string) => {
-      saveHeldOrders(heldOrders.filter(o => o.id !== id));
-  };
+  // --- Checkout ---
 
-  const handleSave = async () => {
-      if (!cashAmount || parseFloat(cashAmount) <= 0) return notify('أدخل المبلغ', 'error');
-      if (!selectedPosId) return notify('اختر نقطة البيع', 'warning');
+  const handleCheckout = async () => {
+      if (cart.length === 0) return;
       
-      setIsProcessing(true);
+      const cash = parseFloat(paidCash || '0');
+      const card = parseFloat(paidCard || '0');
+      
+      // Calculate Discount from Points
+      let discountAmount = 0;
+      let pointsUsed = 0;
+      if (redeemPoints && pointsToRedeem) {
+          pointsUsed = parseInt(pointsToRedeem);
+          // 100 points = 10 SAR (Example Rate: 10 points = 1 SAR)
+          discountAmount = pointsUsed / 10; 
+      }
+
+      const totalPaid = cash + card;
+      
+      if (isCreditSale && !selectedCustomerId) {
+          return notify('يجب اختيار عميل لعملية الآجل', 'error');
+      }
+
+      // In refund mode, cartTotal is negative
+      const isReturn = cartTotal < 0;
+      const absTotal = Math.abs(cartTotal);
+      const finalTotal = Math.max(0, absTotal - discountAmount); // Ensure not negative
+      const absPaid = Math.abs(totalPaid);
+
+      // Validation for normal sales (not credit, not return)
+      if (!isCreditSale && !isReturn && absPaid < finalTotal) {
+          return notify('المبلغ المدفوع غير كافي', 'error');
+      }
+
+      // Determine Payment Method
+      let paymentMethod: any = 'cash';
+      if (isCreditSale) paymentMethod = 'credit';
+      else if (cash > 0 && card > 0) paymentMethod = 'split';
+      else if (card > 0) paymentMethod = 'card';
+
       try {
-          const amount = parseFloat(cashAmount);
-          const activePos = posPoints.find(p => p.id === selectedPosId);
-          const customer = customers.find(c => c.id === selectedCustomerId);
-          
-          await db.dailySales.upsert({
+          const sale: DailySales = {
               id: crypto.randomUUID(),
               date: new Date().toISOString().split('T')[0],
-              totalAmount: amount, paidAmount: amount, remainingAmount: 0,
-              paymentMethod: 'cash', transactionType: 'sale', isPending: false, isClosed: false,
-              customerName: customer ? customer.name : 'مبيعات نقدية سريعة',
-              notes: notes || 'POS Entry',
-              amount: amount,
+              totalAmount: absTotal,
+              paidAmount: isCreditSale ? 0 : absPaid,
+              remainingAmount: isCreditSale ? finalTotal : (finalTotal - absPaid),
+              paymentMethod: paymentMethod,
+              cashAmount: cash,
+              cardAmount: card,
+              transactionType: isReturn ? 'return' : 'sale',
+              isPending: false,
+              isClosed: true,
+              customerName: customers.find(c => c.id === selectedCustomerId)?.name || 'عميل عام',
+              customerId: selectedCustomerId || undefined,
+              notes: checkoutNote,
+              returnReason: isReturn ? returnReason : undefined,
+              amount: isReturn ? cartTotal : finalTotal, // Net amount
+              discount: discountAmount,
+              pointsRedeemed: pointsUsed,
               posPointId: selectedPosId,
-              branchId: activePos?.branchId
+              branchId: posPoints.find(p => p.id === selectedPosId)?.branchId,
+              cart: cart
+          };
+
+          await db.dailySales.upsert(sale);
+          setDailySales(prev => [sale, ...prev]);
+          setLastReceiptId(sale.id); // Store for reprint
+
+          // Update Customer Balance & Loyalty Points
+          if (selectedCustomerId) {
+              const customer = customers.find(c => c.id === selectedCustomerId);
+              if (customer) {
+                  let newBalance = customer.balance || 0;
+                  if (isCreditSale) newBalance += finalTotal;
+                  
+                  // Loyalty Points: 1 point per 10 SAR spent (only on positive sales)
+                  let newPoints = customer.loyaltyPoints || 0;
+                  
+                  // Deduct redeemed points
+                  if (redeemPoints && pointsUsed > 0) {
+                      newPoints -= pointsUsed;
+                  }
+
+                  // Add new points from this purchase
+                  if (!isReturn && !isCreditSale) {
+                      newPoints += Math.floor(finalTotal / 10);
+                  }
+
+                  const updatedCustomer = { 
+                      ...customer, 
+                      balance: newBalance, 
+                      lastVisit: new Date().toISOString(),
+                      totalPurchases: (customer.totalPurchases || 0) + 1,
+                      loyaltyPoints: Math.max(0, newPoints) // Ensure not negative
+                  };
+                  await db.customers.upsert(updatedCustomer);
+                  setCustomers(prev => prev.map(c => c.id === selectedCustomerId ? updatedCustomer : c));
+              }
+          }
+          
+          // Log Activity
+          await db.activityLogs.add({
+              action: isReturn ? 'مرتجع' : (isCreditSale ? 'بيع آجل' : 'بيع'),
+              details: `فاتورة: ${sale.id.substring(0, 8)} - المبلغ: ${sale.amount} (${paymentMethod}) ${discountAmount > 0 ? `- خصم نقاط: ${discountAmount}` : ''}`,
+              user: currentUser?.username || 'الكاشير',
+              type: 'success'
           });
           
-          setCashAmount(''); setNotes(''); setSelectedCustomerId('');
-          notify('تم التسجيل بنجاح', 'success');
-      } catch (e) { notify('خطأ', 'error'); }
-      finally { setIsProcessing(false); }
+          playSuccess();
+          notify('تمت العملية بنجاح', 'success');
+          setShowCheckoutModal(false);
+          clearCart();
+      } catch (e) {
+          playError();
+          notify('حدث خطأ أثناء الحفظ', 'error');
+      }
+  };
+
+  // --- Quick Add ---
+  const handleQuickAdd = async () => {
+      if (!newProdName || !newProdPrice) return notify('البيانات ناقصة', 'error');
+      
+      const newProduct: Product = {
+          id: crypto.randomUUID(),
+          name: newProdName,
+          price: newProdPrice,
+          code: newProdCode || Math.floor(Math.random() * 1000000).toString(),
+          unitId: 'unit_piece', // Default
+          category: 'Quick Add'
+      };
+
+      // Add to DB
+      try {
+          await db.products.upsert(newProduct);
+          // We can't easily update parent state without callback, but we can try to rely on next fetch or just add to cart
+          // Ideally we should have a callback prop onNewProductAdded
+          
+          addToCart(newProduct);
+          
+          // Log Activity
+          await db.activityLogs.add({
+              action: 'إضافة منتج سريع',
+              details: `تم إضافة منتج: ${newProduct.name}`,
+              user: 'الكاشير',
+              type: 'info'
+          });
+
+          setShowQuickAddModal(false);
+          setNewProdName(''); setNewProdPrice(''); setNewProdCode('');
+          notify('تم إضافة المنتج للسلة وقاعدة البيانات', 'success');
+      } catch (e) {
+          notify('فشل حفظ المنتج في قاعدة البيانات', 'error');
+      }
   };
 
   return (
-    <div className="h-full bg-sap-background flex flex-col p-4 animate-in fade-in">
-        {/* Header */}
-        <div className="bg-sap-shell text-white p-4 rounded-xl flex justify-between items-center shadow-lg mb-4">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-sap-secondary rounded-lg"><DollarSign size={24} color="white"/></div>
-                <div>
-                    <h1 className="text-xl font-bold">نقطة البيع السريعة</h1>
-                    <div className="text-[10px] opacity-70">نظام تسجيل النقد المباشر</div>
+    <div className="h-full flex flex-col bg-gray-100 overflow-hidden animate-in fade-in relative">
+        {/* Shift Warning Overlay */}
+        {!loadingShift && !currentShift && (
+            <div className="absolute inset-0 z-50 bg-gray-100/80 backdrop-blur-sm flex items-center justify-center">
+                <div className="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-md border border-red-100 animate-in zoom-in-95">
+                    <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Lock size={40} />
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-800 mb-2">الوردية مغلقة</h2>
+                    <p className="text-gray-500 font-bold mb-8">يجب فتح وردية جديدة من لوحة البيانات للبدء في عمليات البيع</p>
                 </div>
             </div>
+        )}
+
+        {/* Top Bar */}
+        <div className="bg-white border-b border-gray-200 p-3 flex justify-between items-center shrink-0">
+            <div className="flex items-center gap-4">
+                <div className="bg-sap-primary text-white p-2 rounded-lg"><ShoppingCart size={20}/></div>
+                <h1 className="font-black text-lg text-gray-800">نقطة البيع</h1>
+                
+                <div className="h-8 w-px bg-gray-200 mx-2"></div>
+                
+                <div className="relative w-64">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                    <input 
+                        ref={searchInputRef}
+                        type="text" 
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="بحث (اسم / كود)..." 
+                        className="w-full bg-gray-100 border-none rounded-full py-2 pr-10 pl-4 text-sm font-bold focus:ring-2 focus:ring-sap-primary/20 outline-none"
+                    />
+                </div>
+            </div>
+
             <div className="flex items-center gap-3">
-                {heldOrders.length > 0 && (
-                    <button onClick={() => setShowHeldOrders(true)} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors animate-pulse">
-                        <PauseCircle size={16} />
-                        عمليات معلقة ({heldOrders.length})
-                    </button>
-                )}
-                <select value={selectedPosId} onChange={e => setSelectedPosId(e.target.value)} className="bg-sap-shell border border-sap-secondary text-white text-sm rounded px-3 py-1 font-bold outline-none">
-                    {posPoints.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                 <button 
+                    onClick={() => setShowHelpModal(true)}
+                    className="p-2 text-gray-500 hover:text-sap-primary hover:bg-gray-100 rounded-lg transition-colors"
+                    title="اختصارات لوحة المفاتيح"
+                >
+                    <Keyboard size={20}/>
+                </button>
+
+                 <button 
+                    onClick={toggleFullscreen}
+                    className="p-2 text-gray-500 hover:text-sap-primary hover:bg-gray-100 rounded-lg transition-colors hidden md:block"
+                    title="ملء الشاشة"
+                >
+                    <Maximize size={20}/>
+                </button>
+
+                 <button 
+                    onClick={() => setShowCalculator(!showCalculator)}
+                    className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${showCalculator ? 'bg-gray-200 text-sap-primary' : 'text-gray-500'}`}
+                    title="الآلة الحاسبة"
+                >
+                    <Calculator size={20}/>
+                </button>
+
+                <button 
+                    onClick={handlePrintLastReceipt}
+                    disabled={!lastReceiptId}
+                    className="p-2 text-gray-500 hover:text-sap-primary hover:bg-gray-100 rounded-lg disabled:opacity-30 transition-colors"
+                    title="طباعة آخر فاتورة"
+                >
+                    <Printer size={20}/>
+                </button>
+
+                 <button 
+                    onClick={() => setIsRefundMode(!isRefundMode)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${isRefundMode ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                    <RefreshCcw size={16}/> {isRefundMode ? 'وضع المرتجع مفعل' : 'وضع المرتجع'}
+                </button>
+
+                <button 
+                    onClick={() => setShowHeldModal(true)}
+                    className="relative p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors"
+                    title="الطلبات المعلقة"
+                >
+                    <PauseCircle size={20}/>
+                    {heldOrders.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold">{heldOrders.length}</span>}
+                </button>
+
+                <button 
+                    onClick={() => setShowQuickAddModal(true)}
+                    className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    title="إضافة منتج سريع"
+                >
+                    <Plus size={20}/>
+                </button>
             </div>
         </div>
 
-        <div className="flex-1 flex gap-4 overflow-hidden">
-            {/* Left: Input Pad */}
-            <div className="flex-1 bg-white border border-gray-200 rounded-2xl shadow-sm p-8 flex flex-col justify-center max-w-2xl mx-auto relative">
-                
-                {/* Tabs */}
-                <div className="absolute top-4 left-4 right-4 flex bg-gray-100 p-1 rounded-lg">
-                    <button onClick={() => setActiveTab('general')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${activeTab === 'general' ? 'bg-white shadow-sm text-sap-primary' : 'text-gray-500'}`}>عام</button>
-                    <button onClick={() => setActiveTab('customer')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${activeTab === 'customer' ? 'bg-white shadow-sm text-sap-primary' : 'text-gray-500'}`}>العميل</button>
-                </div>
-
-                <div className="mt-12 text-center mb-8">
-                    <label className="text-gray-500 font-bold text-sm block mb-2">المبلغ النقدي</label>
-                    <div className="relative max-w-xs mx-auto">
-                        <input 
-                            type="number" 
-                            value={cashAmount} 
-                            onChange={e => setCashAmount(e.target.value)} 
-                            className="w-full text-5xl font-black text-center text-sap-shell border-b-4 border-sap-secondary focus:border-sap-primary outline-none pb-2 bg-transparent placeholder-gray-200"
-                            placeholder="0.00"
-                            autoFocus
-                        />
-                        <span className="absolute left-0 bottom-4 text-gray-400 font-bold text-sm">SAR</span>
+        <div className="flex-1 flex overflow-hidden relative">
+            {/* Calculator Overlay */}
+            {showCalculator && (
+                <div className="absolute top-4 right-[400px] z-40 bg-white rounded-2xl shadow-2xl border border-gray-200 w-64 overflow-hidden animate-in slide-in-from-top-4">
+                    <div className="bg-gray-800 p-4 text-right">
+                        <div className="text-white text-2xl font-mono font-bold truncate">{calcInput || '0'}</div>
                     </div>
-                </div>
-
-                {activeTab === 'customer' && (
-                    <div className="mb-6 animate-in fade-in slide-in-from-top-2">
-                        <label className="text-xs font-bold text-gray-500 block mb-2">العميل</label>
-                        <div className="relative">
-                            <select 
-                                value={selectedCustomerId} 
-                                onChange={e => setSelectedCustomerId(e.target.value)}
-                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-bold text-sm outline-none focus:border-sap-primary appearance-none"
+                    <div className="grid grid-cols-4 gap-px bg-gray-200">
+                        {['7','8','9','/', '4','5','6','*', '1','2','3','-', 'C','0','=','+'].map(btn => (
+                            <button 
+                                key={btn} 
+                                onClick={() => handleCalcInput(btn)}
+                                className={`p-4 bg-white hover:bg-gray-50 font-bold text-lg active:bg-gray-100 ${btn === '=' ? 'bg-sap-primary text-white hover:bg-sap-primary-hover' : 'text-gray-700'} ${['/','*','-','+'].includes(btn) ? 'text-sap-primary' : ''}`}
                             >
-                                <option value="">-- عميل عام (بدون تحديد) --</option>
-                                {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>)}
-                            </select>
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
-                        </div>
+                                {btn}
+                            </button>
+                        ))}
                     </div>
-                )}
-
-                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                    <button onClick={() => applyDiscount(5)} className="flex-1 bg-rose-50 text-rose-600 py-2 rounded-lg text-xs font-bold hover:bg-rose-100 whitespace-nowrap">-5% خصم</button>
-                    <button onClick={() => applyDiscount(10)} className="flex-1 bg-rose-50 text-rose-600 py-2 rounded-lg text-xs font-bold hover:bg-rose-100 whitespace-nowrap">-10% خصم</button>
-                    <button onClick={addTax} className="flex-1 bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 whitespace-nowrap">+ضريبة ({settings.taxRate || 15}%)</button>
                 </div>
+            )}
 
-                <div className="grid grid-cols-4 gap-3 mb-8">
-                    {[1, 5, 10, 50, 100, 500].map(v => (
-                        <button key={v} onClick={() => setCashAmount((parseFloat(cashAmount || '0') + v).toString())} className="bg-sap-shell/10 hover:bg-sap-secondary hover:text-white text-sap-shell font-black py-4 rounded-lg transition-colors text-lg">
-                            +{v}
+            {/* Left: Products Grid */}
+            <div className="flex-1 flex flex-col border-l border-gray-200 bg-gray-50/50">
+                {/* Categories */}
+                <div className="p-3 overflow-x-auto flex gap-2 no-scrollbar shrink-0">
+                    {categories.map(cat => (
+                        <button 
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat as string)}
+                            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-sap-primary text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200 hover:border-sap-primary'}`}
+                        >
+                            {cat === 'all' ? 'الكل' : cat}
                         </button>
                     ))}
-                    <button onClick={() => setCashAmount('')} className="col-span-2 bg-red-50 text-red-600 font-bold rounded-lg hover:bg-red-100">مسح</button>
                 </div>
 
-                <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-center font-bold mb-4" placeholder="ملاحظة سريعة (اختياري)..." />
+                {/* Grid */}
+                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 content-start">
+                    {filteredProducts.map(product => (
+                        <button 
+                            key={product.id}
+                            onClick={() => addToCart(product)}
+                            className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col gap-2 hover:border-sap-primary hover:shadow-lg transition-all group text-right h-32 relative overflow-hidden"
+                        >
+                            <div className="flex-1 w-full">
+                                <h3 className="font-bold text-sm text-gray-800 line-clamp-2 leading-tight group-hover:text-sap-primary transition-colors">{product.name}</h3>
+                                <p className="text-[10px] text-gray-400 font-mono mt-1">{product.code}</p>
+                            </div>
+                            <div className="flex justify-between items-end w-full mt-auto">
+                                <span className="font-black text-lg text-sap-secondary">{parseFloat(product.price || '0').toLocaleString()}</span>
+                                <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-sap-primary group-hover:text-white transition-colors">
+                                    <Plus size={14}/>
+                                </div>
+                            </div>
+                            {/* Stock Indicator */}
+                            {(product.stock || 0) <= (product.lowStockThreshold || 5) && (
+                                <div className="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" title="مخزون منخفض"/>
+                            )}
+                        </button>
+                    ))}
+                    {filteredProducts.length === 0 && (
+                        <div className="col-span-full flex flex-col items-center justify-center text-gray-400 py-20 opacity-50">
+                            <Search size={48} className="mb-4"/>
+                            <p>لا توجد منتجات مطابقة</p>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                <div className="flex gap-3">
-                    <button onClick={handleHoldSale} className="flex-1 bg-amber-100 text-amber-700 py-5 rounded-xl text-sm font-bold hover:bg-amber-200 transition-colors flex flex-col items-center justify-center gap-1">
-                        <PauseCircle size={20}/>
-                        تعليق
-                    </button>
-                    <button onClick={handleSave} disabled={isProcessing} className="flex-[3] bg-sap-primary text-white py-5 rounded-xl text-xl font-black shadow-xl hover:bg-sap-primary-hover active:scale-95 transition-all flex items-center justify-center gap-3">
-                        {isProcessing ? <Loader2 className="animate-spin"/> : <CheckCircle2 size={24}/>}
-                        تأكيد العملية
+            {/* Right: Cart */}
+            <div className="w-96 bg-white flex flex-col shadow-xl z-10">
+                {/* Customer Selector */}
+                <div className="p-3 border-b border-gray-100">
+                    <div className="relative">
+                        <select 
+                            value={selectedCustomerId}
+                            onChange={e => setSelectedCustomerId(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-10 pl-3 text-sm font-bold appearance-none outline-none focus:border-sap-primary"
+                        >
+                            <option value="">عميل عام</option>
+                            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <UserIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                    </div>
+                </div>
+
+                {/* Cart Items */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                    {cart.map((item, idx) => (
+                        <div key={`${item.productId}-${idx}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-gray-300 transition-colors">
+                            <div className="flex-1">
+                                <h4 className="font-bold text-sm text-gray-800">{item.name}</h4>
+                                <div className="text-xs text-gray-500 font-mono">{item.price.toLocaleString()} × {Math.abs(item.quantity)}</div>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
+                                <button onClick={() => updateQty(item.productId, 1)} className="p-1 hover:bg-gray-100 rounded text-green-600"><Plus size={14}/></button>
+                                <span className={`w-6 text-center font-black text-sm ${item.quantity < 0 ? 'text-red-500' : ''}`}>{Math.abs(item.quantity)}</span>
+                                <button onClick={() => updateQty(item.productId, -1)} className="p-1 hover:bg-gray-100 rounded text-red-600"><Minus size={14}/></button>
+                            </div>
+                            <div className="font-black text-sap-primary w-16 text-left">
+                                {(item.price * item.quantity).toLocaleString()}
+                            </div>
+                            <button onClick={() => removeFromCart(item.productId)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"><X size={16}/></button>
+                        </div>
+                    ))}
+                    {cart.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4">
+                            <ShoppingCart size={48} strokeWidth={1}/>
+                            <p className="text-sm font-bold">السلة فارغة</p>
+                            <p className="text-xs text-center px-8">قم بمسح الباركود أو اختيار المنتجات من القائمة</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Totals & Actions */}
+                <div className="p-4 bg-gray-50 border-t border-gray-200">
+                    <div className="flex justify-between items-end mb-4">
+                        <span className="text-gray-500 font-bold text-sm">الإجمالي</span>
+                        <span className={`text-3xl font-black ${cartTotal < 0 ? 'text-red-600' : 'text-sap-shell'}`}>
+                            {cartTotal.toLocaleString()} <span className="text-sm text-gray-400 font-medium">SAR</span>
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                        <button onClick={handleHold} className="py-3 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm hover:bg-amber-200 transition-colors flex items-center justify-center gap-2">
+                            <PauseCircle size={18}/> تعليق
+                        </button>
+                        <button onClick={clearCart} className="py-3 bg-red-100 text-red-700 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors flex items-center justify-center gap-2">
+                            <Trash2 size={18}/> مسح
+                        </button>
+                    </div>
+                    
+                    <button 
+                        onClick={() => setShowCheckoutModal(true)} 
+                        disabled={cart.length === 0}
+                        className="w-full py-4 bg-sap-primary text-white rounded-xl font-black text-lg shadow-lg hover:bg-sap-primary-hover active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <CheckCircle2 size={24}/> دفع {cartTotal.toLocaleString()}
                     </button>
                 </div>
             </div>
         </div>
 
+        {/* --- Modals --- */}
+
+        {/* Checkout Modal */}
+        {showCheckoutModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
+                <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
+                    <div className="p-6 bg-sap-shell text-white text-center">
+                        <h2 className="text-2xl font-black mb-1">إتمام الدفع</h2>
+                        <p className="text-white/60 text-sm font-bold">المبلغ المستحق: {cartTotal.toLocaleString()} SAR</p>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><Banknote size={16}/> نقداً</label>
+                            <input type="number" value={paidCash} onChange={e => setPaidCash(e.target.value)} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00" autoFocus/>
+                        </div>
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><CreditCard size={16}/> شبكة / بطاقة</label>
+                            <input type="number" value={paidCard} onChange={e => setPaidCard(e.target.value)} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00"/>
+                        </div>
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><FileText size={16}/> ملاحظات</label>
+                            <input type="text" value={checkoutNote} onChange={e => setCheckoutNote(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-sap-primary" placeholder="اختياري..."/>
+                        </div>
+
+                        {cartTotal < 0 && (
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-bold text-red-500 mb-2"><RefreshCcw size={16}/> سبب الإرجاع</label>
+                                <select 
+                                    value={returnReason} 
+                                    onChange={e => setReturnReason(e.target.value)} 
+                                    className="w-full p-3 bg-red-50 border border-red-200 rounded-xl font-bold text-sm outline-none focus:border-red-500 text-red-700"
+                                >
+                                    <option value="">-- اختر السبب --</option>
+                                    <option value="defective">منتج معيب / تالف</option>
+                                    <option value="expired">منتهي الصلاحية</option>
+                                    <option value="wrong_item">منتج خاطئ</option>
+                                    <option value="customer_change">تغيير رأي العميل</option>
+                                    <option value="other">أخرى</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Loyalty Points Redemption */}
+                        {selectedCustomerId && cartTotal > 0 && (
+                            <div className="bg-purple-50 p-3 rounded-xl border border-purple-100">
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="flex items-center gap-2 text-sm font-bold text-purple-700">
+                                        <Tag size={16}/> نقاط الولاء
+                                    </label>
+                                    <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
+                                        الرصيد: {customers.find(c => c.id === selectedCustomerId)?.loyaltyPoints || 0}
+                                    </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={redeemPoints} 
+                                        onChange={e => {
+                                            setRedeemPoints(e.target.checked);
+                                            if (!e.target.checked) setPointsToRedeem('');
+                                        }} 
+                                        className="w-4 h-4 accent-purple-600"
+                                    />
+                                    <span className="text-sm text-gray-700">استبدال نقاط</span>
+                                </div>
+
+                                {redeemPoints && (
+                                    <div className="mt-2 flex items-center gap-2 animate-in slide-in-from-top-2">
+                                        <input 
+                                            type="number" 
+                                            value={pointsToRedeem} 
+                                            onChange={e => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const maxPoints = customers.find(c => c.id === selectedCustomerId)?.loyaltyPoints || 0;
+                                                // Max redeemable is limited by points balance AND cart total (10 pts = 1 SAR)
+                                                const maxRedeemableByCart = Math.floor(cartTotal * 10);
+                                                
+                                                if (val <= maxPoints && val <= maxRedeemableByCart) {
+                                                    setPointsToRedeem(e.target.value);
+                                                }
+                                            }}
+                                            className="w-full p-2 border border-purple-200 rounded-lg text-sm font-bold outline-none focus:border-purple-500"
+                                            placeholder="عدد النقاط"
+                                        />
+                                        <div className="text-xs font-bold text-purple-600 whitespace-nowrap">
+                                            = {((parseInt(pointsToRedeem) || 0) / 10).toFixed(2)} SAR
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition-all">
+                            <input type="checkbox" checked={isCreditSale} onChange={e => setIsCreditSale(e.target.checked)} className="w-5 h-5 accent-sap-primary rounded-md"/>
+                            <span className="text-sm font-bold text-blue-800">تسجيل كدين (آجل)</span>
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 flex justify-between items-center text-sm font-bold">
+                            <span>المدفوع: <span className="text-sap-primary">{isCreditSale ? '0' : (parseFloat(paidCash||'0') + parseFloat(paidCard||'0')).toLocaleString()}</span></span>
+                            <span>المتبقي: <span className="text-red-500">{isCreditSale ? cartTotal.toLocaleString() : (cartTotal - (parseFloat(paidCash||'0') + parseFloat(paidCard||'0'))).toLocaleString()}</span></span>
+                        </div>
+
+                        <div className="flex gap-3 mt-4">
+                            <button onClick={() => setShowCheckoutModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">إلغاء</button>
+                            <button onClick={handleCheckout} className="flex-[2] py-3 bg-sap-primary text-white rounded-xl font-black shadow-lg hover:bg-sap-primary-hover">تأكيد الدفع</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Held Orders Modal */}
-        {showHeldOrders && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+        {showHeldModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
                 <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-                    <div className="p-4 bg-sap-shell text-white flex justify-between items-center">
-                        <h3 className="font-bold flex items-center gap-2"><PauseCircle size={18}/> العمليات المعلقة</h3>
-                        <button onClick={() => setShowHeldOrders(false)}><X size={20}/></button>
+                    <div className="p-4 bg-amber-500 text-white flex justify-between items-center">
+                        <h3 className="font-bold flex items-center gap-2"><PauseCircle size={20}/> العمليات المعلقة</h3>
+                        <button onClick={() => setShowHeldModal(false)}><X size={20}/></button>
                     </div>
                     <div className="max-h-[60vh] overflow-y-auto p-4 space-y-3">
                         {heldOrders.map(order => (
                             <div key={order.id} className="bg-gray-50 border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:bg-white hover:shadow-md transition-all">
                                 <div>
-                                    <div className="font-black text-lg text-sap-primary">{order.amount.toLocaleString()} SAR</div>
-                                    <div className="text-xs text-gray-500 font-bold">{order.customerName}</div>
+                                    <div className="font-black text-lg text-gray-800">{order.amount.toLocaleString()} SAR</div>
+                                    <div className="text-xs text-gray-500 font-bold">{order.customerName || 'عميل عام'}</div>
                                     <div className="text-[10px] text-gray-400 mt-1">{new Date(order.date).toLocaleString('ar-SA')}</div>
-                                    {order.note && <div className="text-xs text-gray-600 mt-1 bg-gray-100 px-2 py-1 rounded inline-block">{order.note}</div>}
+                                    <div className="text-[10px] text-gray-500 mt-1">{order.cart.length} منتجات</div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleRetrieveOrder(order)} className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200" title="استرجاع"><PlayCircle size={20}/></button>
-                                    <button onClick={() => handleDeleteHeldOrder(order.id)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200" title="حذف"><Trash2 size={20}/></button>
-                                </div>
+                                <button onClick={() => handleRetrieve(order)} className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg font-bold text-xs hover:bg-blue-200">استرجاع</button>
                             </div>
                         ))}
                         {heldOrders.length === 0 && <div className="text-center py-10 text-gray-400">لا توجد عمليات معلقة</div>}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Quick Add Modal */}
+        {showQuickAddModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 className="font-bold">إضافة منتج سريع</h3>
+                        <button onClick={() => setShowQuickAddModal(false)}><X size={20}/></button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <input type="text" value={newProdName} onChange={e => setNewProdName(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-sap-primary" placeholder="اسم المنتج" autoFocus/>
+                        <input type="number" value={newProdPrice} onChange={e => setNewProdPrice(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-sap-primary" placeholder="السعر"/>
+                        <input type="text" value={newProdCode} onChange={e => setNewProdCode(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-sap-primary" placeholder="كود (اختياري)"/>
+                        <button onClick={handleQuickAdd} className="w-full py-3 bg-sap-primary text-white rounded-xl font-bold shadow-lg hover:bg-sap-primary-hover">إضافة للسلة</button>
+                    </div>
+                </div>
+            </div>
+        )}
+        {/* Help Modal */}
+        {showHelpModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 className="font-bold flex items-center gap-2"><Keyboard size={20}/> اختصارات لوحة المفاتيح</h3>
+                        <button onClick={() => setShowHelpModal(false)}><X size={20}/></button>
+                    </div>
+                    <div className="p-6 grid grid-cols-2 gap-4">
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">بحث</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">Ctrl + F</kbd>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">دفع</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F9</kbd>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">طباعة آخر فاتورة</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F8</kbd>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">آلة حاسبة</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F4</kbd>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">مسح السلة</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">Esc</kbd>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">ملء الشاشة</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F11</kbd>
+                        </div>
+                    </div>
+                    <div className="p-4 bg-blue-50 text-blue-700 text-xs font-bold text-center">
+                        يمكنك أيضاً استخدام قارئ الباركود في أي وقت لإضافة المنتجات مباشرة
                     </div>
                 </div>
             </div>

@@ -147,6 +147,24 @@ export const db = {
     async upsert(expense: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "expenses", expense.id), expense); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "expenses", id)); }); }
   },
+  activityLogs: {
+    async add(log: any) { return safeDbCall(async () => { await addDoc(collection(firestore, "activity_logs"), { ...log, timestamp: new Date().toISOString() }); }); },
+    async getAll(limitCount = 100) {
+        return safeDbCall(async () => {
+            const q = query(collection(firestore, "activity_logs"), orderBy("timestamp", "desc"), limit(limitCount));
+            const snapshot = await getDocs(q);
+            return snapshotToArray(snapshot);
+        }, []);
+    },
+    async clear() {
+        return safeDbCall(async () => {
+            const batch = writeBatch(firestore);
+            const snapshot = await getDocs(collection(firestore, "activity_logs"));
+            snapshot.docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        });
+    }
+  },
   customers: {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "customers"))), []); },
     async upsert(customer: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "customers", customer.id), customer); }); },
@@ -229,10 +247,20 @@ export const db = {
     async upsert(supplier: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "suppliers", supplier.id), supplier); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "suppliers", id)); }); }
   },
+  supplierTransactions: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "supplier_transactions"), orderBy("date", "desc")))), []); },
+    async upsert(tx: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "supplier_transactions", tx.id), tx); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "supplier_transactions", id)); }); }
+  },
   purchaseOrders: {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "purchase_orders"), orderBy("date", "desc")))), []); },
     async upsert(po: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "purchase_orders", po.id), po); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "purchase_orders", id)); }); }
+  },
+  shifts: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "shifts"), orderBy("startTime", "desc")))), []); },
+    async upsert(shift: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "shifts", shift.id), shift); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "shifts", id)); }); }
   },
   dailySales: {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "daily_sales"), orderBy("date", "desc")))), []); },

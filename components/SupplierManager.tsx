@@ -1,26 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Supplier, PurchaseOrder } from '../types';
+import { Supplier, SupplierTransaction } from '../types';
 import { db } from '../services/supabase';
-import { Plus, Trash2, Edit2, Search, Truck, Package, Save, X, Phone, Mail, MapPin } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Truck, Package, Save, X, Phone, Mail, MapPin, FileText, DollarSign, ArrowUpRight, ArrowDownLeft, Clock } from 'lucide-react';
 
 export const SupplierManager: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [transactions, setTransactions] = useState<SupplierTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Supplier Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-
-  // Form State
   const [formData, setFormData] = useState<Partial<Supplier>>({});
 
+  // Transaction Modal
+  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [txFormData, setTxFormData] = useState<Partial<SupplierTransaction>>({ type: 'bill', amount: 0 });
+
   useEffect(() => {
-    loadSuppliers();
+    loadData();
   }, []);
 
-  const loadSuppliers = async () => {
+  const loadData = async () => {
     try {
-      const data = await db.suppliers.getAll();
-      setSuppliers(data as Supplier[]);
+      const [suppliersData, txData] = await Promise.all([
+          db.suppliers.getAll(),
+          db.supplierTransactions.getAll()
+      ]);
+      setSuppliers(suppliersData as Supplier[]);
+      setTransactions(txData as SupplierTransaction[]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -39,7 +49,8 @@ export const SupplierManager: React.FC = () => {
         phone: formData.phone,
         email: formData.email,
         address: formData.address,
-        notes: formData.notes
+        notes: formData.notes,
+        balance: editingSupplier?.balance || 0
       };
 
       await db.suppliers.upsert(supplier);
@@ -71,6 +82,47 @@ export const SupplierManager: React.FC = () => {
       setFormData({});
     }
     setIsModalOpen(true);
+  };
+
+  const handleTxSave = async () => {
+      if (!selectedSupplier || !txFormData.amount) return;
+
+      const newTx: SupplierTransaction = {
+          id: crypto.randomUUID(),
+          supplierId: selectedSupplier.id,
+          date: new Date().toISOString(),
+          type: txFormData.type || 'bill',
+          amount: Number(txFormData.amount),
+          notes: txFormData.notes,
+          reference: txFormData.reference
+      };
+
+      // Update Supplier Balance
+      const currentBalance = selectedSupplier.balance || 0;
+      const newBalance = newTx.type === 'bill' 
+          ? currentBalance + newTx.amount 
+          : currentBalance - newTx.amount;
+      
+      const updatedSupplier = { ...selectedSupplier, balance: newBalance };
+
+      try {
+          await db.supplierTransactions.upsert(newTx);
+          await db.suppliers.upsert(updatedSupplier);
+          
+          setTransactions(prev => [newTx, ...prev]);
+          setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
+          
+          setIsTxModalOpen(false);
+          setTxFormData({ type: 'bill', amount: 0 });
+      } catch (e) {
+          alert('فشل حفظ العملية');
+      }
+  };
+
+  const openTxModal = (supplier: Supplier) => {
+      setSelectedSupplier(supplier);
+      setTxFormData({ type: 'bill', amount: 0 });
+      setIsTxModalOpen(true);
   };
 
   const filteredSuppliers = suppliers.filter(s => 
@@ -120,7 +172,7 @@ export const SupplierManager: React.FC = () => {
           </div>
         ) : (
           filteredSuppliers.map(supplier => (
-            <div key={supplier.id} className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+            <div key={supplier.id} className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex flex-col">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               
               <div className="flex justify-between items-start mb-4">
@@ -136,7 +188,7 @@ export const SupplierManager: React.FC = () => {
               <h3 className="text-lg font-black text-gray-800 mb-1">{supplier.name}</h3>
               {supplier.contactPerson && <p className="text-xs text-gray-500 font-bold mb-4">مسؤول التواصل: {supplier.contactPerson}</p>}
 
-              <div className="space-y-2">
+              <div className="space-y-2 mb-6 flex-1">
                 {supplier.phone && (
                   <div className="flex items-center gap-3 text-xs font-bold text-gray-600 bg-gray-50 p-2 rounded-xl">
                     <Phone size={14} className="text-gray-400"/>
@@ -149,19 +201,25 @@ export const SupplierManager: React.FC = () => {
                     <span>{supplier.email}</span>
                   </div>
                 )}
-                {supplier.address && (
-                  <div className="flex items-center gap-3 text-xs font-bold text-gray-600 bg-gray-50 p-2 rounded-xl">
-                    <MapPin size={14} className="text-gray-400"/>
-                    <span>{supplier.address}</span>
+              </div>
+
+              <div className="mt-auto pt-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold text-gray-400">الرصيد المستحق</span>
+                      <span className={`text-lg font-black font-mono ${supplier.balance && supplier.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {(supplier.balance || 0).toLocaleString()} SAR
+                      </span>
                   </div>
-                )}
+                  <button onClick={() => openTxModal(supplier)} className="w-full py-3 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-colors">
+                      <FileText size={16}/> كشف حساب / عمليات
+                  </button>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Modal */}
+      {/* Supplier Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -242,6 +300,107 @@ export const SupplierManager: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Transaction Modal */}
+      {isTxModalOpen && selectedSupplier && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                  <div className="p-6 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                      <div>
+                          <h3 className="text-lg font-black text-gray-800">سجل عمليات: {selectedSupplier.name}</h3>
+                          <p className="text-xs text-gray-500 font-bold mt-1">الرصيد الحالي: <span className="text-sap-primary">{(selectedSupplier.balance || 0).toLocaleString()} SAR</span></p>
+                      </div>
+                      <button onClick={() => setIsTxModalOpen(false)} className="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors"><X size={20}/></button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                      {/* Add Transaction Form */}
+                      <div className="bg-gray-50 p-4 rounded-2xl mb-6 border border-gray-100">
+                          <h4 className="text-sm font-black text-gray-700 mb-3 flex items-center gap-2"><Plus size={16}/> تسجيل عملية جديدة</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div>
+                                  <label className="block text-[10px] font-bold text-gray-500 mb-1">نوع العملية</label>
+                                  <div className="flex bg-white rounded-xl p-1 border border-gray-200">
+                                      <button 
+                                          onClick={() => setTxFormData({...txFormData, type: 'bill'})}
+                                          className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${txFormData.type === 'bill' ? 'bg-red-100 text-red-600 shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}
+                                      >
+                                          فاتورة شراء (دين)
+                                      </button>
+                                      <button 
+                                          onClick={() => setTxFormData({...txFormData, type: 'payment'})}
+                                          className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${txFormData.type === 'payment' ? 'bg-emerald-100 text-emerald-600 shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}
+                                      >
+                                          سداد دفعة
+                                      </button>
+                                  </div>
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-bold text-gray-500 mb-1">المبلغ</label>
+                                  <input 
+                                      type="number" 
+                                      value={txFormData.amount || ''}
+                                      onChange={e => setTxFormData({...txFormData, amount: Number(e.target.value)})}
+                                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-sm font-black outline-none focus:border-sap-primary"
+                                      placeholder="0.00"
+                                  />
+                              </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div>
+                                  <label className="block text-[10px] font-bold text-gray-500 mb-1">رقم المرجع / الفاتورة</label>
+                                  <input 
+                                      type="text" 
+                                      value={txFormData.reference || ''}
+                                      onChange={e => setTxFormData({...txFormData, reference: e.target.value})}
+                                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none"
+                                      placeholder="مثال: INV-001"
+                                  />
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-bold text-gray-500 mb-1">ملاحظات</label>
+                                  <input 
+                                      type="text" 
+                                      value={txFormData.notes || ''}
+                                      onChange={e => setTxFormData({...txFormData, notes: e.target.value})}
+                                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none"
+                                      placeholder="ملاحظات إضافية..."
+                                  />
+                              </div>
+                          </div>
+                          <button onClick={handleTxSave} className="w-full py-3 bg-sap-primary text-white rounded-xl font-black text-xs hover:bg-sap-primary-hover shadow-lg transition-all">
+                              حفظ العملية
+                          </button>
+                      </div>
+
+                      {/* Transaction History */}
+                      <h4 className="text-sm font-black text-gray-700 mb-3 flex items-center gap-2"><Clock size={16}/> سجل العمليات السابق</h4>
+                      <div className="space-y-3">
+                          {transactions.filter(t => t.supplierId === selectedSupplier.id).length === 0 ? (
+                              <p className="text-center text-gray-400 text-xs py-4">لا توجد عمليات مسجلة</p>
+                          ) : (
+                              transactions.filter(t => t.supplierId === selectedSupplier.id).map(tx => (
+                                  <div key={tx.id} className="bg-white border border-gray-100 p-4 rounded-xl flex justify-between items-center hover:shadow-sm transition-shadow">
+                                      <div className="flex items-center gap-3">
+                                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'bill' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                              {tx.type === 'bill' ? <ArrowDownLeft size={20}/> : <ArrowUpRight size={20}/>}
+                                          </div>
+                                          <div>
+                                              <div className="font-black text-gray-800 text-sm">{tx.type === 'bill' ? 'فاتورة شراء' : 'سداد دفعة'}</div>
+                                              <div className="text-[10px] text-gray-400 font-mono">{new Date(tx.date).toLocaleDateString('ar-SA')} {tx.reference && `• ${tx.reference}`}</div>
+                                          </div>
+                                      </div>
+                                      <div className={`font-black font-mono text-sm ${tx.type === 'bill' ? 'text-red-600' : 'text-emerald-600'}`}>
+                                          {tx.type === 'bill' ? '+' : '-'}{tx.amount.toLocaleString()}
+                                      </div>
+                                  </div>
+                              ))
+                          )}
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );

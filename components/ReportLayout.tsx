@@ -128,7 +128,7 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
       <style>{`
         @media print {
           @page { size: A4 ${orientation}; margin: 10mm; }
-          body { background: white !important; }
+          html, body { height: auto !important; overflow: visible !important; background: white !important; }
           .report-container { width: 100% !important; padding: 0 !important; }
           .bg-sap-shell { background-color: #2D3748 !important; color: white !important; }
           .bg-sap-secondary { background-color: #C5A059 !important; }

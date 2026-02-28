@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Expense } from '../types';
 import { db } from '../services/supabase';
-import { Plus, Trash2, Save, TrendingDown, Calendar, Tag } from 'lucide-react';
+import { Plus, Trash2, Save, TrendingDown, Calendar, Tag, Settings } from 'lucide-react';
 
 export const ExpenseManager: React.FC = () => {
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -10,14 +10,44 @@ export const ExpenseManager: React.FC = () => {
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('تشغيلية');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    
+    // Custom Categories State
+    const [categories, setCategories] = useState<string[]>(['تشغيلية', 'رواتب', 'صيانة', 'تسويق', 'نثريات', 'إيجار', 'مشتريات']);
+    const [newCategory, setNewCategory] = useState('');
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             const data = await db.expenses.getAll();
             setExpenses(data as Expense[]);
+            
+            // Load saved categories if any
+            const savedCats = localStorage.getItem('expense_categories');
+            if (savedCats) {
+                try { setCategories(JSON.parse(savedCats)); } catch(e) {}
+            }
         };
         load();
     }, []);
+
+    const handleAddCategory = () => {
+        if (!newCategory) return;
+        if (categories.includes(newCategory)) return alert('التصنيف موجود مسبقاً');
+        
+        const updatedCats = [...categories, newCategory];
+        setCategories(updatedCats);
+        localStorage.setItem('expense_categories', JSON.stringify(updatedCats));
+        setNewCategory('');
+    };
+
+    const handleRemoveCategory = (cat: string) => {
+        if (confirm(`حذف تصنيف "${cat}"؟`)) {
+            const updatedCats = categories.filter(c => c !== cat);
+            setCategories(updatedCats);
+            localStorage.setItem('expense_categories', JSON.stringify(updatedCats));
+            if (category === cat) setCategory(updatedCats[0] || '');
+        }
+    };
 
     const handleSave = async () => {
         if(!title || !amount) return alert('البيانات ناقصة');
@@ -43,20 +73,23 @@ export const ExpenseManager: React.FC = () => {
     const total = expenses.reduce((a,b) => a + b.amount, 0);
 
     return (
-        <div className="flex gap-6 h-full animate-in fade-in">
+        <div className="flex gap-6 h-full animate-in fade-in relative">
             <div className="w-80 bg-white p-6 rounded-3xl shadow-sm border border-gray-200 h-fit">
                 <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-red-600"><TrendingDown/> تسجيل مصروف</h3>
                 <div className="space-y-3">
                     <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-3 border rounded-xl font-bold bg-gray-50"/>
                     <input type="text" placeholder="البند (مثال: فاتورة كهرباء)" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border rounded-xl font-bold"/>
                     <input type="number" placeholder="المبلغ (0.00)" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-3 border rounded-xl font-bold font-mono text-lg"/>
-                    <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-3 border rounded-xl font-bold bg-white">
-                        <option>تشغيلية</option>
-                        <option>رواتب</option>
-                        <option>صيانة</option>
-                        <option>تسويق</option>
-                        <option>نثريات</option>
-                    </select>
+                    
+                    <div className="flex gap-2">
+                        <select value={category} onChange={e => setCategory(e.target.value)} className="flex-1 p-3 border rounded-xl font-bold bg-white">
+                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                        <button onClick={() => setShowCategoryModal(true)} className="p-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200" title="إدارة التصنيفات">
+                            <Settings size={20}/>
+                        </button>
+                    </div>
+
                     <button onClick={handleSave} className="w-full py-3 bg-red-600 text-white rounded-xl font-black hover:bg-red-700 transition-all flex justify-center gap-2"><Save size={18}/> حفظ المصروف</button>
                 </div>
             </div>
@@ -85,8 +118,46 @@ export const ExpenseManager: React.FC = () => {
                             </div>
                         </div>
                     ))}
+                    {expenses.length === 0 && (
+                        <div className="text-center py-20 text-gray-400">
+                            <TrendingDown size={48} className="mx-auto mb-4 opacity-50"/>
+                            <p>لا توجد مصروفات مسجلة</p>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Categories Modal */}
+            {showCategoryModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden">
+                        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold">إدارة تصنيفات المصروفات</h3>
+                            <button onClick={() => setShowCategoryModal(false)}><Settings size={18}/></button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    value={newCategory} 
+                                    onChange={e => setNewCategory(e.target.value)} 
+                                    placeholder="تصنيف جديد..." 
+                                    className="flex-1 p-2 border rounded-lg text-sm"
+                                />
+                                <button onClick={handleAddCategory} className="bg-sap-primary text-white px-4 rounded-lg font-bold text-sm">إضافة</button>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto space-y-2">
+                                {categories.map(cat => (
+                                    <div key={cat} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                        <span className="text-sm font-bold">{cat}</span>
+                                        <button onClick={() => handleRemoveCategory(cat)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
