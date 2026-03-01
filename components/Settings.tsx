@@ -13,6 +13,8 @@ export const Settings: React.FC = () => {
     
     // New Settings
     const [taxRate, setTaxRate] = useState(15);
+    const [taxNumber, setTaxNumber] = useState('');
+    const [invoiceTerms, setInvoiceTerms] = useState('');
     const [receiptHeader, setReceiptHeader] = useState('');
     const [receiptFooter, setReceiptFooter] = useState('');
     const [showLogoOnReceipt, setShowLogoOnReceipt] = useState(true);
@@ -20,6 +22,7 @@ export const Settings: React.FC = () => {
     const [showFooterOnReceipt, setShowFooterOnReceipt] = useState(true);
     const [enableSoundEffects, setEnableSoundEffects] = useState(true);
     const [themeColor, setThemeColor] = useState('#6366f1'); // Default Indigo
+    const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<'cash' | 'card'>('cash');
 
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -41,6 +44,8 @@ export const Settings: React.FC = () => {
             setCurrencySymbolType(settings.currencySymbolType);
             setCurrencySymbolImage(settings.currencySymbolImage);
             setTaxRate(settings.taxRate || 15);
+            setTaxNumber(settings.taxNumber || '');
+            setInvoiceTerms(settings.invoiceTerms || '');
             setReceiptHeader(settings.receiptHeader || '');
             setReceiptFooter(settings.receiptFooter || '');
             setShowLogoOnReceipt(settings.showLogoOnReceipt ?? true);
@@ -48,6 +53,7 @@ export const Settings: React.FC = () => {
             setShowFooterOnReceipt(settings.showFooterOnReceipt ?? true);
             setEnableSoundEffects(settings.enableSoundEffects ?? true);
             setThemeColor(settings.themeColor || '#6366f1');
+            setDefaultPaymentMethod(settings.defaultPaymentMethod || 'cash');
         }
     }, [settings, isSettingsLoading]);
 
@@ -60,13 +66,16 @@ export const Settings: React.FC = () => {
                 currencySymbolType,
                 currencySymbolImage,
                 taxRate: Number(taxRate),
+                taxNumber,
+                invoiceTerms,
                 receiptHeader,
                 receiptFooter,
                 showLogoOnReceipt,
                 showHeaderOnReceipt,
                 showFooterOnReceipt,
                 enableSoundEffects,
-                themeColor
+                themeColor,
+                defaultPaymentMethod
             });
 
             // Update CSS Variable
@@ -146,11 +155,23 @@ export const Settings: React.FC = () => {
                 dailySales: await db.dailySales.getAll(),
                 customers: await db.customers.getAll(),
                 expenses: await db.expenses.getAll(),
+                suppliers: await db.suppliers.getAll(),
+                supplierTransactions: await db.supplierTransactions.getAll(),
+                purchaseOrders: await db.purchaseOrders.getAll(),
                 settings: await db.settings.get(),
                 timestamp: new Date().toISOString()
             };
             
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            let jsonString;
+            try {
+                jsonString = JSON.stringify(data, null, 2);
+            } catch (jsonError) {
+                console.error('Failed to stringify backup data', jsonError);
+                alert('فشل إنشاء ملف النسخة الاحتياطية بسبب بيانات غير صالحة');
+                return;
+            }
+            
+            const blob = new Blob([jsonString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -203,6 +224,9 @@ export const Settings: React.FC = () => {
                     ...(data.dailySales || []).map((s: any) => db.dailySales.upsert(s)),
                     ...(data.customers || []).map((c: any) => db.customers.upsert(c)),
                     ...(data.expenses || []).map((ex: any) => db.expenses.upsert(ex)),
+                    ...(data.suppliers || []).map((s: any) => db.suppliers.upsert(s)),
+                    ...(data.supplierTransactions || []).map((tx: any) => db.supplierTransactions.upsert(tx)),
+                    ...(data.purchaseOrders || []).map((po: any) => db.purchaseOrders.upsert(po)),
                 ]);
 
                 if (data.settings) {
@@ -318,16 +342,48 @@ export const Settings: React.FC = () => {
                             </div>
 
                             <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
-                                <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1">نسبة الضريبة (VAT)</label>
-                                <div className="flex items-center gap-4">
-                                    <input 
-                                        type="number" 
-                                        value={taxRate} 
-                                        onChange={(e) => setTaxRate(Number(e.target.value))}
-                                        className="w-32 !text-lg !font-black !p-3 text-center"
-                                        min="0" max="100"
-                                    />
-                                    <span className="text-sm font-bold text-gray-500">%</span>
+                                <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1">البيانات الضريبية</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <label className="text-sm font-bold text-gray-500 whitespace-nowrap">نسبة الضريبة (VAT)</label>
+                                        <div className="flex items-center">
+                                            <input 
+                                                type="number" 
+                                                value={taxRate} 
+                                                onChange={(e) => setTaxRate(Number(e.target.value))}
+                                                className="w-20 !text-lg !font-black !p-2 text-center border border-gray-300 rounded-lg"
+                                                min="0" max="100"
+                                            />
+                                            <span className="text-sm font-bold text-gray-500 mr-2">%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <input 
+                                            type="text" 
+                                            value={taxNumber} 
+                                            onChange={(e) => setTaxNumber(e.target.value)}
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm"
+                                            placeholder="الرقم الضريبي (مثال: 300...)"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
+                                <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1">طريقة الدفع الافتراضية</label>
+                                <div className="flex gap-4">
+                                    <button 
+                                        onClick={() => setDefaultPaymentMethod('cash')}
+                                        className={`flex-1 py-3 rounded-xl font-bold text-sm border transition-all ${defaultPaymentMethod === 'cash' ? 'bg-sap-primary text-white border-sap-primary' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        نقدي
+                                    </button>
+                                    <button 
+                                        onClick={() => setDefaultPaymentMethod('card')}
+                                        className={`flex-1 py-3 rounded-xl font-bold text-sm border transition-all ${defaultPaymentMethod === 'card' ? 'bg-sap-primary text-white border-sap-primary' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        شبكة / بطاقة
+                                    </button>
                                 </div>
                             </div>
 
@@ -386,6 +442,12 @@ export const Settings: React.FC = () => {
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm"
                                     placeholder="نص التذييل (مثل: شكراً لزيارتكم)"
                                     disabled={!showFooterOnReceipt}
+                                />
+                                <textarea 
+                                    value={invoiceTerms} 
+                                    onChange={(e) => setInvoiceTerms(e.target.value)}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm mt-2 h-20 resize-none"
+                                    placeholder="الشروط والأحكام (تظهر أسفل الفاتورة)"
                                 />
                             </div>
 

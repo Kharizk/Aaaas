@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Product, DailySales, Customer, POSPoint, HeldOrder, CartItem, User, Shift } from '../types';
 import { db } from '../services/supabase';
 import { useNotification } from './Notifications';
+import { useSystemSettings } from './SystemSettingsContext';
 import { 
   DollarSign, Users, Save, Loader2, Monitor, Search, 
   PauseCircle, PlayCircle, Trash2, LayoutGrid, CheckCircle2, ChevronRight, X, User as UserIcon,
@@ -18,6 +19,7 @@ interface POSInterfaceProps {
 
 export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySales, currentUser }) => {
   const { notify } = useNotification();
+  const { settings } = useSystemSettings();
   
   // --- State ---
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -171,7 +173,10 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   }, [products, searchQuery, selectedCategory]);
 
   const cartTotal = useMemo(() => {
-      return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      return cart.reduce((sum, item) => {
+          const itemTotal = (item.price * item.quantity) - (item.discount || 0);
+          return sum + itemTotal;
+      }, 0);
   }, [cart]);
 
   const handleScan = (code: string) => {
@@ -200,7 +205,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
               productId: product.id, 
               quantity: qtyMod, 
               price: parseFloat(product.price || '0'), 
-              name: product.name 
+              name: product.name,
+              discount: 0
           }];
       });
       playClick();
@@ -214,6 +220,15 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
           }
           return item;
       }).filter(i => i.quantity !== 0));
+  };
+
+  const updateItemDiscount = (productId: string, discount: number) => {
+      setCart(prev => prev.map(item => {
+          if (item.productId === productId) {
+              return { ...item, discount: discount };
+          }
+          return item;
+      }));
   };
 
   const removeFromCart = (productId: string) => {
@@ -247,7 +262,11 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
 
       const newHeld = [...heldOrders, order];
       setHeldOrders(newHeld);
-      localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+      try {
+        localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+      } catch (e) {
+        console.error('Failed to save held orders to localStorage', e);
+      }
       clearCart();
       notify('تم تعليق الطلب', 'success');
   };
@@ -261,12 +280,30 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       
       const newHeld = heldOrders.filter(o => o.id !== order.id);
       setHeldOrders(newHeld);
-      localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+      try {
+        localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+      } catch (e) {
+        console.error('Failed to update held orders in localStorage', e);
+      }
       setShowHeldModal(false);
       notify('تم استرجاع الطلب', 'info');
   };
 
   // --- Checkout ---
+
+  const handleOpenCheckout = () => {
+      if (cart.length === 0) return notify('السلة فارغة', 'error');
+      
+      if (settings.defaultPaymentMethod === 'card') {
+          setPaidCard(cartTotal.toString());
+          setPaidCash('');
+      } else {
+          setPaidCash(cartTotal.toString());
+          setPaidCard('');
+      }
+      
+      setShowCheckoutModal(true);
+  };
 
   const handleCheckout = async () => {
       if (cart.length === 0) return;
@@ -610,15 +647,30 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         <div key={`${item.productId}-${idx}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-gray-300 transition-colors">
                             <div className="flex-1">
                                 <h4 className="font-bold text-sm text-gray-800">{item.name}</h4>
-                                <div className="text-xs text-gray-500 font-mono">{item.price.toLocaleString()} × {Math.abs(item.quantity)}</div>
+                                <div className="text-xs text-gray-500 font-mono flex items-center gap-2">
+                                    <span>{item.price.toLocaleString()} × {Math.abs(item.quantity)}</span>
+                                    {item.discount && item.discount > 0 && <span className="text-red-500 bg-red-50 px-1 rounded">-{item.discount}</span>}
+                                </div>
+                                <div className="mt-1 flex items-center gap-1">
+                                    <span className="text-[10px] text-gray-400">خصم:</span>
+                                    <input 
+                                        type="number" 
+                                        className="w-12 h-5 text-[10px] border border-gray-200 rounded px-1 text-center focus:border-sap-primary outline-none"
+                                        value={item.discount || ''}
+                                        placeholder="0"
+                                        onChange={(e) => updateItemDiscount(item.productId, parseFloat(e.target.value) || 0)}
+                                    />
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
-                                <button onClick={() => updateQty(item.productId, 1)} className="p-1 hover:bg-gray-100 rounded text-green-600"><Plus size={14}/></button>
-                                <span className={`w-6 text-center font-black text-sm ${item.quantity < 0 ? 'text-red-500' : ''}`}>{Math.abs(item.quantity)}</span>
-                                <button onClick={() => updateQty(item.productId, -1)} className="p-1 hover:bg-gray-100 rounded text-red-600"><Minus size={14}/></button>
-                            </div>
-                            <div className="font-black text-sap-primary w-16 text-left">
-                                {(item.price * item.quantity).toLocaleString()}
+                            <div className="flex flex-col items-end gap-1">
+                                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
+                                    <button onClick={() => updateQty(item.productId, 1)} className="p-1 hover:bg-gray-100 rounded text-green-600"><Plus size={14}/></button>
+                                    <span className={`w-6 text-center font-black text-sm ${item.quantity < 0 ? 'text-red-500' : ''}`}>{Math.abs(item.quantity)}</span>
+                                    <button onClick={() => updateQty(item.productId, -1)} className="p-1 hover:bg-gray-100 rounded text-red-600"><Minus size={14}/></button>
+                                </div>
+                                <div className="font-black text-sap-primary text-sm">
+                                    {((item.price * item.quantity) - (item.discount || 0)).toLocaleString()}
+                                </div>
                             </div>
                             <button onClick={() => removeFromCart(item.productId)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"><X size={16}/></button>
                         </div>
@@ -651,7 +703,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                     </div>
                     
                     <button 
-                        onClick={() => setShowCheckoutModal(true)} 
+                        onClick={handleOpenCheckout} 
                         disabled={cart.length === 0}
                         className="w-full py-4 bg-sap-primary text-white rounded-xl font-black text-lg shadow-lg hover:bg-sap-primary-hover active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -675,6 +727,17 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         <div>
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><Banknote size={16}/> نقداً</label>
                             <input type="number" value={paidCash} onChange={e => setPaidCash(e.target.value)} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00" autoFocus/>
+                            <div className="flex gap-2 mt-2">
+                                {[10, 20, 50, 100, 500].map(amt => (
+                                    <button 
+                                        key={amt} 
+                                        onClick={() => setPaidCash(amt.toString())}
+                                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-600 transition-colors border border-gray-200"
+                                    >
+                                        {amt}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div>
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><CreditCard size={16}/> شبكة / بطاقة</label>

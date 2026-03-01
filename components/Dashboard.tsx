@@ -306,6 +306,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
             )}
         </div>
 
+            {/* Top Customers Widget */}
+            <div className="bg-purple-50 border border-purple-100 rounded-[2.5rem] shadow-sm p-6 mt-6">
+                <h3 className="font-black text-purple-800 mb-4 flex items-center gap-2 text-sm"><Crown size={18}/> كبار العملاء</h3>
+                <div className="space-y-2">
+                    {Object.values(salesData.reduce((acc: any, sale) => {
+                        if (!sale.customerId || !sale.customerName) return acc;
+                        if (!acc[sale.customerId]) acc[sale.customerId] = { id: sale.customerId, name: sale.customerName, total: 0, count: 0 };
+                        acc[sale.customerId].total += sale.amount;
+                        acc[sale.customerId].count += 1;
+                        return acc;
+                    }, {})).sort((a: any, b: any) => b.total - a.total).slice(0, 5).map((c: any, idx) => (
+                        <div key={c.id} className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-purple-100/50 hover:bg-white transition-colors">
+                            <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${idx === 0 ? 'bg-yellow-400 text-yellow-900' : 'bg-purple-200 text-purple-700'}`}>
+                                    {idx + 1}
+                                </span>
+                                <div>
+                                    <div className="font-bold text-gray-800 text-xs">{c.name}</div>
+                                    <div className="text-[10px] text-gray-400 font-mono">{c.count} عملية شراء</div>
+                                </div>
+                            </div>
+                            <span className="font-black text-purple-700 text-xs font-mono">{c.total.toLocaleString()}</span>
+                        </div>
+                    ))}
+                    {salesData.length === 0 && <div className="text-center text-purple-400 text-xs py-4">لا توجد بيانات كافية</div>}
+                </div>
+            </div>
+        </div>
+
         {/* Action Card & Recent Transactions */}
         <div className="flex flex-col gap-6">
             <div className="bg-[#1e293b] text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[300px] group">
@@ -344,7 +373,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                 </div>
             </div>
         </div>
-      </div>
 
       {/* Alerts Section */}
       {expiryAlerts.length > 0 && (

@@ -82,6 +82,7 @@ export interface CartItem {
   quantity: number;
   price: number;
   name?: string;
+  discount?: number;
 }
 
 export interface DailySales {
@@ -459,6 +460,8 @@ export interface PurchaseOrder {
 
 export interface Settings {
   orgName: string;
+  taxNumber?: string;
+  invoiceTerms?: string;
   taxRate?: number; // VAT %
   receiptHeader?: string;
   receiptFooter?: string;
@@ -469,6 +472,10 @@ export interface Settings {
   showFooterOnReceipt?: boolean;
   enableSoundEffects?: boolean;
   themeColor?: string;
+  expiryAlertDays: number;
+  currencySymbolType: CurrencySymbolType;
+  currencySymbolImage: string | null;
+  defaultPaymentMethod?: 'cash' | 'card';
 }
 
 // --- NEW TYPES FOR UPGRADES ---

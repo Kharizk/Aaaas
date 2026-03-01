@@ -18,6 +18,7 @@ import { POSManagement } from './components/POSManagement';
 import { POSInterface } from './components/POSInterface';
 import { ExpenseManager } from './components/ExpenseManager';
 import { SupplierManager } from './components/SupplierManager';
+import { PurchaseOrderManager } from './components/PurchaseOrderManager';
 import { CustomerManager } from './components/CustomerManager';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManager } from './components/UserManager';
@@ -90,7 +91,7 @@ const AppContent: React.FC = () => {
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'activity_log'>('launcher');
+  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'purchase_orders' | 'activity_log'>('launcher');
   const [openApps, setOpenApps] = useState<string[]>([]);
 
   const handleOpenApp = (appId: string) => {
@@ -209,6 +210,7 @@ const AppContent: React.FC = () => {
             { id: 'list', label: 'الجرد', icon: ClipboardListIcon, color: COLORS.BURGUNDY, permission: 'manage_products' },
             { id: 'units', label: 'الوحدات', icon: Ruler, color: COLORS.SLATE, permission: 'manage_products' },
             { id: 'suppliers', label: 'الموردين', icon: Truck, color: COLORS.GOLD, permission: 'manage_products' },
+            { id: 'purchase_orders', label: 'أوامر الشراء', icon: ShoppingBag, color: COLORS.DARK_GRAY, permission: 'manage_products' },
         ]
     },
     {
@@ -524,7 +526,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col h-screen w-full bg-[#F0F2F5] dark:bg-slate-900 text-[#0F172A] font-sans print:h-auto print:bg-white print:overflow-visible transition-colors duration-300 ${darkMode ? 'dark:bg-slate-900 dark:text-white' : ''}`}>
+    <div className={`flex flex-col h-screen w-full bg-[#F0F2F5] dark:bg-slate-900 text-[#0F172A] font-sans print:h-auto print:bg-white print:text-black print:overflow-visible transition-colors duration-300 ${darkMode ? 'dark:bg-slate-900 dark:text-white' : ''}`}>
       
       {/* Command Palette */}
       {showCmdPalette && (
@@ -682,6 +684,7 @@ const AppContent: React.FC = () => {
                             {appId === 'expenses' && <ExpenseManager />}
                             {appId === 'customers' && <CustomerManager />}
                             {appId === 'suppliers' && <SupplierManager />}
+                            {appId === 'purchase_orders' && <PurchaseOrderManager />}
                             {appId === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
                             {appId === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
                             {appId === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}

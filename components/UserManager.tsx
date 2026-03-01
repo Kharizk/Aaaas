@@ -234,7 +234,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches 
                         {logs.map(log => (
                             <tr key={log.id} className="hover:bg-gray-50">
                                 <td className="p-4 font-mono text-xs text-gray-500">{new Date(log.timestamp).toLocaleString('ar-SA')}</td>
-                                <td className="p-4 font-bold text-sap-primary">{log.username}</td>
+                                <td className="p-4 font-bold text-sap-primary">{log.user}</td>
                                 <td className="p-4 font-bold text-xs uppercase">{log.action}</td>
                                 <td className="p-4 text-xs text-gray-600">{log.details}</td>
                             </tr>

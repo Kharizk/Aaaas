@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Expense } from '../types';
 import { db } from '../services/supabase';
-import { Plus, Trash2, Save, TrendingDown, Calendar, Tag, Settings } from 'lucide-react';
+import { Plus, Trash2, Save, TrendingDown, Calendar, Tag, Settings, FileSpreadsheet } from 'lucide-react';
+import { exportDataToExcel } from '../services/excelService';
 
 export const ExpenseManager: React.FC = () => {
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -32,7 +33,10 @@ export const ExpenseManager: React.FC = () => {
 
     const handleAddCategory = () => {
         if (!newCategory) return;
-        if (categories.includes(newCategory)) return alert('التصنيف موجود مسبقاً');
+        if (categories.includes(newCategory)) {
+            alert('التصنيف موجود مسبقاً');
+            return;
+        }
         
         const updatedCats = [...categories, newCategory];
         setCategories(updatedCats);
@@ -41,16 +45,23 @@ export const ExpenseManager: React.FC = () => {
     };
 
     const handleRemoveCategory = (cat: string) => {
-        if (confirm(`حذف تصنيف "${cat}"؟`)) {
+        if (confirm(`هل أنت متأكد من حذف تصنيف "${cat}"؟`)) {
             const updatedCats = categories.filter(c => c !== cat);
             setCategories(updatedCats);
             localStorage.setItem('expense_categories', JSON.stringify(updatedCats));
-            if (category === cat) setCategory(updatedCats[0] || '');
+            if (category === cat && updatedCats.length > 0) {
+                setCategory(updatedCats[0]);
+            } else if (category === cat) {
+                setCategory('');
+            }
         }
     };
 
     const handleSave = async () => {
-        if(!title || !amount) return alert('البيانات ناقصة');
+        if(!title || !amount) {
+            alert('البيانات ناقصة');
+            return;
+        }
         const newItem: Expense = {
             id: crypto.randomUUID(),
             title,
@@ -60,7 +71,9 @@ export const ExpenseManager: React.FC = () => {
         };
         await db.expenses.upsert(newItem);
         setExpenses(prev => [newItem, ...prev]);
-        setTitle(''); setAmount('');
+        setTitle(''); 
+        setAmount('');
+        // Keep the category and date as is for easier entry of multiple items
     };
 
     const handleDelete = async (id: string) => {
@@ -68,6 +81,16 @@ export const ExpenseManager: React.FC = () => {
             await db.expenses.delete(id);
             setExpenses(prev => prev.filter(x => x.id !== id));
         }
+    };
+
+    const handleExport = () => {
+        const dataToExport = expenses.map(e => ({
+            'البند': e.title,
+            'المبلغ': e.amount,
+            'التصنيف': e.category,
+            'التاريخ': e.date
+        }));
+        exportDataToExcel(dataToExport, `expenses_export_${new Date().toISOString().split('T')[0]}`);
     };
 
     const total = expenses.reduce((a,b) => a + b.amount, 0);
@@ -97,7 +120,12 @@ export const ExpenseManager: React.FC = () => {
             <div className="flex-1 bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                 <div className="p-6 border-b flex justify-between items-center bg-gray-50">
                     <h3 className="font-black text-xl">سجل المصروفات</h3>
-                    <div className="text-xl font-black text-red-600 bg-red-50 px-4 py-1 rounded-xl">الإجمالي: {total.toLocaleString()} ريال</div>
+                    <div className="flex items-center gap-3">
+                        <button onClick={handleExport} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 flex items-center gap-2 text-xs font-bold" title="تصدير Excel">
+                            <FileSpreadsheet size={16}/> تصدير
+                        </button>
+                        <div className="text-xl font-black text-red-600 bg-red-50 px-4 py-1 rounded-xl">الإجمالي: {total.toLocaleString()} ريال</div>
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
                     {expenses.map(ex => (

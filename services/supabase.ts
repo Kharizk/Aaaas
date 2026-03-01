@@ -37,10 +37,39 @@ try {
     console.error("Firebase Initialization Error:", error);
 }
 
+const sanitizeData = (data: any, seen = new WeakSet()): any => {
+    if (!data) return data;
+    if (typeof data !== 'object') return data;
+    if (data instanceof Date) return data.toISOString();
+    
+    if (seen.has(data)) return '[Circular]';
+    seen.add(data);
+
+    if (Array.isArray(data)) return data.map(item => sanitizeData(item, seen));
+    
+    // Handle Firestore Timestamp
+    if (data.toDate && typeof data.toDate === 'function') {
+        return data.toDate().toISOString();
+    }
+
+    // Handle DocumentReference (circular)
+    if (data.firestore && data.path) {
+        return { id: data.id, path: data.path }; // Return a safe reference object
+    }
+
+    const sanitized: any = {};
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            sanitized[key] = sanitizeData(data[key], seen);
+        }
+    }
+    return sanitized;
+};
+
 const snapshotToArray = (snapshot: any) => {
     return snapshot.docs.map((d: any) => ({
         id: d.id,
-        ...d.data()
+        ...sanitizeData(d.data())
     }));
 };
 
@@ -70,7 +99,7 @@ export const db = {
             const q = query(collection(firestore, "users"), where("username", "==", username));
             const snapshot = await getDocs(q);
             if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+            return { id: snapshot.docs[0].id, ...sanitizeData(snapshot.docs[0].data()) };
         });
     },
     async initAdminIfNeeded() {

@@ -8,6 +8,8 @@ interface SystemSettings {
   currencySymbolType: CurrencySymbolType;
   currencySymbolImage: string | null;
   taxRate: number;
+  taxNumber?: string;
+  invoiceTerms?: string;
   receiptHeader: string;
   receiptFooter: string;
   showLogoOnReceipt?: boolean;
@@ -15,6 +17,7 @@ interface SystemSettings {
   showFooterOnReceipt?: boolean;
   enableSoundEffects?: boolean;
   themeColor?: string;
+  defaultPaymentMethod?: 'cash' | 'card';
 }
 
 interface SystemSettingsContextType {
@@ -35,7 +38,8 @@ const defaultSettings: SystemSettings = {
   showHeaderOnReceipt: true,
   showFooterOnReceipt: true,
   enableSoundEffects: true,
-  themeColor: '#6366f1'
+  themeColor: '#6366f1',
+  defaultPaymentMethod: 'cash'
 };
 
 const SystemSettingsContext = createContext<SystemSettingsContextType>({

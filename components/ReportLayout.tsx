@@ -25,6 +25,8 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
   dateRange
 }) => {
   const [orgName, setOrgName] = useState(localStorage.getItem('print_org_name') || 'مؤسسة المدير برو التجارية');
+  const [taxNumber, setTaxNumber] = useState('');
+  const [invoiceTerms, setInvoiceTerms] = useState('');
   
   const currentDate = new Date().toLocaleDateString('ar-SA');
   const currentTime = new Date().toLocaleTimeString('ar-SA');
@@ -34,6 +36,8 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
       try {
         const settings = await db.settings.get();
         if (settings?.orgName) setOrgName(settings.orgName);
+        if (settings?.taxNumber) setTaxNumber(settings.taxNumber);
+        if (settings?.invoiceTerms) setInvoiceTerms(settings.invoiceTerms);
       } catch (e) { console.error(e); }
     };
     fetchOrg();
@@ -52,6 +56,11 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
             <div className="space-y-2">
               <h1 className="text-3xl print:text-2xl font-black text-sap-shell leading-tight">{orgName}</h1>
               <p className="text-sm print:text-[10px] font-bold text-sap-secondary uppercase tracking-[2px]">Enterprise Resource Planning</p>
+              {taxNumber && (
+                  <div className="text-xs font-bold text-gray-600 mt-1">
+                      الرقم الضريبي: {taxNumber}
+                  </div>
+              )}
               <div className="flex items-center gap-2 mt-2 text-[10px] font-medium text-gray-500">
                   <Globe size={12}/>
                   <span>نظام الإدارة الموحد</span>
@@ -102,6 +111,11 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
 
       {showSignatures && (
         <div className="mt-16 print:mt-10 pt-8 border-t border-gray-200 break-inside-avoid">
+          {invoiceTerms && (
+              <div className="mb-8 text-xs text-gray-500 text-center px-10 whitespace-pre-wrap">
+                  <strong>الشروط والأحكام:</strong> {invoiceTerms}
+              </div>
+          )}
           <div className="flex justify-between items-end px-8 print:px-0">
             <div className="text-center">
                 <div className="mb-4 text-xs font-bold text-gray-400">المحاسب / المستلم</div>
@@ -128,7 +142,7 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
       <style>{`
         @media print {
           @page { size: A4 ${orientation}; margin: 10mm; }
-          html, body { height: auto !important; overflow: visible !important; background: white !important; }
+          html, body { height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
           .report-container { width: 100% !important; padding: 0 !important; }
           .bg-sap-shell { background-color: #2D3748 !important; color: white !important; }
           .bg-sap-secondary { background-color: #C5A059 !important; }

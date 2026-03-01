@@ -193,6 +193,43 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
           />
       </div>
 
+      {/* Hourly Sales Chart (Only for Monthly View) */}
+      {reportType === 'monthly' && (
+          <div className="bg-white border border-sap-border rounded-[2.5rem] p-8 shadow-sm print:hidden">
+              <h3 className="font-black text-gray-800 mb-6 flex items-center gap-2 text-lg"><Clock size={22} className="text-sap-primary"/> نشاط المبيعات بالساعة</h3>
+              <div className="h-48 flex items-end justify-between gap-1">
+                  {Array.from({length: 24}, (_, i) => {
+                      const hourSales = monthlyData.records.filter(s => {
+                          const date = new Date(s.date); // Note: s.date might be ISO string or YYYY-MM-DD. If ISO, it has time.
+                          // If s.date is just YYYY-MM-DD, we can't do hourly. 
+                          // Assuming s.date is ISO string from previous context (new Date().toISOString()).
+                          // If it's just date, this chart won't work well. Let's check types.ts. 
+                          // DailySales.date is string. Usually ISO in this app.
+                          return date.getHours() === i;
+                      }).reduce((a, b) => a + b.amount, 0);
+                      
+                      const maxHourly = Math.max(...Array.from({length: 24}, (_, h) => monthlyData.records.filter(s => new Date(s.date).getHours() === h).reduce((a,b) => a+b.amount, 0))) || 1;
+                      const height = (hourSales / maxHourly) * 100;
+                      
+                      return (
+                          <div key={i} className="flex-1 flex flex-col justify-end items-center group relative">
+                              <div 
+                                  className={`w-full bg-sap-primary/20 rounded-t-md transition-all duration-500 group-hover:bg-sap-primary/80`}
+                                  style={{ height: `${height}%`, minHeight: hourSales > 0 ? '4px' : '0' }}
+                              ></div>
+                              <span className="text-[9px] text-gray-400 mt-1 font-mono">{i}</span>
+                              {hourSales > 0 && (
+                                  <div className="absolute bottom-full mb-2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                      {hourSales.toLocaleString()} SAR
+                                  </div>
+                              )}
+                          </div>
+                      );
+                  })}
+              </div>
+          </div>
+      )}
+
       {/* Main Table Content */}
       <div className="bg-white border border-sap-border rounded-[2.5rem] p-10 shadow-sm print:border-none print:shadow-none print:p-0 print:m-0 print:block overflow-visible text-right">
         

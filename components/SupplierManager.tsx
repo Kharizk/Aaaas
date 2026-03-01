@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Supplier, SupplierTransaction } from '../types';
 import { db } from '../services/supabase';
-import { Plus, Trash2, Edit2, Search, Truck, Package, Save, X, Phone, Mail, MapPin, FileText, DollarSign, ArrowUpRight, ArrowDownLeft, Clock } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Truck, Package, Save, X, Phone, Mail, MapPin, FileText, DollarSign, ArrowUpRight, ArrowDownLeft, Clock, FileSpreadsheet } from 'lucide-react';
+import { exportDataToExcel } from '../services/excelService';
 
 export const SupplierManager: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -125,6 +126,19 @@ export const SupplierManager: React.FC = () => {
       setIsTxModalOpen(true);
   };
 
+  const handleExport = () => {
+      const dataToExport = suppliers.map(s => ({
+          'اسم المورد': s.name,
+          'مسؤول التواصل': s.contactPerson,
+          'رقم الهاتف': s.phone,
+          'البريد الإلكتروني': s.email,
+          'العنوان': s.address,
+          'الرصيد': s.balance,
+          'ملاحظات': s.notes
+      }));
+      exportDataToExcel(dataToExport, `suppliers_export_${new Date().toISOString().split('T')[0]}`);
+  };
+
   const filteredSuppliers = suppliers.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.phone?.includes(searchTerm)
@@ -155,6 +169,9 @@ export const SupplierManager: React.FC = () => {
             />
             <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
+          <button onClick={handleExport} className="bg-green-600 text-white px-4 py-3 rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg hover:bg-green-700 transition-all active:scale-95" title="تصدير Excel">
+            <FileSpreadsheet size={18}/> تصدير
+          </button>
           <button onClick={() => openModal()} className="bg-sap-primary text-white px-6 py-3 rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg hover:bg-sap-primary-hover transition-all active:scale-95">
             <Plus size={18}/> إضافة مورد
           </button>

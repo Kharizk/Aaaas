@@ -270,7 +270,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                           {filteredProducts.map(p => (
-                              <tr key={p.id} className="hover:bg-gray-50 group transition-colors cursor-pointer" onClick={() => handleOpenModal(p)}>
+                              <tr key={p.id} className={`hover:bg-gray-50 group transition-colors cursor-pointer ${(p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0 ? 'bg-amber-50' : ''}`} onClick={() => handleOpenModal(p)}>
                                   <td className="p-3 text-center" onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }}>
                                       <input type="checkbox" checked={selectedIds.has(p.id)} className="accent-sap-primary" readOnly />
                                   </td>
@@ -299,7 +299,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
           ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {filteredProducts.map(p => (
-                      <div key={p.id} onClick={() => handleOpenModal(p)} className="bg-white border border-gray-200 rounded-md p-4 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-32 relative overflow-hidden group">
+                      <div key={p.id} onClick={() => handleOpenModal(p)} className={`bg-white border border-gray-200 rounded-md p-4 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-32 relative overflow-hidden group ${(p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0 ? 'ring-2 ring-amber-400' : ''}`}>
                           <div className="absolute top-0 right-0 w-1 h-full" style={{ backgroundColor: p.color || '#ccc' }}></div>
                           <div className="flex justify-between items-start mb-2 pl-2 pr-3">
                               <h3 className="font-bold text-gray-800 line-clamp-2 text-sm">{p.name}</h3>
