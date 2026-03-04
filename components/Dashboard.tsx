@@ -9,7 +9,7 @@ import {
   Package, Ruler, FileText, Clock, 
   ArrowUpRight, AlertCircle, ShoppingBag, Plus, DollarSign, Crown,
   AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink, TrendingUp, TrendingDown, Truck,
-  LogOut, LogIn
+  LogOut, LogIn, Copy, Share2
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -39,6 +39,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [salesData, setSalesData] = useState<DailySales[]>([]);
   const [currentShift, setCurrentShift] = useState<Shift | null>(null);
   const { notify } = useNotification();
+  const [showExpiryPrint, setShowExpiryPrint] = useState(false);
+
+  const handlePrintExpiry = () => {
+      setShowExpiryPrint(true);
+      setTimeout(() => window.print(), 100);
+  };
+
+  const handleCopyExpiry = () => {
+      const header = "المنتج\tالكود\tتاريخ الانتهاء\tالأيام المتبقية\tالكمية\n";
+      const text = expiryAlerts.map(a => 
+          `${a.productName}\t${a.productCode}\t${a.expiryDate}\t${a.daysLeft}\t${a.qty}`
+      ).join('\n');
+      navigator.clipboard.writeText(header + text);
+      notify('تم نسخ التقرير للحافظة', 'success');
+  };
+
+  const handleShareExpiry = async () => {
+      const text = expiryAlerts.map(a => 
+          `- ${a.productName} (${a.expiryDate}) [باقي ${a.daysLeft} يوم]`
+      ).join('\n');
+      
+      if (navigator.share) {
+          try {
+              await navigator.share({
+                  title: 'تنبيهات صلاحية المنتجات',
+                  text: `تقرير تنبيهات الصلاحية:\n\n${text}`,
+              });
+          } catch (err) {
+              console.error(err);
+          }
+      } else {
+          handleCopyExpiry();
+      }
+  };
 
   const checkOpenShift = async () => {
       try {
@@ -187,6 +221,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const chartData = getLast7DaysSales();
   const maxVal = Math.max(...chartData.map(d => d.total), 1);
   const points = chartData.map((d, i) => `${(i / 6) * 100},${100 - (d.total / maxVal) * 100}`).join(' ');
+  
+  if (showExpiryPrint) {
+      return (
+          <div className="fixed inset-0 bg-white z-[9999] overflow-auto">
+              <ReportLayout title="تقرير تنبيهات صلاحية المنتجات" subtitle={`تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}`}>
+                  <div className="p-4">
+                      <table className="w-full text-right border-collapse">
+                          <thead>
+                              <tr className="bg-gray-100 border-b border-gray-300">
+                                  <th className="p-3 border border-gray-200">المنتج</th>
+                                  <th className="p-3 border border-gray-200">الكود</th>
+                                  <th className="p-3 border border-gray-200">تاريخ الانتهاء</th>
+                                  <th className="p-3 border border-gray-200">الأيام المتبقية</th>
+                                  <th className="p-3 border border-gray-200">الكمية</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              {expiryAlerts.map((alert, idx) => (
+                                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                      <td className="p-3 border border-gray-200 font-bold">{alert.productName}</td>
+                                      <td className="p-3 border border-gray-200 font-mono">{alert.productCode}</td>
+                                      <td className="p-3 border border-gray-200 font-mono" dir="ltr">{alert.expiryDate}</td>
+                                      <td className="p-3 border border-gray-200 font-bold text-red-600">{alert.daysLeft} يوم</td>
+                                      <td className="p-3 border border-gray-200 font-mono">{alert.qty}</td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                      <div className="mt-8 pt-4 border-t border-gray-200 flex justify-between text-sm text-gray-500">
+                          <span>عدد التنبيهات: {expiryAlerts.length}</span>
+                          <span>تم الاستخراج من نظام StoreFlow</span>
+                      </div>
+                  </div>
+              </ReportLayout>
+              <button onClick={() => setShowExpiryPrint(false)} className="fixed top-4 left-4 bg-red-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg hover:bg-red-700 transition-colors print:hidden">
+                  إغلاق
+              </button>
+          </div>
+      );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -377,9 +451,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
       {/* Alerts Section */}
       {expiryAlerts.length > 0 && (
           <div className="bg-red-50 border border-red-100 rounded-[2rem] overflow-hidden shadow-sm animate-in slide-in-from-bottom-4">
-              <div className="px-8 py-5 border-b border-red-100/50 flex justify-between items-center bg-red-100/30">
-                  <div className="flex items-center gap-3 text-red-700 font-black text-lg"><AlertTriangle size={24} /> تنبيهات الصلاحية (أقل من {alertDaysThreshold} يوم)</div>
-                  <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-xs font-black">{expiryAlerts.length} تنبيه</span>
+              <div className="px-8 py-5 border-b border-red-100/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-red-100/30">
+                  <div className="flex items-center gap-3 text-red-700 font-black text-lg">
+                      <AlertTriangle size={24} /> 
+                      تنبيهات الصلاحية 
+                      <span className="text-sm font-normal text-red-600 opacity-80">(أقل من {alertDaysThreshold} يوم)</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                      <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-xs font-black ml-2">{expiryAlerts.length} تنبيه</span>
+                      
+                      <button onClick={handlePrintExpiry} className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50 border border-red-100 shadow-sm transition-colors" title="طباعة تقرير">
+                          <Printer size={18} />
+                      </button>
+                      <button onClick={handleCopyExpiry} className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50 border border-red-100 shadow-sm transition-colors" title="نسخ">
+                          <Copy size={18} />
+                      </button>
+                      <button onClick={handleShareExpiry} className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50 border border-red-100 shadow-sm transition-colors" title="مشاركة">
+                          <Share2 size={18} />
+                      </button>
+                  </div>
               </div>
               <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
                   <table className="w-full text-right text-xs">
