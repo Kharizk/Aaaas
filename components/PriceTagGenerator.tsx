@@ -360,28 +360,66 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       if (s.template === 'classic_vertical') {
           return (
-            <div className="flex flex-col h-full justify-between p-2">
-                {s.showLogo && globalStyles.logoUrl && (
-                    <div className="flex justify-center mb-1">
-                        <img src={globalStyles.logoUrl} alt="Logo" style={{ height: `${globalStyles.logoSize}px` }} className="object-contain" />
+            <div className="flex flex-col h-full w-full relative overflow-hidden font-sans" style={{ backgroundColor: s.backgroundColor }}>
+                {/* Top: Logo - Only render if enabled and URL exists */}
+                {s.showLogo && globalStyles.logoUrl ? (
+                    <div className="h-[22%] flex items-center justify-center pt-3 pb-1 px-4">
+                        <img src={globalStyles.logoUrl} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                     </div>
+                ) : (
+                    // Spacer if no logo to keep balance, or remove to let name expand
+                    <div className="h-2"></div> 
                 )}
+
+                {/* Middle: Name - Expands to fill space */}
                 <div 
-                    className="flex-1 flex items-center break-words leading-tight"
-                    style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor, fontWeight: s.nameWeight, justifyContent: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start', textAlign: s.textAlign }}
+                    className="flex-1 px-4 py-2 flex flex-col justify-center"
+                    style={{ 
+                        textAlign: s.textAlign,
+                        alignItems: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start'
+                    }}
                 >
-                    {tag.name}
+                    <span 
+                        className="leading-snug break-words w-full line-clamp-3"
+                        style={{ 
+                            fontSize: `${s.nameFontSize}pt`, 
+                            color: s.nameColor, 
+                            fontWeight: s.nameWeight,
+                        }}
+                    >
+                        {tag.name}
+                    </span>
                 </div>
-                <div 
-                    className="pt-1 mt-1 flex flex-col items-center gap-0.5 border-t border-gray-100"
-                    style={{ justifyContent: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start' }}
-                >
-                    <div className="flex items-baseline gap-1">
-                        {s.showOriginalPrice && tag.originalPrice && <span style={{ fontSize: '9pt', color: s.originalPriceColor, textDecoration: 'line-through' }} className="font-bold">{tag.originalPrice}</span>}
+
+                {/* Bottom: Price & Info - Distinct Footer */}
+                <div className="mt-auto p-2 flex flex-col items-center justify-center min-h-[35%] relative">
+                    
+                    {/* Original Price Sticker */}
+                    {s.showOriginalPrice && tag.originalPrice && (
+                        <div className="absolute -top-3 right-3 bg-red-500 text-white px-2 py-0.5 rounded-sm shadow-sm transform rotate-[-3deg] z-20">
+                            <span className="text-[8px] font-bold line-through opacity-90">{tag.originalPrice}</span>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-center gap-2 relative z-10 w-full">
                         <PriceWithCurrency />
-                        {s.showUnit && tag.unitName && <span style={{ color: s.unitColor }} className="text-[10px] font-bold self-center ml-2 border px-1 rounded bg-gray-50">{tag.unitName}</span>}
+                        
+                        <div className="flex flex-col items-start justify-center gap-0.5">
+                            <span className="text-[7px] text-gray-500 font-bold leading-none">السعر شامل الضريبة</span>
+                            {s.showUnit && tag.unitName && (
+                                <span 
+                                    style={{ color: s.unitColor, borderColor: s.unitColor }} 
+                                    className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-opacity-30 leading-none"
+                                >
+                                    {tag.unitName}
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة</span>
+                    
+                    <div className="w-full flex items-center justify-center mt-1">
+                         <span className="text-[8px] font-mono text-gray-400 tracking-wider">{tag.productId.slice(0,8).toUpperCase()}</span>
+                    </div>
                 </div>
             </div>
           );

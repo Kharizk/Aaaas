@@ -1,12 +1,12 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Product, Unit, User } from '../types';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Product, Unit, User, Supplier } from '../types';
 import { db } from '../services/supabase';
 import { parseExcelFile, exportDataToExcel } from '../services/excelService';
 import { EmptyState } from './UIStates';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
   Barcode, LayoutGrid, DollarSign, FileSpreadsheet, Ruler, 
-  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft, Copy, AlertTriangle, Upload
+  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft, Copy, AlertTriangle, Upload, Star, Truck
 } from 'lucide-react';
 
 interface ProductManagerProps {
@@ -24,6 +24,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   
   // Form State
   const [code, setCode] = useState('');
@@ -33,6 +34,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [costPrice, setCostPrice] = useState(''); 
   const [color, setColor] = useState('#ffffff');
   const [lowStockThreshold, setLowStockThreshold] = useState<string>('');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [supplierId, setSupplierId] = useState('');
   
   // Stock Adjustment State
   const [showStockModal, setShowStockModal] = useState(false);
@@ -42,6 +45,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
 
   const canEdit = currentUser?.role === 'admin' || currentUser?.permissions.includes('manage_products');
   const excelInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+      const fetchSuppliers = async () => {
+          const data = await db.suppliers.getAll();
+          setSuppliers(data);
+      };
+      fetchSuppliers();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
@@ -58,10 +69,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setCode(product.code); setName(product.name); setUnitId(product.unitId);
       setPrice(product.price || ''); setCostPrice(product.costPrice || ''); setColor(product.color || '#ffffff');
       setLowStockThreshold(product.lowStockThreshold?.toString() || '');
+      setIsFavorite(product.isFavorite || false);
+      setSupplierId(product.supplierId || '');
     } else {
       setEditingProduct(null);
       setCode(''); setName(''); setUnitId(''); setPrice(''); setCostPrice(''); setColor('#ffffff');
       setLowStockThreshold('');
+      setIsFavorite(false);
+      setSupplierId('');
     }
     setIsModalOpen(true);
   };
@@ -108,6 +123,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setCostPrice(product.costPrice || ''); 
       setColor(product.color || '#ffffff');
       setLowStockThreshold(product.lowStockThreshold?.toString() || '');
+      setIsFavorite(product.isFavorite || false);
+      setSupplierId(product.supplierId || '');
       
       setIsModalOpen(true);
   };
@@ -120,7 +137,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
           id: editingProduct ? editingProduct.id : crypto.randomUUID(),
           code: code.trim(), name: name.trim(), unitId,
           price: price.trim(), costPrice: costPrice.trim(), color,
-          lowStockThreshold: lowStockThreshold ? Number(lowStockThreshold) : undefined
+          lowStockThreshold: lowStockThreshold ? Number(lowStockThreshold) : undefined,
+          isFavorite,
+          supplierId: supplierId || undefined
         };
         await db.products.upsert(productData);
         if (editingProduct) setProducts(prev => prev.map(p => p.id === editingProduct.id ? productData : p));
@@ -159,7 +178,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
               costPrice: (row['Cost'] || row['cost'] || row['التكلفة'] || '0').toString(),
               unitId: 'unit_piece', // Default unit
               stock: Number(row['Stock'] || row['stock'] || row['المخزون'] || 0),
-              category: row['Category'] || row['category'] || row['التصنيف'] || 'General'
+              category: row['Category'] || row['category'] || row['التصنيف'] || 'General',
+              supplierId: undefined // Could map if supplier name matches ID, but safer to skip for now
           })).filter((p: Product) => p.name); // Filter out empty rows
 
           if (newProducts.length === 0) throw new Error('No valid data found');
@@ -265,6 +285,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                               <th className="p-3">الوحدة</th>
                               <th className="p-3">سعر البيع</th>
                               <th className="p-3">التكلفة</th>
+                              <th className="p-3">هامش الربح</th>
                               <th className="p-3 w-20"></th>
                           </tr>
                       </thead>
@@ -281,6 +302,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                   </td>
                                   <td className="p-3 font-bold">{p.price}</td>
                                   <td className="p-3 text-gray-400">{p.costPrice || '-'}</td>
+                                  <td className="p-3">
+                                      {p.price && p.costPrice && parseFloat(p.price) > 0 ? (
+                                          <span className={((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price)) * 100 >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                                              {(((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price)) * 100).toFixed(1)}%
+                                          </span>
+                                      ) : '-'}
+                                  </td>
                                   <td className="p-3 text-center flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button 
                                         onClick={(e) => handleDuplicate(p, e)}
@@ -376,13 +404,29 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                               <div className="space-y-4">
                                   <div className="flex items-center">
                                       <label className="w-24 text-sm font-bold text-gray-600">كود الصنف</label>
-                                      <input type="text" value={code} onChange={e => setCode(e.target.value)} className="flex-1 border-b border-gray-300 focus:border-sap-primary outline-none py-1 font-mono text-sap-secondary font-bold" />
+                                      <div className="flex-1 flex items-center gap-2">
+                                          <input type="text" value={code} onChange={e => setCode(e.target.value)} className="flex-1 border-b border-gray-300 focus:border-sap-primary outline-none py-1 font-mono text-sap-secondary font-bold" />
+                                          <button 
+                                              onClick={() => setCode(Math.floor(Math.random() * 1000000000000).toString())}
+                                              className="p-1 text-gray-400 hover:text-sap-primary hover:bg-gray-100 rounded"
+                                              title="توليد كود عشوائي"
+                                          >
+                                              <Barcode size={16}/>
+                                          </button>
+                                      </div>
                                   </div>
                                   <div className="flex items-center">
                                       <label className="w-24 text-sm font-bold text-gray-600">وحدة القياس</label>
                                       <select value={unitId} onChange={e => setUnitId(e.target.value)} className="flex-1 border-b border-gray-300 focus:border-sap-primary outline-none py-1 bg-white">
                                           <option value="">-- اختر --</option>
                                           {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                      </select>
+                                  </div>
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">المورد</label>
+                                      <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="flex-1 border-b border-gray-300 focus:border-sap-primary outline-none py-1 bg-white">
+                                          <option value="">-- اختر --</option>
+                                          {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                       </select>
                                   </div>
                               </div>
@@ -449,6 +493,20 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                           />
                                       </div>
                                       <p className="text-[10px] text-gray-400 mt-1">سيظهر تنبيه عندما يقل المخزون عن هذا العدد</p>
+                                  </div>
+
+                                  <div>
+                                      <label className="block text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+                                          <Star size={14} className="text-yellow-500" />
+                                          المفضلة (POS)
+                                      </label>
+                                      <label className="flex items-center gap-3 cursor-pointer">
+                                          <div className={`w-12 h-6 rounded-full p-1 transition-colors ${isFavorite ? 'bg-sap-primary' : 'bg-gray-200'}`}>
+                                              <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${isFavorite ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                          </div>
+                                          <input type="checkbox" checked={isFavorite} onChange={e => setIsFavorite(e.target.checked)} className="hidden" />
+                                          <span className="text-sm text-gray-500 font-medium">{isFavorite ? 'يظهر في المفضلة' : 'غير مفضل'}</span>
+                                      </label>
                                   </div>
                                   
                                   {/* Barcode Generator */}

@@ -13,6 +13,7 @@ interface SystemSettings {
   receiptHeader: string;
   receiptFooter: string;
   showLogoOnReceipt?: boolean;
+  receiptLogo?: string | null;
   showHeaderOnReceipt?: boolean;
   showFooterOnReceipt?: boolean;
   enableSoundEffects?: boolean;

@@ -37,8 +37,10 @@ export interface Product {
   color?: string;
   category?: string;
   description?: string;
+  supplierId?: string; // New field for supplier linking
   lowStockThreshold?: number; // New field for alerts
   stock?: number; // New field for inventory tracking
+  isFavorite?: boolean; // New field for POS favorites
 }
 
 export interface KeyboardShortcut {
@@ -83,6 +85,7 @@ export interface CartItem {
   price: number;
   name?: string;
   discount?: number;
+  note?: string; // New field for item-specific notes
 }
 
 export interface DailySales {
@@ -465,6 +468,7 @@ export interface Settings {
   taxRate?: number; // VAT %
   receiptHeader?: string;
   receiptFooter?: string;
+  receiptLogo?: string | null;
   currency?: string;
   enableLowStockAlerts?: boolean;
   showLogoOnReceipt?: boolean;

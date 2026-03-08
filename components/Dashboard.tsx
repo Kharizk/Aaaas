@@ -86,31 +86,44 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
 
   const handleShiftAction = async () => {
       if (currentShift) {
+          const endCashStr = prompt('الرجاء إدخال المبلغ النقدي في الدرج عند الإغلاق:', '0');
+          if (endCashStr === null) return; // Cancelled
+          const endCash = parseFloat(endCashStr);
+          if (isNaN(endCash)) return alert('المبلغ غير صحيح');
+
           if (confirm('هل أنت متأكد من إغلاق الوردية الحالية؟')) {
+              const expectedCash = (currentShift.startCash || 0) + stats.sales - stats.expenses; // Simplified
               const updatedShift: Shift = {
                   ...currentShift,
                   endTime: new Date().toISOString(),
                   status: 'closed',
-                  endCash: 0 
+                  endCash: endCash,
+                  expectedCash: expectedCash,
+                  difference: endCash - expectedCash
               };
               await db.shifts.upsert(updatedShift);
               setCurrentShift(null);
-              notify('تم إغلاق الوردية', 'success');
+              notify(`تم إغلاق الوردية. العجز/الزيادة: ${updatedShift.difference?.toFixed(2)}`, 'success');
               
               await db.activityLogs.add({
                   action: 'إغلاق وردية',
-                  details: `تم إغلاق الوردية رقم ${updatedShift.id.substring(0,8)}`,
+                  details: `تم إغلاق الوردية رقم ${updatedShift.id.substring(0,8)} - العجز/الزيادة: ${updatedShift.difference}`,
                   user: 'الكاشير',
                   type: 'info'
               });
           }
       } else {
+          const startCashStr = prompt('الرجاء إدخال المبلغ النقدي الافتتاحي:', '0');
+          if (startCashStr === null) return;
+          const startCash = parseFloat(startCashStr);
+          if (isNaN(startCash)) return alert('المبلغ غير صحيح');
+
           const newShift: Shift = {
               id: crypto.randomUUID(),
               userId: 'current-user-id', 
               userName: 'الكاشير', 
               startTime: new Date().toISOString(),
-              startCash: 0, 
+              startCash: startCash, 
               status: 'open'
           };
           await db.shifts.upsert(newShift);
@@ -119,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
 
           await db.activityLogs.add({
               action: 'فتح وردية',
-              details: `تم فتح وردية جديدة`,
+              details: `تم فتح وردية جديدة - رصيد افتتاحي: ${startCash}`,
               user: 'الكاشير',
               type: 'info'
           });
@@ -291,9 +304,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <SAPTile title="المنتجات المسجلة" value={products.length.toLocaleString()} subValue="صنف" icon={Package} onClick={() => switchToTab('products')} colorClass="from-blue-500 to-indigo-600" />
         <SAPTile title="إجمالي الإيرادات" value={stats.sales.toLocaleString()} subValue="ريال" icon={DollarSign} onClick={() => switchToTab('reports_center')} colorClass="from-sap-secondary to-yellow-600" />
-        <SAPTile title="صافي الربح التقريبي" value={(stats.sales - stats.expenses).toLocaleString()} subValue="مبيعات - مصروفات" icon={Wallet} onClick={() => switchToTab('expenses')} colorClass={stats.sales - stats.expenses >= 0 ? "from-emerald-500 to-teal-600" : "from-red-500 to-pink-600"} />
+        <SAPTile title="صافي الربح التقريبي" value={(stats.sales - stats.expenses).toLocaleString()} subValue="مبيعات - مصروفات" icon={Wallet} onClick={() => switchToTab('expenses')} colorClass={(stats.sales - stats.expenses) >= 0 ? "from-emerald-500 to-teal-600" : "from-red-500 to-pink-600"} />
         <SAPTile title="الوحدات النشطة" value={units.length} subValue="وحدة" icon={Ruler} onClick={() => switchToTab('units')} colorClass="from-slate-500 to-gray-700" />
       </div>
+
+      {/* Cash Drawer Management */}
+      {currentShift && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-50 text-green-600 rounded-lg"><Wallet size={20}/></div>
+                  <div>
+                      <h4 className="font-bold text-sm text-gray-800">إدارة الدرج النقدي</h4>
+                      <p className="text-xs text-gray-400">الرصيد الحالي المتوقع: <span className="font-mono font-black text-green-600">{(currentShift.startCash + stats.sales - stats.expenses).toLocaleString()}</span> ريال</p>
+                  </div>
+              </div>
+              <div className="flex gap-2">
+                  <button 
+                      onClick={() => {
+                          const amount = prompt('أدخل المبلغ للإيداع (نثريات واردة):');
+                          if (amount && !isNaN(parseFloat(amount))) {
+                              // Ideally we should have a transaction log for this, for now we just update startCash or track it separately
+                              // Since we don't have a separate table for cash movements yet, we will treat it as a "negative expense" or just update startCash for simplicity in this iteration
+                              // Better: Add to startCash
+                              const val = parseFloat(amount);
+                              db.shifts.upsert({ ...currentShift, startCash: currentShift.startCash + val });
+                              setCurrentShift({ ...currentShift, startCash: currentShift.startCash + val });
+                              notify(`تم إيداع ${val} ريال`, 'success');
+                          }
+                      }}
+                      className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-bold hover:bg-green-100"
+                  >
+                      + إيداع
+                  </button>
+                  <button 
+                      onClick={() => {
+                          const amount = prompt('أدخل المبلغ للسحب (نثريات صادرة):');
+                          if (amount && !isNaN(parseFloat(amount))) {
+                              const val = parseFloat(amount);
+                              db.shifts.upsert({ ...currentShift, startCash: currentShift.startCash - val });
+                              setCurrentShift({ ...currentShift, startCash: currentShift.startCash - val });
+                              notify(`تم سحب ${val} ريال`, 'success');
+                          }
+                      }}
+                      className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-bold hover:bg-red-100"
+                  >
+                      - سحب
+                  </button>
+              </div>
+          </div>
+      )}
 
       {/* Quick Actions */}
       <div>
@@ -405,6 +464,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                         </div>
                     ))}
                     {salesData.length === 0 && <div className="text-center text-purple-400 text-xs py-4">لا توجد بيانات كافية</div>}
+                </div>
+            </div>
+
+            {/* Top Products Widget */}
+            <div className="bg-indigo-50 border border-indigo-100 rounded-[2.5rem] shadow-sm p-6 mt-6">
+                <h3 className="font-black text-indigo-800 mb-4 flex items-center gap-2 text-sm"><ShoppingBag size={18}/> المنتجات الأكثر مبيعاً</h3>
+                <div className="space-y-2">
+                    {Object.values(salesData.reduce((acc: any, sale) => {
+                        if (!sale.cart) return acc;
+                        sale.cart.forEach((item: any) => {
+                            if (!acc[item.productId]) acc[item.productId] = { id: item.productId, name: item.name, total: 0, count: 0 };
+                            acc[item.productId].total += (item.price * item.quantity);
+                            acc[item.productId].count += item.quantity;
+                        });
+                        return acc;
+                    }, {})).sort((a: any, b: any) => b.total - a.total).slice(0, 5).map((p: any, idx) => (
+                        <div key={p.id} className="flex justify-between items-center p-3 bg-white/60 rounded-xl border border-indigo-100/50 hover:bg-white transition-colors">
+                            <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${idx === 0 ? 'bg-yellow-400 text-yellow-900' : 'bg-indigo-200 text-indigo-700'}`}>
+                                    {idx + 1}
+                                </span>
+                                <div>
+                                    <div className="font-bold text-gray-800 text-xs">{p.name}</div>
+                                    <div className="text-[10px] text-gray-400 font-mono">{p.count} قطعة</div>
+                                </div>
+                            </div>
+                            <span className="font-black text-indigo-700 text-xs font-mono">{p.total.toLocaleString()}</span>
+                        </div>
+                    ))}
+                    {salesData.length === 0 && <div className="text-center text-indigo-400 text-xs py-4">لا توجد بيانات كافية</div>}
                 </div>
             </div>
         </div>

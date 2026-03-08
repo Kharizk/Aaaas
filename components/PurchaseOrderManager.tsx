@@ -120,29 +120,83 @@ export const PurchaseOrderManager: React.FC = () => {
 
     const handleUpdateStatus = async (order: PurchaseOrder, newStatus: 'pending' | 'received' | 'cancelled') => {
         try {
+            // 1. Update Order Status
             const updatedOrder = { ...order, status: newStatus };
             await db.purchaseOrders.upsert(updatedOrder);
             setOrders(prev => prev.map(o => o.id === order.id ? updatedOrder : o));
             
-            // If received, update product stock and cost price
+            // 2. Handle Stock & Supplier Balance
+            // Case A: Marking as Received (Add Stock, Add Debt)
             if (newStatus === 'received' && order.status !== 'received') {
                 for (const item of order.items) {
                     const product = products.find(p => p.id === item.productId);
                     if (product) {
                         const newStock = (product.stock || 0) + item.quantity;
-                        // Simple weighted average for cost price could be implemented here
-                        // For now, we'll just update the cost price to the latest purchase price
-                        const updatedProduct = { ...product, stock: newStock, costPrice: item.costPrice };
+                        const updatedProduct = { ...product, stock: newStock, costPrice: item.costPrice.toString() };
                         await db.products.upsert(updatedProduct);
                     }
                 }
-                // Refresh products to reflect stock changes
-                const updatedProducts = await db.products.getAll();
-                setProducts(updatedProducts as Product[]);
-                notify('تم استلام الطلب وتحديث المخزون', 'success');
+
+                // Create Supplier Transaction (Bill)
+                const transaction: any = {
+                    id: crypto.randomUUID(),
+                    supplierId: order.supplierId,
+                    date: new Date().toISOString(),
+                    type: 'bill',
+                    amount: order.totalAmount,
+                    reference: `PO-${order.id.slice(0, 8)}`,
+                    notes: 'Generated automatically from Purchase Order'
+                };
+                await db.supplierTransactions.upsert(transaction);
+
+                // Update Supplier Balance (Increase Debt)
+                const supplier = suppliers.find(s => s.id === order.supplierId);
+                if (supplier) {
+                    const newBalance = (supplier.balance || 0) + order.totalAmount;
+                    await db.suppliers.upsert({ ...supplier, balance: newBalance });
+                    setSuppliers(prev => prev.map(s => s.id === supplier.id ? { ...s, balance: newBalance } : s));
+                }
+                
+                notify('تم استلام الطلب وتحديث المخزون وحساب المورد', 'success');
+            } 
+            // Case B: Reverting from Received (Remove Stock, Reduce Debt)
+            else if (order.status === 'received' && newStatus !== 'received') {
+                for (const item of order.items) {
+                    const product = products.find(p => p.id === item.productId);
+                    if (product) {
+                        const newStock = Math.max(0, (product.stock || 0) - item.quantity);
+                        await db.products.upsert({ ...product, stock: newStock });
+                    }
+                }
+
+                // Revert Supplier Balance (Reduce Debt)
+                const supplier = suppliers.find(s => s.id === order.supplierId);
+                if (supplier) {
+                    const newBalance = (supplier.balance || 0) - order.totalAmount;
+                    await db.suppliers.upsert({ ...supplier, balance: newBalance });
+                    setSuppliers(prev => prev.map(s => s.id === supplier.id ? { ...s, balance: newBalance } : s));
+                }
+
+                // Create Reversal Transaction
+                const transaction: any = {
+                    id: crypto.randomUUID(),
+                    supplierId: order.supplierId,
+                    date: new Date().toISOString(),
+                    type: 'payment', // Reduces balance
+                    amount: order.totalAmount,
+                    reference: `REV-PO-${order.id.slice(0, 8)}`,
+                    notes: `Reversal of PO due to status change to ${newStatus}`
+                };
+                await db.supplierTransactions.upsert(transaction);
+                
+                notify('تم إلغاء استلام الطلب وتصحيح المخزون وحساب المورد', 'warning');
             } else {
                 notify('تم تحديث حالة الطلب', 'success');
             }
+
+            // 3. Refresh Products to reflect stock changes
+            const updatedProducts = await db.products.getAll();
+            setProducts(updatedProducts as Product[]);
 
         } catch (error) {
             console.error("Error updating status:", error);

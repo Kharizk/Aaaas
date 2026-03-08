@@ -311,5 +311,10 @@ export const db = {
             await batch.commit();
         });
     }
+  },
+  heldOrders: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "held_orders"), orderBy("date", "desc")))), []); },
+    async upsert(order: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "held_orders", order.id), order); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "held_orders", id)); }); }
   }
 };

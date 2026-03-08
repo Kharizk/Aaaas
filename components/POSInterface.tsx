@@ -7,7 +7,7 @@ import {
   DollarSign, Users, Save, Loader2, Monitor, Search, 
   PauseCircle, PlayCircle, Trash2, LayoutGrid, CheckCircle2, ChevronRight, X, User as UserIcon,
   ShoppingCart, Plus, Minus, Barcode, CreditCard, Banknote, RefreshCcw, Tag,
-  History, FileText, AlertCircle, Lock, Calculator, Printer, Maximize, HelpCircle, Keyboard
+  History, FileText, AlertCircle, Lock, Calculator, Printer, Maximize, HelpCircle, Keyboard, Star
 } from 'lucide-react';
 import { playBeep, playError, playSuccess, playClick } from '../utils/sound';
 
@@ -52,6 +52,10 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   const [newProdName, setNewProdName] = useState('');
   const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdCode, setNewProdCode] = useState('');
+  
+  // Quick Edit State
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editPrice, setEditPrice] = useState('');
 
   // Calculator & Print State
   const [showCalculator, setShowCalculator] = useState(false);
@@ -79,8 +83,15 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       if (val === 'C') setCalcInput('');
       else if (val === '=') {
           try {
-              // eslint-disable-next-line no-eval
-              setCalcInput(eval(calcInput).toString());
+              // Safe evaluation using Function constructor instead of eval
+              // Only allow numbers and basic operators
+              if (/^[0-9+\-*/.() ]+$/.test(calcInput)) {
+                  // eslint-disable-next-line no-new-func
+                  const result = new Function(`return ${calcInput}`)();
+                  setCalcInput(String(result));
+              } else {
+                  setCalcInput('Error');
+              }
           } catch (e) {
               setCalcInput('Error');
           }
@@ -95,6 +106,26 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       playClick();
   };
 
+  const handleRightClickProduct = (e: React.MouseEvent, product: Product) => {
+      e.preventDefault();
+      if (currentUser?.role !== 'admin') return;
+      setEditingProduct(product);
+      setEditPrice(product.price || '');
+  };
+
+  const handleSavePrice = async () => {
+      if (!editingProduct) return;
+      try {
+          await db.products.upsert({ ...editingProduct, price: editPrice });
+          // Update local state is not possible here as setProducts is not available
+          // Ideally we should trigger a refresh or use context
+          setEditingProduct(null);
+          notify('تم تحديث السعر بنجاح (سيظهر التحديث بعد إعادة التحميل)', 'success');
+      } catch (e) {
+          notify('فشل تحديث السعر', 'error');
+      }
+  };
+
   // --- Effects ---
   useEffect(() => {
     const load = async () => {
@@ -103,9 +134,11 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       setCustomers(cust);
       if (pp.length > 0) setSelectedPosId(pp[0].id);
       
-      const savedHeld = localStorage.getItem('pos_held_orders');
-      if (savedHeld) {
-        try { setHeldOrders(JSON.parse(savedHeld)); } catch (e) {}
+      try {
+          const orders = await db.heldOrders.getAll();
+          setHeldOrders(orders);
+      } catch (e) {
+          console.error("Failed to fetch held orders", e);
       }
     };
     load();
@@ -128,6 +161,50 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
     };
     checkShift();
   }, [currentUser]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (!currentShift) return;
+
+        // F2: Focus Search
+        if (e.key === 'F2') {
+            e.preventDefault();
+            searchInputRef.current?.focus();
+        }
+        // F4: Pay / Checkout
+        if (e.key === 'F4') {
+            e.preventDefault();
+            handleOpenCheckout();
+        }
+        // F8: Hold Order
+        if (e.key === 'F8') {
+            e.preventDefault();
+            handleHold();
+        }
+        // F9: Discount (Focus global discount or open modal - simplified to 10% for now)
+        if (e.key === 'F9') {
+            e.preventDefault();
+            // Apply 10% discount to all items
+            if (confirm('هل تريد تطبيق خصم 10% على كامل السلة؟')) {
+                 setCart(prev => prev.map(item => ({
+                     ...item,
+                     discount: (item.price * Math.abs(item.quantity)) * 0.10
+                 })));
+                 notify('تم تطبيق خصم 10%', 'success');
+            }
+        }
+        // F10: Toggle Return Mode
+        if (e.key === 'F10') {
+            e.preventDefault();
+            setIsRefundMode(prev => !prev);
+            notify(isRefundMode ? 'تم إيقاف وضع المرتجع' : 'تم تفعيل وضع المرتجع', 'info');
+        }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentShift, cart, isRefundMode]);
 
   // Barcode Scanner Listener (Global)
   useEffect(() => {
@@ -167,7 +244,14 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       return products.filter(p => {
           const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                 p.code.toLowerCase().includes(searchQuery.toLowerCase());
-          const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
+          
+          let matchesCat = true;
+          if (selectedCategory === 'favorites') {
+              matchesCat = p.isFavorite === true;
+          } else {
+              matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
+          }
+          
           return matchesSearch && matchesCat;
       });
   }, [products, searchQuery, selectedCategory]);
@@ -191,6 +275,11 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   };
 
   const addToCart = (product: Product) => {
+      // Check Low Stock
+      if ((product.stock || 0) <= (product.lowStockThreshold || 0) && (product.lowStockThreshold || 0) > 0) {
+          notify(`تنبيه: مخزون منخفض للمنتج ${product.name}`, 'warning');
+      }
+
       setCart(prev => {
           const existing = prev.find(i => i.productId === product.id);
           const qtyMod = isRefundMode ? -1 : 1;
@@ -248,7 +337,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
 
   // --- Hold / Retrieve ---
 
-  const handleHold = () => {
+  const handleHold = async () => {
       if (cart.length === 0) return notify('السلة فارغة', 'warning');
       
       const order: HeldOrder = {
@@ -260,33 +349,31 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
           cart: cart
       };
 
-      const newHeld = [...heldOrders, order];
-      setHeldOrders(newHeld);
       try {
-        localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+          await db.heldOrders.upsert(order);
+          setHeldOrders(prev => [order, ...prev]);
+          clearCart();
+          notify('تم تعليق الطلب بنجاح', 'success');
       } catch (e) {
-        console.error('Failed to save held orders to localStorage', e);
+          notify('فشل تعليق الطلب', 'error');
       }
-      clearCart();
-      notify('تم تعليق الطلب', 'success');
   };
 
-  const handleRetrieve = (order: HeldOrder) => {
+  const handleRetrieve = async (order: HeldOrder) => {
       setCart(order.cart);
       if (order.customerName) {
           const c = customers.find(n => n.name === order.customerName);
           if (c) setSelectedCustomerId(c.id);
       }
       
-      const newHeld = heldOrders.filter(o => o.id !== order.id);
-      setHeldOrders(newHeld);
       try {
-        localStorage.setItem('pos_held_orders', JSON.stringify(newHeld));
+          await db.heldOrders.delete(order.id);
+          setHeldOrders(prev => prev.filter(o => o.id !== order.id));
+          setShowHeldModal(false);
+          notify('تم استرجاع الطلب', 'success');
       } catch (e) {
-        console.error('Failed to update held orders in localStorage', e);
+          notify('فشل استرجاع الطلب', 'error');
       }
-      setShowHeldModal(false);
-      notify('تم استرجاع الطلب', 'info');
   };
 
   // --- Checkout ---
@@ -580,6 +667,12 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
             <div className="flex-1 flex flex-col border-l border-gray-200 bg-gray-50/50">
                 {/* Categories */}
                 <div className="p-3 overflow-x-auto flex gap-2 no-scrollbar shrink-0">
+                    <button 
+                        onClick={() => setSelectedCategory('favorites')}
+                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${selectedCategory === 'favorites' ? 'bg-yellow-400 text-yellow-900 shadow-md' : 'bg-white text-gray-500 border border-gray-200 hover:border-yellow-400'}`}
+                    >
+                        <Star size={14} fill={selectedCategory === 'favorites' ? 'currentColor' : 'none'} /> المفضلة
+                    </button>
                     {categories.map(cat => (
                         <button 
                             key={cat}
@@ -597,6 +690,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         <button 
                             key={product.id}
                             onClick={() => addToCart(product)}
+                            onContextMenu={(e) => handleRightClickProduct(e, product)}
                             className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col gap-2 hover:border-sap-primary hover:shadow-lg transition-all group text-right h-32 relative overflow-hidden"
                         >
                             <div className="flex-1 w-full">
@@ -625,7 +719,14 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
             </div>
 
             {/* Right: Cart */}
-            <div className="w-96 bg-white flex flex-col shadow-xl z-10">
+            <div className={`w-96 bg-white flex flex-col shadow-xl z-10 transition-all duration-300 ${isRefundMode ? 'border-4 border-red-500 bg-red-50' : ''}`}>
+                {/* Return Mode Banner */}
+                {isRefundMode && (
+                    <div className="bg-red-600 text-white text-center py-2 font-black text-sm animate-pulse">
+                        ⚠️ وضع المرتجع مفعل - جميع العناصر بالسالب
+                    </div>
+                )}
+
                 {/* Customer Selector */}
                 <div className="p-3 border-b border-gray-100">
                     <div className="relative">
@@ -644,9 +745,9 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                 {/* Cart Items */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
                     {cart.map((item, idx) => (
-                        <div key={`${item.productId}-${idx}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-gray-300 transition-colors">
+                        <div key={`${item.productId}-${idx}`} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${item.quantity < 0 ? 'bg-red-100 border-red-200' : 'bg-gray-50 border-gray-100 group hover:border-gray-300'}`}>
                             <div className="flex-1">
-                                <h4 className="font-bold text-sm text-gray-800">{item.name}</h4>
+                                <h4 className="font-bold text-sm text-gray-800">{item.name} {item.quantity < 0 && <span className="text-[10px] text-red-600 bg-white px-1 rounded border border-red-200 mr-1">مرتجع</span>}</h4>
                                 <div className="text-xs text-gray-500 font-mono flex items-center gap-2">
                                     <span>{item.price.toLocaleString()} × {Math.abs(item.quantity)}</span>
                                     {item.discount && item.discount > 0 && <span className="text-red-500 bg-red-50 px-1 rounded">-{item.discount}</span>}
@@ -661,14 +762,26 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                                         onChange={(e) => updateItemDiscount(item.productId, parseFloat(e.target.value) || 0)}
                                     />
                                 </div>
+                                <div className="mt-1">
+                                    <input 
+                                        type="text" 
+                                        className="w-full text-[10px] border border-gray-100 bg-white rounded px-1 py-0.5 focus:border-sap-primary outline-none placeholder-gray-300"
+                                        value={item.note || ''}
+                                        placeholder="ملاحظة..."
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setCart(prev => prev.map(i => i.productId === item.productId ? { ...i, note: val } : i));
+                                        }}
+                                    />
+                                </div>
                             </div>
                             <div className="flex flex-col items-end gap-1">
                                 <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
-                                    <button onClick={() => updateQty(item.productId, 1)} className="p-1 hover:bg-gray-100 rounded text-green-600"><Plus size={14}/></button>
+                                    <button onClick={() => updateQty(item.productId, item.quantity < 0 ? -1 : 1)} className="p-1 hover:bg-gray-100 rounded text-green-600"><Plus size={14}/></button>
                                     <span className={`w-6 text-center font-black text-sm ${item.quantity < 0 ? 'text-red-500' : ''}`}>{Math.abs(item.quantity)}</span>
-                                    <button onClick={() => updateQty(item.productId, -1)} className="p-1 hover:bg-gray-100 rounded text-red-600"><Minus size={14}/></button>
+                                    <button onClick={() => updateQty(item.productId, item.quantity < 0 ? 1 : -1)} className="p-1 hover:bg-gray-100 rounded text-red-600"><Minus size={14}/></button>
                                 </div>
-                                <div className="font-black text-sap-primary text-sm">
+                                <div className={`font-black text-sm ${item.quantity < 0 ? 'text-red-600' : 'text-sap-primary'}`}>
                                     {((item.price * item.quantity) - (item.discount || 0)).toLocaleString()}
                                 </div>
                             </div>
@@ -694,7 +807,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 mb-2">
-                        <button onClick={handleHold} className="py-3 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm hover:bg-amber-200 transition-colors flex items-center justify-center gap-2">
+                        <button onClick={handleHold} className="py-3 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm hover:bg-amber-200 transition-colors flex items-center justify-center gap-2" title="F8">
                             <PauseCircle size={18}/> تعليق
                         </button>
                         <button onClick={clearCart} className="py-3 bg-red-100 text-red-700 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors flex items-center justify-center gap-2">
@@ -702,10 +815,40 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         </button>
                     </div>
                     
+                    {/* Quick Discounts */}
+                    <div className="flex gap-2 mb-2">
+                        {[5, 10, 15].map(pct => (
+                            <button 
+                                key={pct}
+                                onClick={() => {
+                                    setCart(prev => prev.map(item => ({
+                                        ...item,
+                                        discount: (item.price * Math.abs(item.quantity)) * (pct / 100)
+                                    })));
+                                    notify(`تم تطبيق خصم ${pct}%`, 'success');
+                                }}
+                                className="flex-1 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200"
+                            >
+                                {pct}%
+                            </button>
+                        ))}
+                         <button 
+                            onClick={() => {
+                                setCart(prev => prev.map(item => ({ ...item, discount: 0 })));
+                                notify('تم إلغاء الخصم', 'info');
+                            }}
+                            className="px-2 py-1 bg-gray-100 text-red-500 text-xs font-bold rounded-lg hover:bg-red-50"
+                            title="إلغاء الخصم"
+                        >
+                            <X size={12}/>
+                        </button>
+                    </div>
+
                     <button 
                         onClick={handleOpenCheckout} 
                         disabled={cart.length === 0}
                         className="w-full py-4 bg-sap-primary text-white rounded-xl font-black text-lg shadow-lg hover:bg-sap-primary-hover active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="F4"
                     >
                         <CheckCircle2 size={24}/> دفع {cartTotal.toLocaleString()}
                     </button>
@@ -714,6 +857,36 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
         </div>
 
         {/* --- Modals --- */}
+
+        {/* Quick Edit Price Modal */}
+        {editingProduct && (
+            <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <h3 className="font-black text-gray-800">تعديل السريع: {editingProduct.name}</h3>
+                        <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">السعر الجديد</label>
+                            <input 
+                                type="number" 
+                                value={editPrice}
+                                onChange={e => setEditPrice(e.target.value)}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-xl text-center focus:ring-2 focus:ring-sap-primary outline-none"
+                                autoFocus
+                            />
+                        </div>
+                        <button 
+                            onClick={handleSavePrice}
+                            className="w-full py-3 bg-sap-primary text-white rounded-xl font-black hover:bg-sap-primary-hover transition-colors"
+                        >
+                            حفظ التغييرات
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Checkout Modal */}
         {showCheckoutModal && (
@@ -890,23 +1063,23 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                     <div className="p-6 grid grid-cols-2 gap-4">
                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                             <span className="text-sm font-bold text-gray-700">بحث</span>
-                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">Ctrl + F</kbd>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F2</kbd>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                             <span className="text-sm font-bold text-gray-700">دفع</span>
-                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F9</kbd>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-bold text-gray-700">طباعة آخر فاتورة</span>
-                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F8</kbd>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-bold text-gray-700">آلة حاسبة</span>
                             <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F4</kbd>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-bold text-gray-700">مسح السلة</span>
-                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">Esc</kbd>
+                            <span className="text-sm font-bold text-gray-700">تعليق الطلب</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F8</kbd>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">خصم سريع (10%)</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F9</kbd>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-bold text-gray-700">وضع المرتجع</span>
+                            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">F10</kbd>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                             <span className="text-sm font-bold text-gray-700">ملء الشاشة</span>
