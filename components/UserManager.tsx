@@ -18,12 +18,18 @@ const ALL_PERMISSIONS: { key: Permission, label: string }[] = [
   { key: 'manage_products', label: 'إدارة المنتجات (إضافة/تعديل/حذف)' },
   { key: 'record_sales', label: 'تسجيل المبيعات اليومية' },
   { key: 'view_reports', label: 'الاطلاع على التقارير' },
+  { key: 'view_advanced_reports', label: 'الاطلاع على التقارير المتقدمة' },
   { key: 'manage_settlements', label: 'إدارة التسويات' },
   { key: 'print_labels', label: 'طباعة الملصقات' },
   { key: 'manage_branches', label: 'إدارة الفروع' },
   { key: 'manage_users', label: 'إدارة المستخدمين' },
   { key: 'manage_settings', label: 'الإعدادات العامة' },
   { key: 'manage_database', label: 'إدارة قاعدة البيانات' },
+  { key: 'manage_returns', label: 'إدارة المرتجعات' },
+  { key: 'manage_expenses', label: 'إدارة المصروفات' },
+  { key: 'manage_customers', label: 'إدارة العملاء' },
+  { key: 'manage_suppliers', label: 'إدارة الموردين' },
+  { key: 'manage_purchase_orders', label: 'إدارة أوامر الشراء' },
 ];
 
 export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches }) => {

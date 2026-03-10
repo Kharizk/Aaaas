@@ -176,6 +176,26 @@ export const db = {
     async upsert(expense: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "expenses", expense.id), expense); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "expenses", id)); }); }
   },
+  expenseCategories: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "expenseCategories"))), []); },
+    async upsert(category: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "expenseCategories", category.id), category); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "expenseCategories", id)); }); }
+  },
+  promotions: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "promotions"))), []); },
+    async upsert(promotion: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "promotions", promotion.id), promotion); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "promotions", id)); }); }
+  },
+  returns: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "returns"))), []); },
+    async add(returnRecord: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "returns", returnRecord.id), returnRecord); }); },
+    async getByDateRange(startDate: string, endDate: string) {
+      return safeDbCall(async () => {
+        const q = query(collection(firestore, "returns"), where("date", ">=", startDate), where("date", "<=", endDate));
+        return snapshotToArray(await getDocs(q));
+      }, []);
+    }
+  },
   activityLogs: {
     async add(log: any) { return safeDbCall(async () => { await addDoc(collection(firestore, "activity_logs"), { ...log, timestamp: new Date().toISOString() }); }); },
     async getAll(limitCount = 100) {

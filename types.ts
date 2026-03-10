@@ -41,6 +41,7 @@ export interface Product {
   lowStockThreshold?: number; // New field for alerts
   stock?: number; // New field for inventory tracking
   isFavorite?: boolean; // New field for POS favorites
+  taxRate?: number; // New field for product-specific tax
 }
 
 export interface KeyboardShortcut {
@@ -86,6 +87,7 @@ export interface CartItem {
   name?: string;
   discount?: number;
   note?: string; // New field for item-specific notes
+  taxRate?: number; // New field for item-specific tax
 }
 
 export interface DailySales {
@@ -132,6 +134,45 @@ export interface Expense {
   posPointId?: string;
 }
 
+export type PromotionType = 'bogo' | 'discount_percentage' | 'discount_amount';
+
+export interface Promotion {
+  id: string;
+  name: string;
+  type: PromotionType;
+  value: number; // e.g., 20 for 20%, or 10 for 10 SAR, or 1 for buy 1 get 1
+  targetType: 'all' | 'category' | 'product';
+  targetId?: string; // category name or product id
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+}
+
+export interface ReturnItem {
+  productId: string;
+  quantity: number;
+  price: number;
+  reason: string;
+}
+
+export interface ReturnRecord {
+  id: string;
+  originalSaleId?: string;
+  date: string;
+  items: ReturnItem[];
+  totalAmount: number;
+  branchId: string;
+  userId: string;
+  status: 'completed' | 'pending';
+  notes?: string;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -141,6 +182,7 @@ export interface Customer {
   balance?: number; // Positive = Customer owes us
   totalPurchases?: number;
   loyaltyPoints?: number;
+  creditLimit?: number; // New field for credit limit
 }
 
 export interface Network {
@@ -160,7 +202,13 @@ export type Permission =
   | 'manage_settlements' 
   | 'print_labels' 
   | 'manage_settings' 
-  | 'manage_database';
+  | 'manage_database'
+  | 'manage_returns'
+  | 'manage_expenses'
+  | 'manage_customers'
+  | 'manage_suppliers'
+  | 'manage_purchase_orders'
+  | 'view_advanced_reports';
 
 export interface User {
   id: string;
@@ -342,6 +390,7 @@ export type CurrencySymbolType = 'text' | 'icon' | 'custom_image';
 export interface TagStyleOverrides {
   nameFontSize?: number;
   priceFontSize?: number;
+  unitFontSize?: number;
   nameColor?: string;
   priceColor?: string;
   unitColor?: string;
@@ -377,6 +426,7 @@ export interface SelectedTag {
 export interface TagStyles {
   nameFontSize: number;
   priceFontSize: number;
+  unitFontSize: number;
   nameColor: string;
   priceColor: string;
   unitColor: string;

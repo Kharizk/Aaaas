@@ -3,10 +3,11 @@ import { Product, Unit, User, Supplier } from '../types';
 import { db } from '../services/supabase';
 import { parseExcelFile, exportDataToExcel } from '../services/excelService';
 import { EmptyState } from './UIStates';
+import { BarcodePrinter } from './BarcodePrinter';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
   Barcode, LayoutGrid, DollarSign, FileSpreadsheet, Ruler, 
-  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft, Copy, AlertTriangle, Upload, Star, Truck
+  CheckSquare, Square, Download, List, Filter, ChevronRight, MoreHorizontal, ArrowLeft, Copy, AlertTriangle, Upload, Star, Truck, Printer
 } from 'lucide-react';
 
 interface ProductManagerProps {
@@ -25,6 +26,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [showBarcodePrinter, setShowBarcodePrinter] = useState(false);
   
   // Form State
   const [code, setCode] = useState('');
@@ -36,6 +38,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [lowStockThreshold, setLowStockThreshold] = useState<string>('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [supplierId, setSupplierId] = useState('');
+  const [taxRate, setTaxRate] = useState('');
   
   // Stock Adjustment State
   const [showStockModal, setShowStockModal] = useState(false);
@@ -71,12 +74,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setLowStockThreshold(product.lowStockThreshold?.toString() || '');
       setIsFavorite(product.isFavorite || false);
       setSupplierId(product.supplierId || '');
+      setTaxRate(product.taxRate?.toString() || '');
     } else {
       setEditingProduct(null);
       setCode(''); setName(''); setUnitId(''); setPrice(''); setCostPrice(''); setColor('#ffffff');
       setLowStockThreshold('');
       setIsFavorite(false);
       setSupplierId('');
+      setTaxRate('');
     }
     setIsModalOpen(true);
   };
@@ -125,6 +130,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setLowStockThreshold(product.lowStockThreshold?.toString() || '');
       setIsFavorite(product.isFavorite || false);
       setSupplierId(product.supplierId || '');
+      setTaxRate(product.taxRate?.toString() || '');
       
       setIsModalOpen(true);
   };
@@ -139,7 +145,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
           price: price.trim(), costPrice: costPrice.trim(), color,
           lowStockThreshold: lowStockThreshold ? Number(lowStockThreshold) : undefined,
           isFavorite,
-          supplierId: supplierId || undefined
+          supplierId: supplierId || undefined,
+          taxRate: taxRate ? Number(taxRate) : undefined
         };
         await db.products.upsert(productData);
         if (editingProduct) setProducts(prev => prev.map(p => p.id === editingProduct.id ? productData : p));
@@ -219,6 +226,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
         <div className="flex items-center gap-3 w-full md:w-auto">
             {/* Import/Export Buttons */}
             <div className="flex items-center gap-2 border-l border-gray-200 pl-3 ml-1">
+                <button onClick={() => setShowBarcodePrinter(true)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors" title="طباعة باركود">
+                    <Printer size={18}/>
+                </button>
                 <button onClick={handleExport} className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors" title="تصدير Excel">
                     <FileSpreadsheet size={18}/>
                 </button>
@@ -446,6 +456,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                           <span className="text-xs text-gray-400 font-bold ml-1">SAR</span>
                                       </div>
                                   </div>
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">الضريبة المخصصة</label>
+                                      <div className="flex-1 flex items-center border-b border-gray-300 focus-within:border-sap-primary">
+                                          <input type="number" value={taxRate} onChange={e => setTaxRate(e.target.value)} className="w-full outline-none py-1 text-gray-500" placeholder="اتركه فارغاً للضريبة الافتراضية" />
+                                          <span className="text-xs text-gray-400 font-bold ml-1">%</span>
+                                      </div>
+                                  </div>
                                   {/* Profit Margin Display */}
                                   {price && costPrice && (
                                       <div className="flex items-center justify-end text-xs font-bold mt-2">
@@ -590,6 +607,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                   </div>
               </div>
           </div>
+      )}
+
+      {/* Barcode Printer Modal */}
+      {showBarcodePrinter && (
+          <BarcodePrinter 
+              products={selectedIds.size > 0 ? products.filter(p => selectedIds.has(p.id)) : filteredProducts} 
+              onClose={() => setShowBarcodePrinter(false)} 
+          />
       )}
     </div>
   );

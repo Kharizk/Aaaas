@@ -1,64 +1,76 @@
 
 import React, { useState, useEffect } from 'react';
-import { Expense } from '../types';
+import { Expense, ExpenseCategory } from '../types';
 import { db } from '../services/supabase';
-import { Plus, Trash2, Save, TrendingDown, Calendar, Tag, Settings, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Save, TrendingDown, Calendar, Tag, Settings, FileSpreadsheet, X } from 'lucide-react';
 import { exportDataToExcel } from '../services/excelService';
 
 export const ExpenseManager: React.FC = () => {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
-    const [category, setCategory] = useState('تشغيلية');
+    const [category, setCategory] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     
     // Custom Categories State
-    const [categories, setCategories] = useState<string[]>(['تشغيلية', 'رواتب', 'صيانة', 'تسويق', 'نثريات', 'إيجار', 'مشتريات']);
+    const [categories, setCategories] = useState<ExpenseCategory[]>([]);
     const [newCategory, setNewCategory] = useState('');
     const [showCategoryModal, setShowCategoryModal] = useState(false);
 
     useEffect(() => {
         const load = async () => {
-            const data = await db.expenses.getAll();
-            setExpenses(data as Expense[]);
+            const [expData, catData] = await Promise.all([
+                db.expenses.getAll(),
+                db.expenseCategories.getAll()
+            ]);
+            setExpenses(expData as Expense[]);
             
-            // Load saved categories if any
-            const savedCats = localStorage.getItem('expense_categories');
-            if (savedCats) {
-                try { setCategories(JSON.parse(savedCats)); } catch(e) {}
+            if (catData.length === 0) {
+                // Initialize default categories
+                const defaultCats = ['تشغيلية', 'رواتب', 'صيانة', 'تسويق', 'نثريات', 'إيجار', 'مشتريات'];
+                const newCats = await Promise.all(defaultCats.map(async (name) => {
+                    const cat = { id: crypto.randomUUID(), name };
+                    await db.expenseCategories.upsert(cat);
+                    return cat;
+                }));
+                setCategories(newCats);
+                setCategory(newCats[0].name);
+            } else {
+                setCategories(catData as ExpenseCategory[]);
+                if (catData.length > 0) setCategory((catData[0] as ExpenseCategory).name);
             }
         };
         load();
     }, []);
 
-    const handleAddCategory = () => {
+    const handleAddCategory = async () => {
         if (!newCategory) return;
-        if (categories.includes(newCategory)) {
+        if (categories.find(c => c.name === newCategory)) {
             alert('التصنيف موجود مسبقاً');
             return;
         }
         
-        const updatedCats = [...categories, newCategory];
-        setCategories(updatedCats);
-        localStorage.setItem('expense_categories', JSON.stringify(updatedCats));
+        const cat: ExpenseCategory = { id: crypto.randomUUID(), name: newCategory };
+        await db.expenseCategories.upsert(cat);
+        setCategories(prev => [...prev, cat]);
         setNewCategory('');
     };
 
-    const handleRemoveCategory = (cat: string) => {
-        if (confirm(`هل أنت متأكد من حذف تصنيف "${cat}"؟`)) {
-            const updatedCats = categories.filter(c => c !== cat);
+    const handleRemoveCategory = async (catId: string, catName: string) => {
+        if (confirm(`هل أنت متأكد من حذف تصنيف "${catName}"؟`)) {
+            await db.expenseCategories.delete(catId);
+            const updatedCats = categories.filter(c => c.id !== catId);
             setCategories(updatedCats);
-            localStorage.setItem('expense_categories', JSON.stringify(updatedCats));
-            if (category === cat && updatedCats.length > 0) {
-                setCategory(updatedCats[0]);
-            } else if (category === cat) {
+            if (category === catName && updatedCats.length > 0) {
+                setCategory(updatedCats[0].name);
+            } else if (category === catName) {
                 setCategory('');
             }
         }
     };
 
     const handleSave = async () => {
-        if(!title || !amount) {
+        if(!title || !amount || !category) {
             alert('البيانات ناقصة');
             return;
         }
@@ -106,7 +118,7 @@ export const ExpenseManager: React.FC = () => {
                     
                     <div className="flex gap-2">
                         <select value={category} onChange={e => setCategory(e.target.value)} className="flex-1 p-3 border rounded-xl font-bold bg-white">
-                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                         </select>
                         <button onClick={() => setShowCategoryModal(true)} className="p-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200" title="إدارة التصنيفات">
                             <Settings size={20}/>
@@ -161,7 +173,7 @@ export const ExpenseManager: React.FC = () => {
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                             <h3 className="font-bold">إدارة تصنيفات المصروفات</h3>
-                            <button onClick={() => setShowCategoryModal(false)}><Settings size={18}/></button>
+                            <button onClick={() => setShowCategoryModal(false)}><X size={18}/></button>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="flex gap-2">
@@ -176,9 +188,9 @@ export const ExpenseManager: React.FC = () => {
                             </div>
                             <div className="max-h-60 overflow-y-auto space-y-2">
                                 {categories.map(cat => (
-                                    <div key={cat} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-100">
-                                        <span className="text-sm font-bold">{cat}</span>
-                                        <button onClick={() => handleRemoveCategory(cat)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                    <div key={cat.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                        <span className="text-sm font-bold">{cat.name}</span>
+                                        <button onClick={() => handleRemoveCategory(cat.id, cat.name)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
                                     </div>
                                 ))}
                             </div>

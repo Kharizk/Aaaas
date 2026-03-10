@@ -34,6 +34,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [stats, setStats] = useState({ lists: 0, sales: 0, expenses: 0 });
   const [recentLists, setRecentLists] = useState<any[]>([]);
   const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlert[]>([]);
+  const [lowStockAlerts, setLowStockAlerts] = useState<Product[]>([]);
   const [isUpdatingAlert, setIsUpdatingAlert] = useState<string | null>(null);
   const [alertDaysThreshold, setAlertDaysThreshold] = useState(60);
   const [salesData, setSalesData] = useState<DailySales[]>([]);
@@ -179,13 +180,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
           }
       });
       setExpiryAlerts(alerts.sort((a, b) => a.daysLeft - b.daysLeft));
+
+      // Calculate Low Stock Alerts
+      const lowStock = products.filter(p => {
+          const threshold = p.lowStockThreshold || 5; // Default threshold is 5
+          return (p.stock || 0) <= threshold;
+      });
+      setLowStockAlerts(lowStock);
+
     } catch (e) { console.error(e); }
   };
 
   useEffect(() => { 
       fetchStats(); 
       checkOpenShift();
-  }, []);
+  }, [products]); // Add products to dependency array to refresh when products change
 
   const handleDismissAlert = async (e: React.MouseEvent, alertItem: ExpiryAlert) => {
       e.stopPropagation(); 

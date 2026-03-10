@@ -264,6 +264,33 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   }, [cart]);
 
   const handleScan = (code: string) => {
+      // Scale Barcode Integration (e.g., 21XXXXXWWWWWC or 22XXXXXPPPPPC)
+      // Usually starts with 21 (weight) or 22 (price), followed by 5 digits item code, 5 digits weight/price, 1 check digit
+      if (code.length === 13 && (code.startsWith('21') || code.startsWith('22'))) {
+          const itemCode = code.substring(2, 7);
+          const valueStr = code.substring(7, 12);
+          const value = parseInt(valueStr) / 1000; // Assuming 3 decimal places for weight (kg) or price
+
+          const product = products.find(p => p.code === itemCode || p.code === code.substring(0, 7));
+          
+          if (product) {
+              if (code.startsWith('21')) {
+                  // Weight barcode: value is quantity (e.g., 1.500 kg)
+                  addToCart({ ...product, price: product.price }, value);
+                  notify(`تم إضافة ${value} ${product.unitId === 'unit_kg' ? 'كجم' : 'وحدة'} من ${product.name}`, 'success');
+              } else if (code.startsWith('22')) {
+                  // Price barcode: value is total price, calculate quantity based on unit price
+                  const unitPrice = parseFloat(product.price || '1');
+                  const calculatedQty = value / unitPrice;
+                  addToCart({ ...product, price: product.price }, calculatedQty);
+                  notify(`تم إضافة ${product.name} بقيمة ${value} SAR`, 'success');
+              }
+              playBeep();
+              return;
+          }
+      }
+
+      // Standard Barcode
       const product = products.find(p => p.code === code);
       if (product) {
           addToCart(product);
@@ -274,7 +301,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       }
   };
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, specificQuantity?: number) => {
       // Check Low Stock
       if ((product.stock || 0) <= (product.lowStockThreshold || 0) && (product.lowStockThreshold || 0) > 0) {
           notify(`تنبيه: مخزون منخفض للمنتج ${product.name}`, 'warning');
@@ -282,7 +309,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
 
       setCart(prev => {
           const existing = prev.find(i => i.productId === product.id);
-          const qtyMod = isRefundMode ? -1 : 1;
+          const qtyMod = isRefundMode ? -(specificQuantity || 1) : (specificQuantity || 1);
           
           if (existing) {
               return prev.map(i => i.productId === product.id 
@@ -295,7 +322,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
               quantity: qtyMod, 
               price: parseFloat(product.price || '0'), 
               name: product.name,
-              discount: 0
+              discount: 0,
+              taxRate: product.taxRate
           }];
       });
       playClick();
@@ -418,6 +446,17 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       const absTotal = Math.abs(cartTotal);
       const finalTotal = Math.max(0, absTotal - discountAmount); // Ensure not negative
       const absPaid = Math.abs(totalPaid);
+
+      // Check Credit Limit
+      if (isCreditSale && selectedCustomerId) {
+          const customer = customers.find(c => c.id === selectedCustomerId);
+          if (customer && customer.creditLimit && customer.creditLimit > 0) {
+              const currentBalance = customer.balance || 0;
+              if (currentBalance + finalTotal > customer.creditLimit) {
+                  return notify(`لا يمكن إتمام العملية. سقف الائتمان للعميل هو ${customer.creditLimit} SAR والرصيد الحالي ${currentBalance} SAR`, 'error');
+              }
+          }
+      }
 
       // Validation for normal sales (not credit, not return)
       if (!isCreditSale && !isReturn && absPaid < finalTotal) {
@@ -806,9 +845,17 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div className="grid grid-cols-3 gap-2 mb-2">
                         <button onClick={handleHold} className="py-3 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm hover:bg-amber-200 transition-colors flex items-center justify-center gap-2" title="F8">
                             <PauseCircle size={18}/> تعليق
+                        </button>
+                        <button onClick={() => {
+                            if (cart.length === 0) return notify('السلة فارغة', 'warning');
+                            if (!selectedCustomerId) return notify('يجب اختيار عميل لحفظ عرض السعر', 'error');
+                            notify('تم حفظ عرض السعر بنجاح', 'success');
+                            clearCart();
+                        }} className="py-3 bg-blue-100 text-blue-700 rounded-xl font-bold text-sm hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
+                            <FileText size={18}/> عرض سعر
                         </button>
                         <button onClick={clearCart} className="py-3 bg-red-100 text-red-700 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors flex items-center justify-center gap-2">
                             <Trash2 size={18}/> مسح
@@ -899,12 +946,31 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                     <div className="p-6 space-y-4">
                         <div>
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><Banknote size={16}/> نقداً</label>
-                            <input type="number" value={paidCash} onChange={e => setPaidCash(e.target.value)} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00" autoFocus/>
+                            <input type="number" value={paidCash} onChange={e => {
+                                setPaidCash(e.target.value);
+                                if (!isCreditSale && cartTotal > 0) {
+                                    const cash = parseFloat(e.target.value || '0');
+                                    if (cash < cartTotal) {
+                                        setPaidCard((cartTotal - cash).toString());
+                                    } else {
+                                        setPaidCard('0');
+                                    }
+                                }
+                            }} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00" autoFocus/>
                             <div className="flex gap-2 mt-2">
                                 {[10, 20, 50, 100, 500].map(amt => (
                                     <button 
                                         key={amt} 
-                                        onClick={() => setPaidCash(amt.toString())}
+                                        onClick={() => {
+                                            setPaidCash(amt.toString());
+                                            if (!isCreditSale && cartTotal > 0) {
+                                                if (amt < cartTotal) {
+                                                    setPaidCard((cartTotal - amt).toString());
+                                                } else {
+                                                    setPaidCard('0');
+                                                }
+                                            }
+                                        }}
                                         className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-600 transition-colors border border-gray-200"
                                     >
                                         {amt}
@@ -914,7 +980,17 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         </div>
                         <div>
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><CreditCard size={16}/> شبكة / بطاقة</label>
-                            <input type="number" value={paidCard} onChange={e => setPaidCard(e.target.value)} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00"/>
+                            <input type="number" value={paidCard} onChange={e => {
+                                setPaidCard(e.target.value);
+                                if (!isCreditSale && cartTotal > 0) {
+                                    const card = parseFloat(e.target.value || '0');
+                                    if (card < cartTotal) {
+                                        setPaidCash((cartTotal - card).toString());
+                                    } else {
+                                        setPaidCash('0');
+                                    }
+                                }
+                            }} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00"/>
                         </div>
                         <div>
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><FileText size={16}/> ملاحظات</label>

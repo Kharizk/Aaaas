@@ -7,6 +7,7 @@ import { Dashboard } from './components/Dashboard';
 import { BranchManager } from './components/BranchManager';
 import { SalesRecorder } from './components/SalesRecorder';
 import { ReportsCenter } from './components/ReportsCenter';
+import { AdvancedReports } from './components/AdvancedReports';
 import { Settings } from './components/Settings';
 import { DatabaseManager } from './components/DatabaseManager';
 import { PriceTagGenerator } from './components/PriceTagGenerator';
@@ -20,6 +21,10 @@ import { ExpenseManager } from './components/ExpenseManager';
 import { SupplierManager } from './components/SupplierManager';
 import { PurchaseOrderManager } from './components/PurchaseOrderManager';
 import { CustomerManager } from './components/CustomerManager';
+import { PromotionsManager } from './components/PromotionsManager';
+import { MobileInventory } from './components/MobileInventory';
+import { ReturnsManager } from './components/ReturnsManager';
+import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManager } from './components/UserManager';
 import { UserProfile } from './components/UserProfile';
@@ -35,7 +40,7 @@ import {
   Percent, FileLineChart, Wallet, Crown, LogOut, Users, UserCircle, BookOpen, Monitor,
   ShoppingBag, TrendingDown, Bell, Moon, Sun, Loader2, Command, Keyboard, Search,
   Grid, ArrowRight, Home, Menu, X, ChevronRight, Building2,
-  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History
+  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History, RotateCcw
 } from 'lucide-react';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -81,8 +86,10 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
 import { KeyboardShortcuts } from './components/KeyboardShortcuts';
 
 import { Calculator as CalculatorComponent } from './components/Calculator';
+import { Languages } from 'lucide-react';
 
 const AppContent: React.FC = () => {
+  const { language, setLanguage, t } = useLanguage();
   const [showCalculator, setShowCalculator] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
@@ -91,7 +98,7 @@ const AppContent: React.FC = () => {
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'purchase_orders' | 'activity_log'>('launcher');
+  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'advanced_reports' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'purchase_orders' | 'activity_log' | 'promotions' | 'mobile_inventory' | 'returns'>('launcher');
   const [openApps, setOpenApps] = useState<string[]>([]);
 
   const handleOpenApp = (appId: string) => {
@@ -195,50 +202,54 @@ const AppContent: React.FC = () => {
   // --- Grouped Apps Definition ---
   const appGroups = [
     {
-        title: "المبيعات والعملاء",
+        title: t('nav.sales'),
         apps: [
-            { id: 'pos', label: 'نقطة البيع', icon: ShoppingBag, color: COLORS.GOLD, permission: 'record_sales' },
-            { id: 'sales_entry', label: 'المبيعات', icon: DollarSign, color: COLORS.BURGUNDY, permission: 'record_sales' },
-            { id: 'customers', label: 'العملاء', icon: Users, color: COLORS.DARK_GRAY, permission: 'record_sales' },
-            { id: 'offers', label: 'العروض', icon: Percent, color: COLORS.GOLD, permission: 'print_labels' },
+            { id: 'pos', label: t('nav.pos'), icon: ShoppingBag, color: COLORS.GOLD, permission: 'record_sales' },
+            { id: 'sales_entry', label: t('nav.sales'), icon: DollarSign, color: COLORS.BURGUNDY, permission: 'record_sales' },
+            { id: 'returns', label: t('nav.returns'), icon: RotateCcw, color: COLORS.SLATE, permission: 'manage_returns' },
+            { id: 'customers', label: t('nav.customers'), icon: Users, color: COLORS.DARK_GRAY, permission: 'manage_customers' },
+            { id: 'offers', label: t('nav.offers'), icon: Percent, color: COLORS.GOLD, permission: 'print_labels' },
         ]
     },
     {
-        title: "المخزون والمنتجات",
+        title: t('nav.inventory'),
         apps: [
-            { id: 'products', label: 'المنتجات', icon: Package, color: COLORS.DARK_GRAY, permissions: ['view_products', 'manage_products'] },
-            { id: 'list', label: 'الجرد', icon: ClipboardListIcon, color: COLORS.BURGUNDY, permission: 'manage_products' },
-            { id: 'units', label: 'الوحدات', icon: Ruler, color: COLORS.SLATE, permission: 'manage_products' },
-            { id: 'suppliers', label: 'الموردين', icon: Truck, color: COLORS.GOLD, permission: 'manage_products' },
-            { id: 'purchase_orders', label: 'أوامر الشراء', icon: ShoppingBag, color: COLORS.DARK_GRAY, permission: 'manage_products' },
+            { id: 'products', label: t('nav.products'), icon: Package, color: COLORS.DARK_GRAY, permissions: ['view_products', 'manage_products'] },
+            { id: 'list', label: t('nav.inventory'), icon: ClipboardListIcon, color: COLORS.BURGUNDY, permission: 'manage_products' },
+            { id: 'mobile_inventory', label: t('nav.mobile_inventory'), icon: Package, color: COLORS.GOLD, permission: 'manage_products' },
+            { id: 'units', label: t('nav.units'), icon: Ruler, color: COLORS.SLATE, permission: 'manage_products' },
+            { id: 'suppliers', label: t('nav.suppliers'), icon: Truck, color: COLORS.GOLD, permission: 'manage_suppliers' },
+            { id: 'purchase_orders', label: t('nav.purchase_orders'), icon: ShoppingBag, color: COLORS.DARK_GRAY, permission: 'manage_purchase_orders' },
         ]
     },
     {
-        title: "الحسابات والتقارير",
+        title: t('nav.reports'),
         apps: [
-            { id: 'dashboard', label: 'لوحة البيانات', icon: LayoutDashboard, color: COLORS.BURGUNDY, permission: 'view_dashboard' },
-            { id: 'reports_center', label: 'التقارير', icon: BarChart4, color: COLORS.GOLD, permission: 'view_reports' },
-            { id: 'settlement', label: 'إغلاق اليومية', icon: Wallet, color: COLORS.DARK_GRAY, permission: 'manage_settlements' },
-            { id: 'expenses', label: 'المصروفات', icon: TrendingDown, color: COLORS.BURGUNDY, permission: 'manage_settlements' },
+            { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, color: COLORS.BURGUNDY, permission: 'view_dashboard' },
+            { id: 'reports_center', label: t('nav.reports'), icon: BarChart4, color: COLORS.GOLD, permission: 'view_reports' },
+            { id: 'advanced_reports', label: 'تقارير متقدمة', icon: BarChart4, color: COLORS.BURGUNDY, permission: 'view_advanced_reports' },
+            { id: 'settlement', label: t('nav.settlement'), icon: Wallet, color: COLORS.DARK_GRAY, permission: 'manage_settlements' },
+            { id: 'expenses', label: t('nav.expenses'), icon: TrendingDown, color: COLORS.BURGUNDY, permission: 'manage_expenses' },
         ]
     },
     {
-        title: "التسويق والعرض",
+        title: t('nav.promotions'),
         apps: [
-            { id: 'price_tags', label: 'ملصقات الباركود', icon: Tag, color: COLORS.DARK_GRAY, permission: 'print_labels' },
-            { id: 'catalog', label: 'المجلة الرقمية', icon: BookOpen, color: COLORS.GOLD, permission: 'print_labels' },
-            { id: 'price_groups', label: 'الشاشات', icon: Monitor, color: COLORS.SLATE, permission: 'print_labels' },
+            { id: 'promotions', label: t('nav.promotions'), icon: Percent, color: COLORS.BURGUNDY, permission: 'manage_products' },
+            { id: 'price_tags', label: t('nav.price_tags'), icon: Tag, color: COLORS.DARK_GRAY, permission: 'print_labels' },
+            { id: 'catalog', label: t('nav.catalog'), icon: BookOpen, color: COLORS.GOLD, permission: 'print_labels' },
+            { id: 'price_groups', label: t('nav.price_groups'), icon: Monitor, color: COLORS.SLATE, permission: 'print_labels' },
         ]
     },
     {
-        title: "الإعدادات",
+        title: t('nav.settings'),
         apps: [
-            { id: 'users', label: 'المستخدمين', icon: Users, color: COLORS.DARK_GRAY, permission: 'manage_users' },
-            { id: 'branches', label: 'الفروع', icon: Building2, color: COLORS.BURGUNDY, permission: 'manage_branches' },
-            { id: 'pos_setup', label: 'تهيئة الكاشير', icon: Calculator, color: COLORS.SLATE, permission: 'manage_settlements' },
-            { id: 'settings', label: 'الإعدادات', icon: SettingsIcon, color: COLORS.GOLD, permission: 'manage_settings' },
-            { id: 'database', label: 'قاعدة البيانات', icon: Layout, color: COLORS.DARK_GRAY, permission: 'manage_database' },
-            { id: 'activity_log', label: 'سجل النشاط', icon: History, color: COLORS.BURGUNDY, permission: 'manage_settings' },
+            { id: 'users', label: t('nav.users'), icon: Users, color: COLORS.DARK_GRAY, permission: 'manage_users' },
+            { id: 'branches', label: t('nav.branches'), icon: Building2, color: COLORS.BURGUNDY, permission: 'manage_branches' },
+            { id: 'pos_setup', label: t('nav.pos_setup'), icon: Calculator, color: COLORS.SLATE, permission: 'manage_settlements' },
+            { id: 'settings', label: t('nav.settings'), icon: SettingsIcon, color: COLORS.GOLD, permission: 'manage_settings' },
+            { id: 'database', label: t('nav.database'), icon: Layout, color: COLORS.DARK_GRAY, permission: 'manage_database' },
+            { id: 'activity_log', label: t('nav.activity_log'), icon: History, color: COLORS.BURGUNDY, permission: 'manage_settings' },
         ]
     }
   ];
@@ -621,6 +632,11 @@ const AppContent: React.FC = () => {
         )}
 
         <div className="flex items-center gap-2 text-xs font-bold">
+          <button onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white flex items-center gap-1" title="تغيير اللغة">
+              <Languages size={16}/>
+              <span className="text-[10px] uppercase">{language}</span>
+          </button>
+
           <button onClick={() => setShowShortcuts(true)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="اختصارات لوحة المفاتيح">
               <Keyboard size={16}/>
           </button>
@@ -680,7 +696,10 @@ const AppContent: React.FC = () => {
                             
                             {appId === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => handleOpenApp(t)} onNavigateToList={handleNavigateToList} />}
                             {appId === 'pos' && <POSInterface products={products} setDailySales={setDailySales} currentUser={currentUser} />}
+                            {appId === 'returns' && <ReturnsManager products={products} currentUser={currentUser} sales={dailySales} />}
                             {appId === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
+                            {appId === 'mobile_inventory' && <MobileInventory products={products} onClose={() => handleCloseApp('mobile_inventory')} />}
+                            {appId === 'promotions' && <PromotionsManager products={products} />}
                             {appId === 'expenses' && <ExpenseManager />}
                             {appId === 'customers' && <CustomerManager />}
                             {appId === 'suppliers' && <SupplierManager />}
@@ -688,6 +707,7 @@ const AppContent: React.FC = () => {
                             {appId === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}
                             {appId === 'sales_entry' && <SalesRecorder branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} setSales={setDailySales} />}
                             {appId === 'reports_center' && <ReportsCenter branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
+                            {appId === 'advanced_reports' && <AdvancedReports branches={currentUser.role === 'admin' ? branches : branches.filter(b => b.id === currentUser.branchId)} sales={dailySales} products={products} units={units} />}
                             {appId === 'settlement' && <SettlementManager currentUser={currentUser} />}
                             {appId === 'pos_setup' && <POSManagement branches={branches} />}
                             {appId === 'branches' && <BranchManager branches={branches} setBranches={setBranches} sales={dailySales} />}
@@ -722,7 +742,9 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <SystemSettingsProvider>
         <NotificationProvider>
-          <AppContent />
+          <LanguageProvider>
+            <AppContent />
+          </LanguageProvider>
         </NotificationProvider>
       </SystemSettingsProvider>
     </ErrorBoundary>

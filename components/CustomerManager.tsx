@@ -21,6 +21,7 @@ export const CustomerManager: React.FC = () => {
     const [phone, setPhone] = useState('');
     const [notes, setNotes] = useState('');
     const [balance, setBalance] = useState('');
+    const [creditLimit, setCreditLimit] = useState('');
 
     useEffect(() => {
         loadCustomers();
@@ -66,6 +67,7 @@ export const CustomerManager: React.FC = () => {
             phone,
             notes,
             balance: parseFloat(balance || '0'),
+            creditLimit: parseFloat(creditLimit || '0'),
             lastVisit: editingCustomer?.lastVisit,
             totalPurchases: editingCustomer?.totalPurchases || 0,
             loyaltyPoints: editingCustomer?.loyaltyPoints || 0
@@ -100,6 +102,7 @@ export const CustomerManager: React.FC = () => {
         setPhone(customer.phone);
         setNotes(customer.notes || '');
         setBalance(customer.balance?.toString() || '0');
+        setCreditLimit(customer.creditLimit?.toString() || '0');
         setShowModal(true);
     };
 
@@ -109,6 +112,7 @@ export const CustomerManager: React.FC = () => {
         setPhone('');
         setNotes('');
         setBalance('');
+        setCreditLimit('');
     };
 
     const handleExport = () => {
@@ -116,6 +120,7 @@ export const CustomerManager: React.FC = () => {
             'الاسم': c.name,
             'رقم الهاتف': c.phone,
             'الرصيد': c.balance,
+            'سقف الائتمان': c.creditLimit,
             'نقاط الولاء': c.loyaltyPoints,
             'إجمالي المشتريات': c.totalPurchases,
             'ملاحظات': c.notes
@@ -177,6 +182,7 @@ export const CustomerManager: React.FC = () => {
                                 <th className="p-4">المستوى</th>
                                 <th className="p-4">نقاط الولاء</th>
                                 <th className="p-4">الرصيد (عليه)</th>
+                                <th className="p-4">سقف الائتمان</th>
                                 <th className="p-4">ملاحظات</th>
                                 <th className="p-4 w-40">إجراءات</th>
                             </tr>
@@ -204,6 +210,9 @@ export const CustomerManager: React.FC = () => {
                                             {(customer.balance || 0).toLocaleString()} SAR
                                         </span>
                                     </td>
+                                    <td className="p-4 text-gray-600 font-bold">
+                                        {(customer.creditLimit || 0).toLocaleString()} SAR
+                                    </td>
                                     <td className="p-4 text-gray-500 text-sm max-w-xs truncate">{customer.notes || '-'}</td>
                                     <td className="p-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => handleViewHistory(customer)} className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100" title="سجل المشتريات"><History size={16}/></button>
@@ -214,7 +223,7 @@ export const CustomerManager: React.FC = () => {
                             )})}
                             {filteredCustomers.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="p-10 text-center text-gray-400">لا يوجد عملاء</td>
+                                    <td colSpan={8} className="p-10 text-center text-gray-400">لا يوجد عملاء</td>
                                 </tr>
                             )}
                         </tbody>
@@ -245,11 +254,20 @@ export const CustomerManager: React.FC = () => {
                                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">الرصيد الافتتاحي (عليه)</label>
-                                <div className="relative">
-                                    <input type="number" value={balance} onChange={e => setBalance(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold focus:border-sap-primary outline-none pl-10" placeholder="0.00" />
-                                    <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">الرصيد الافتتاحي (عليه)</label>
+                                    <div className="relative">
+                                        <input type="number" value={balance} onChange={e => setBalance(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold focus:border-sap-primary outline-none pl-10" placeholder="0.00" />
+                                        <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">سقف الائتمان</label>
+                                    <div className="relative">
+                                        <input type="number" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold focus:border-sap-primary outline-none pl-10" placeholder="0.00" />
+                                        <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+                                    </div>
                                 </div>
                             </div>
                             <div>

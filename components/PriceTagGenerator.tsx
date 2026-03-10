@@ -104,6 +104,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   const [globalStyles, setGlobalStyles] = useState<TagStyles>({
     nameFontSize: 14,
     priceFontSize: 28,
+    unitFontSize: 12,
     nameColor: '#000000',
     priceColor: '#DC2626', 
     unitColor: '#6B7280',
@@ -197,17 +198,34 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   };
 
   const addTag = (product?: Product) => {
-    if (selectedTags.length >= 16) { addToast("الصفحة ممتلئة (16 ملصق كحد أقصى)", "warning"); return; }
     let unitName = '';
     if (product && product.unitId) {
         const u = units.find(unit => unit.id === product.unitId);
         if (u) unitName = u.name;
     }
+
+    const price = product?.price || '0.00';
+
+    if (activeTagIds.length === 1) {
+        // Replace existing tag
+        updateTag(activeTagIds[0], {
+            productId: product?.id || '',
+            name: product?.name || 'صنف جديد',
+            price: price,
+            originalPrice: '',
+            unitName: unitName
+        });
+        setShowProductPicker(false);
+        return;
+    }
+
+    if (selectedTags.length >= 16) { addToast("الصفحة ممتلئة (16 ملصق كحد أقصى)", "warning"); return; }
+    
     const newTag: SelectedTag = {
       id: crypto.randomUUID(),
       productId: product?.id || '',
       name: product?.name || 'صنف جديد',
-      price: '0.00',
+      price: price,
       originalPrice: '',
       unitName: unitName
     };
@@ -241,6 +259,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     return {
       nameFontSize: tag.styles?.nameFontSize ?? globalStyles.nameFontSize,
       priceFontSize: tag.styles?.priceFontSize ?? globalStyles.priceFontSize,
+      unitFontSize: tag.styles?.unitFontSize ?? globalStyles.unitFontSize,
       nameColor: tag.styles?.nameColor ?? globalStyles.nameColor,
       priceColor: tag.styles?.priceColor ?? globalStyles.priceColor,
       unitColor: tag.styles?.unitColor ?? globalStyles.unitColor,
@@ -359,6 +378,9 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       };
 
       if (s.template === 'classic_vertical') {
+          const product = products.find(p => p.id === tag.productId);
+          const itemCode = product?.code || tag.productId.slice(0,8).toUpperCase();
+          
           return (
             <div className="flex flex-col h-full w-full relative overflow-hidden font-sans" style={{ backgroundColor: s.backgroundColor }}>
                 {/* Top: Logo - Only render if enabled and URL exists */}
@@ -408,8 +430,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             <span className="text-[7px] text-gray-500 font-bold leading-none">السعر شامل الضريبة</span>
                             {s.showUnit && tag.unitName && (
                                 <span 
-                                    style={{ color: s.unitColor, borderColor: s.unitColor }} 
-                                    className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-opacity-30 leading-none"
+                                    style={{ color: s.unitColor, borderColor: s.unitColor, fontSize: `${s.unitFontSize || 8}px` }} 
+                                    className="font-bold px-1.5 py-0.5 rounded border border-opacity-30 leading-none"
                                 >
                                     {tag.unitName}
                                 </span>
@@ -418,7 +440,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     </div>
                     
                     <div className="w-full flex items-center justify-center mt-1">
-                         <span className="text-[8px] font-mono text-gray-400 tracking-wider">{tag.productId.slice(0,8).toUpperCase()}</span>
+                         <span className="text-[8px] font-mono text-gray-400 tracking-wider">{itemCode}</span>
                     </div>
                 </div>
             </div>
@@ -426,6 +448,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       }
 
       if (s.template === 'side_horizontal') {
+          const product = products.find(p => p.id === tag.productId);
+          const itemCode = product?.code || tag.productId.slice(0,8).toUpperCase() || 'REF-001';
           const [intPart, decPart] = tag.price.split('.');
           return (
             <div className="flex flex-row h-full w-full relative overflow-hidden font-sans">
@@ -484,13 +508,13 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     <div key={i} className="bg-black" style={{ width: h%2 === 0 ? '1px' : '2px', height: `${h * 20}%` }}></div>
                                 ))}
                             </div>
-                            <span className="text-[6px] font-mono opacity-40">ITEM: {tag.productId.slice(0,8).toUpperCase() || 'REF-001'}</span>
+                            <span className="text-[6px] font-mono opacity-40">ITEM: {itemCode}</span>
                         </div>
                         
                         {s.showUnit && tag.unitName && (
                             <div className="flex flex-col items-end">
                                 <span className="text-[6px] font-bold text-gray-400 uppercase">Unit Measure</span>
-                                <span style={{ color: s.unitColor }} className="text-[10px] font-black px-2 py-0.5 bg-gray-50 border border-gray-100 rounded-sm">
+                                <span style={{ color: s.unitColor, fontSize: `${s.unitFontSize || 10}px` }} className="font-black px-2 py-0.5 bg-gray-50 border border-gray-100 rounded-sm">
                                   {tag.unitName}
                                 </span>
                             </div>
@@ -504,11 +528,13 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       }
 
       if (s.template === 'industrial_grid') {
+          const product = products.find(p => p.id === tag.productId);
+          const itemCode = product?.code || tag.productId.slice(0,8).toUpperCase();
           return (
             <div className="flex flex-col h-full border-4 border-black">
                 <div className="bg-black text-white px-2 py-1 flex justify-between items-center h-8 shrink-0">
-                    <span className="text-[8px] font-mono tracking-widest">ITEM CODE</span>
-                    {s.showUnit && tag.unitName && <span className="text-[10px] font-bold bg-white text-black px-1 rounded-sm" style={{ color: s.unitColor }}>{tag.unitName}</span>}
+                    <span className="text-[8px] font-mono tracking-widest">{itemCode}</span>
+                    {s.showUnit && tag.unitName && <span className="font-bold bg-white text-black px-1 rounded-sm" style={{ color: s.unitColor, fontSize: `${s.unitFontSize || 10}px` }}>{tag.unitName}</span>}
                 </div>
                 <div className="flex-1 flex items-center justify-center p-2 text-center" style={{ backgroundColor: s.backgroundColor }}>
                     <div style={{ fontSize: `${s.nameFontSize}pt`, color: s.nameColor, fontWeight: '900', textTransform: 'uppercase' }} className="leading-tight">
@@ -567,7 +593,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     </div>
                     
                     {s.showUnit && tag.unitName && (
-                        <span className="absolute bottom-1 right-2 text-[9px] font-bold bg-gray-200/50 px-1.5 py-0.5 rounded text-gray-600">
+                        <span className="absolute bottom-1 right-2 font-bold bg-gray-200/50 px-1.5 py-0.5 rounded text-gray-600" style={{ fontSize: `${s.unitFontSize || 9}px` }}>
                             {tag.unitName}
                         </span>
                     )}
@@ -598,7 +624,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     <span className="text-xs font-bold line-through">{tag.originalPrice}</span>
                                 </div>
                             )}
-                            {s.showUnit && tag.unitName && <span className="text-[9px] font-bold" style={{ color: s.unitColor }}>{tag.unitName}</span>}
+                            {s.showUnit && tag.unitName && <span className="font-bold" style={{ color: s.unitColor, fontSize: `${s.unitFontSize || 9}px` }}>{tag.unitName}</span>}
                         </div>
                         <div className="flex flex-col items-end">
                             <PriceWithCurrency />
@@ -919,7 +945,15 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     ) : activeTag ? (
                         <>
                             <div className="mb-2">
-                                <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">اسم المنتج</label>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">اسم المنتج</label>
+                                    <button 
+                                        onClick={() => setShowProductPicker(true)}
+                                        className="text-[10px] font-bold text-sap-primary hover:bg-sap-primary/10 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+                                    >
+                                        <RefreshCw size={10} /> تغيير المنتج
+                                    </button>
+                                </div>
                                 <textarea ref={nameInputRef} value={activeTag.name} onChange={e => updateTag(activeTag.id, { name: e.target.value })} className="w-full p-3 border border-gray-200 rounded-lg text-sm h-20 resize-none focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-bold transition-all" placeholder="أدخل اسم المنتج..." />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
@@ -967,6 +1001,12 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <div className="flex items-center gap-2">
                              <input type="range" min="12" max="120" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
                              <input type="number" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                        </div>
+                    </PropertyRow>
+                    <PropertyRow label="حجم الوحدة">
+                        <div className="flex items-center gap-2">
+                             <input type="range" min="6" max="36" value={currentScopeStyles.unitFontSize || 12} onChange={e => handleStyleChange('unitFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.unitFontSize || 12} onChange={e => handleStyleChange('unitFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                         </div>
                     </PropertyRow>
                     
@@ -1234,6 +1274,11 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                               } else {
                                   setActiveTagIds(prev => prev.includes(tag.id) && prev.length === 1 ? [] : [tag.id]);
                               }
+                          }}
+                          onDoubleClick={() => {
+                              if (!tag) return;
+                              setActiveTagIds([tag.id]);
+                              setShowProductPicker(true);
                           }}
                           className={`relative overflow-hidden transition-all ${tag ? 'cursor-pointer hover:shadow-md' : ''} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
                           style={{ 
