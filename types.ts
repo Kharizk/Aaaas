@@ -42,6 +42,8 @@ export interface Product {
   stock?: number; // New field for inventory tracking
   isFavorite?: boolean; // New field for POS favorites
   taxRate?: number; // New field for product-specific tax
+  expiryDate?: string; // New field for smart expiry management
+  originalPrice?: string; // New field for auto-markdown original price
 }
 
 export interface KeyboardShortcut {

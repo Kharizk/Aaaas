@@ -6,9 +6,10 @@ import { Printer, X } from 'lucide-react';
 interface BarcodePrinterProps {
   products: Product[];
   onClose: () => void;
+  isClearance?: boolean; // New prop for yellow clearance labels
 }
 
-export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClose }) => {
+export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClose, isClearance }) => {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -41,6 +42,17 @@ export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClos
               text-align: center;
               width: 200px;
               page-break-inside: avoid;
+              ${isClearance ? 'background-color: #fef08a; border: 2px solid #eab308;' : ''}
+            }
+            .clearance-badge {
+              background-color: #ef4444;
+              color: white;
+              font-size: 10px;
+              font-weight: bold;
+              padding: 2px 6px;
+              border-radius: 4px;
+              display: inline-block;
+              margin-bottom: 4px;
             }
             .product-name {
               font-size: 12px;
@@ -51,13 +63,20 @@ export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClos
               text-overflow: ellipsis;
             }
             .product-price {
-              font-size: 14px;
+              font-size: 16px;
               font-weight: bold;
               margin-top: 5px;
+              color: ${isClearance ? '#ef4444' : '#000'};
+            }
+            .original-price {
+              font-size: 10px;
+              text-decoration: line-through;
+              color: #6b7280;
+              margin-right: 4px;
             }
             @media print {
               body { padding: 0; }
-              .barcode-label { border: none; }
+              .barcode-label { border: none; ${isClearance ? '-webkit-print-color-adjust: exact; print-color-adjust: exact;' : ''} }
             }
           </style>
         </head>
@@ -80,14 +99,14 @@ export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClos
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
       <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+        <div className={`p-4 border-b border-gray-100 flex justify-between items-center rounded-t-2xl ${isClearance ? 'bg-amber-100 text-amber-900' : 'bg-gray-50'}`}>
           <h3 className="font-black text-lg flex items-center gap-2">
-            <Printer size={20} /> طباعة ملصقات الباركود
+            <Printer size={20} /> {isClearance ? 'طباعة ملصقات التصفية (الصفراء)' : 'طباعة ملصقات الباركود'}
           </h3>
           <div className="flex items-center gap-2">
             <button 
               onClick={handlePrint}
-              className="px-4 py-2 bg-sap-primary text-white rounded-lg font-bold text-sm hover:bg-sap-primary-hover flex items-center gap-2"
+              className={`px-4 py-2 text-white rounded-lg font-bold text-sm flex items-center gap-2 ${isClearance ? 'bg-amber-600 hover:bg-amber-700' : 'bg-sap-primary hover:bg-sap-primary-hover'}`}
             >
               <Printer size={16} /> طباعة
             </button>
@@ -103,7 +122,8 @@ export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClos
             className="bg-white p-8 rounded-xl shadow-sm min-h-full flex flex-wrap gap-4 justify-center"
           >
             {products.map((product, idx) => (
-              <div key={`${product.id}-${idx}`} className="barcode-label">
+              <div key={`${product.id}-${idx}`} className={`barcode-label ${isClearance ? 'bg-yellow-200 border-2 border-yellow-500' : ''}`}>
+                {isClearance && <div className="clearance-badge">تصفية CLEARANCE</div>}
                 <div className="product-name">{product.name}</div>
                 <Barcode 
                   value={product.code || '0000000000'} 
@@ -112,8 +132,14 @@ export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClos
                   fontSize={12}
                   margin={0}
                   displayValue={true}
+                  background={isClearance ? '#fef08a' : '#ffffff'}
                 />
-                <div className="product-price">{parseFloat(product.price || '0').toLocaleString()} SAR</div>
+                <div className="product-price">
+                  {isClearance && product.originalPrice && (
+                    <span className="original-price">{parseFloat(product.originalPrice).toLocaleString()} SAR</span>
+                  )}
+                  {parseFloat(product.price || '0').toLocaleString()} SAR
+                </div>
               </div>
             ))}
             {products.length === 0 && (

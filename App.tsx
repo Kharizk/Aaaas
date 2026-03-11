@@ -694,7 +694,7 @@ const AppContent: React.FC = () => {
                         <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar print:p-0 print:overflow-visible print:h-auto print:block">
                             {isLoading && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00A09D] text-white px-6 py-2 rounded-full shadow-lg z-50 flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-4 fade-in print:hidden"><Loader2 className="animate-spin" size={16}/><span>جاري التحميل...</span></div>}
                             
-                            {appId === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => handleOpenApp(t)} onNavigateToList={handleNavigateToList} />}
+                            {appId === 'dashboard' && <Dashboard products={products} units={units} switchToTab={(t) => handleOpenApp(t)} onNavigateToList={handleNavigateToList} currentUser={currentUser} />}
                             {appId === 'pos' && <POSInterface products={products} setDailySales={setDailySales} currentUser={currentUser} />}
                             {appId === 'returns' && <ReturnsManager products={products} currentUser={currentUser} sales={dailySales} />}
                             {appId === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}

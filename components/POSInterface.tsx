@@ -7,7 +7,7 @@ import {
   DollarSign, Users, Save, Loader2, Monitor, Search, 
   PauseCircle, PlayCircle, Trash2, LayoutGrid, CheckCircle2, ChevronRight, X, User as UserIcon,
   ShoppingCart, Plus, Minus, Barcode, CreditCard, Banknote, RefreshCcw, Tag,
-  History, FileText, AlertCircle, Lock, Calculator, Printer, Maximize, HelpCircle, Keyboard, Star
+  History, FileText, AlertCircle, Lock, Calculator, Printer, Maximize, HelpCircle, Keyboard, Star, Send, MessageCircle
 } from 'lucide-react';
 import { playBeep, playError, playSuccess, playClick } from '../utils/sound';
 
@@ -33,7 +33,12 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [showHeldModal, setShowHeldModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastSale, setLastSale] = useState<DailySales | null>(null);
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [showDiscountConfirmModal, setShowDiscountConfirmModal] = useState(false);
+  const [showWhatsAppPrompt, setShowWhatsAppPrompt] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
   
   // Shift State
   const [currentShift, setCurrentShift] = useState<Shift | null>(null);
@@ -148,7 +153,6 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   useEffect(() => {
     const checkShift = async () => {
         if (!currentUser) return;
-        // If admin, maybe bypass? Or still require shift? Let's require shift for consistency.
         try {
             const shifts = await db.shifts.getAll();
             const openShift = shifts.find((s: any) => s.userId === currentUser.id && s.status === 'open');
@@ -160,6 +164,10 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
         }
     };
     checkShift();
+
+    const handleShiftChange = () => checkShift();
+    window.addEventListener('shiftChanged', handleShiftChange);
+    return () => window.removeEventListener('shiftChanged', handleShiftChange);
   }, [currentUser]);
 
   // Keyboard Shortcuts
@@ -185,14 +193,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
         // F9: Discount (Focus global discount or open modal - simplified to 10% for now)
         if (e.key === 'F9') {
             e.preventDefault();
-            // Apply 10% discount to all items
-            if (confirm('هل تريد تطبيق خصم 10% على كامل السلة؟')) {
-                 setCart(prev => prev.map(item => ({
-                     ...item,
-                     discount: (item.price * Math.abs(item.quantity)) * 0.10
-                 })));
-                 notify('تم تطبيق خصم 10%', 'success');
-            }
+            setShowDiscountConfirmModal(true);
         }
         // F10: Toggle Return Mode
         if (e.key === 'F10') {
@@ -541,6 +542,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
           playSuccess();
           notify('تمت العملية بنجاح', 'success');
           setShowCheckoutModal(false);
+          setLastSale(sale);
+          setShowSuccessModal(true);
           clearCart();
       } catch (e) {
           playError();
@@ -1085,6 +1088,60 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
             </div>
         )}
 
+        {/* Success Modal */}
+        {showSuccessModal && lastSale && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
+                <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden text-center">
+                    <div className="p-8 bg-green-500 text-white">
+                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <CheckCircle2 size={48} className="text-green-500" />
+                        </div>
+                        <h2 className="text-2xl font-black mb-1">تمت العملية بنجاح</h2>
+                        <p className="text-white/80 text-sm font-bold">رقم الفاتورة: {lastSale.id.substring(0, 8)}</p>
+                    </div>
+                    <div className="p-6">
+                        <div className="text-4xl font-black text-gray-800 mb-6">{lastSale.amount.toLocaleString()} SAR</div>
+                        
+                        <div className="space-y-3">
+                            <button 
+                                onClick={() => {
+                                    // Trigger print
+                                    window.print();
+                                }}
+                                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 flex items-center justify-center gap-2"
+                            >
+                                <Printer size={20} /> طباعة الفاتورة
+                            </button>
+                            
+                            <button 
+                                onClick={() => {
+                                    const customer = customers.find(c => c.id === lastSale.customerId);
+                                    if (customer?.phone) {
+                                        let phone = customer.phone.replace(/\D/g, '');
+                                        const message = `مرحباً بك في متجرنا!\n\nشكراً لتسوقك معنا.\nرقم الفاتورة: ${lastSale.id.substring(0, 8)}\nالقيمة الإجمالية: ${lastSale.amount} SAR\n\nنتمنى رؤيتك قريباً!`;
+                                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                                    } else {
+                                        setWhatsappPhone('');
+                                        setShowWhatsAppPrompt(true);
+                                    }
+                                }}
+                                className="w-full py-3 bg-green-50 text-green-600 border border-green-200 rounded-xl font-bold hover:bg-green-100 flex items-center justify-center gap-2"
+                            >
+                                <MessageCircle size={20} /> إرسال عبر واتساب (بدون ورق)
+                            </button>
+                            
+                            <button 
+                                onClick={() => setShowSuccessModal(false)}
+                                className="w-full py-3 bg-sap-primary text-white rounded-xl font-bold hover:bg-sap-primary-hover shadow-md mt-4"
+                            >
+                                عملية جديدة
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Held Orders Modal */}
         {showHeldModal && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
@@ -1168,6 +1225,107 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                 </div>
             </div>
         )}
+
+        {/* Discount Confirm Modal */}
+        {showDiscountConfirmModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                    <div className="p-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                        <h3 className="font-bold text-amber-800 flex items-center gap-2">
+                            <Tag size={20} /> تأكيد الخصم
+                        </h3>
+                        <button onClick={() => setShowDiscountConfirmModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="p-6 text-center">
+                        <p className="text-gray-700 font-bold mb-6">هل تريد تطبيق خصم 10% على كامل السلة؟</p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setShowDiscountConfirmModal(false)}
+                                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                            >
+                                إلغاء
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setCart(prev => prev.map(item => ({
+                                        ...item,
+                                        discount: (item.price * Math.abs(item.quantity)) * 0.10
+                                    })));
+                                    notify('تم تطبيق خصم 10%', 'success');
+                                    setShowDiscountConfirmModal(false);
+                                }}
+                                className="flex-1 py-3 px-4 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors shadow-md"
+                            >
+                                تأكيد
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* WhatsApp Prompt Modal */}
+        {showWhatsAppPrompt && lastSale && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                    <div className="p-4 bg-green-50 border-b border-green-100 flex justify-between items-center">
+                        <h3 className="font-bold text-green-800 flex items-center gap-2">
+                            <MessageCircle size={20} /> إرسال عبر واتساب
+                        </h3>
+                        <button onClick={() => setShowWhatsAppPrompt(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                            رقم هاتف العميل (مع رمز الدولة):
+                        </label>
+                        <input
+                            type="text"
+                            value={whatsappPhone}
+                            onChange={(e) => setWhatsappPhone(e.target.value)}
+                            className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent mb-6 text-xl font-mono text-center"
+                            placeholder="966500000000"
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    if (whatsappPhone) {
+                                        const phone = whatsappPhone.replace(/\D/g, '');
+                                        const message = `مرحباً بك في متجرنا!\n\nشكراً لتسوقك معنا.\nرقم الفاتورة: ${lastSale.id.substring(0, 8)}\nالقيمة الإجمالية: ${lastSale.amount} SAR\n\nنتمنى رؤيتك قريباً!`;
+                                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                                        setShowWhatsAppPrompt(false);
+                                    }
+                                }
+                            }}
+                        />
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setShowWhatsAppPrompt(false)}
+                                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                            >
+                                إلغاء
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    if (whatsappPhone) {
+                                        const phone = whatsappPhone.replace(/\D/g, '');
+                                        const message = `مرحباً بك في متجرنا!\n\nشكراً لتسوقك معنا.\nرقم الفاتورة: ${lastSale.id.substring(0, 8)}\nالقيمة الإجمالية: ${lastSale.amount} SAR\n\nنتمنى رؤيتك قريباً!`;
+                                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                                        setShowWhatsAppPrompt(false);
+                                    }
+                                }}
+                                className="flex-1 py-3 px-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md"
+                            >
+                                إرسال
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
     </div>
   );
 };

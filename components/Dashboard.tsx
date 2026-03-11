@@ -9,7 +9,7 @@ import {
   Package, Ruler, FileText, Clock, 
   ArrowUpRight, AlertCircle, ShoppingBag, Plus, DollarSign, Crown,
   AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink, TrendingUp, TrendingDown, Truck,
-  LogOut, LogIn, Copy, Share2
+  LogOut, LogIn, Copy, Share2, X
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -17,6 +17,7 @@ interface DashboardProps {
   units: Unit[];
   switchToTab: (tab: any) => void;
   onNavigateToList?: (listId: string, rowId?: string) => void;
+  currentUser: any;
 }
 
 interface ExpiryAlert {
@@ -30,7 +31,7 @@ interface ExpiryAlert {
     listType: string;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToTab, onNavigateToList }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToTab, onNavigateToList, currentUser }) => {
   const [stats, setStats] = useState({ lists: 0, sales: 0, expenses: 0 });
   const [recentLists, setRecentLists] = useState<any[]>([]);
   const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlert[]>([]);
@@ -41,6 +42,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [currentShift, setCurrentShift] = useState<Shift | null>(null);
   const { notify } = useNotification();
   const [showExpiryPrint, setShowExpiryPrint] = useState(false);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [shiftAmount, setShiftAmount] = useState('');
+  const [showCashDrawerModal, setShowCashDrawerModal] = useState(false);
+  const [cashDrawerAction, setCashDrawerAction] = useState<'deposit' | 'withdraw'>('deposit');
+  const [cashDrawerAmount, setCashDrawerAmount] = useState('');
 
   const handlePrintExpiry = () => {
       setShowExpiryPrint(true);
@@ -76,68 +82,94 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   };
 
   const checkOpenShift = async () => {
+      if (!currentUser) return;
       try {
           const shifts = await db.shifts.getAll();
-          const open = shifts.find((s: Shift) => s.status === 'open');
+          const open = shifts.find((s: Shift) => s.userId === currentUser.id && s.status === 'open');
           setCurrentShift(open || null);
       } catch (e) {
           console.error(e);
       }
   };
 
-  const handleShiftAction = async () => {
+  const handleShiftAction = () => {
+      setShiftAmount('');
+      setShowShiftModal(true);
+  };
+
+  const confirmShiftAction = async () => {
+      if (!currentUser) return;
+      const amount = shiftAmount === '' ? 0 : parseFloat(shiftAmount);
+      if (isNaN(amount) || amount < 0) {
+          notify('المبلغ غير صحيح', 'error');
+          return;
+      }
+
       if (currentShift) {
-          const endCashStr = prompt('الرجاء إدخال المبلغ النقدي في الدرج عند الإغلاق:', '0');
-          if (endCashStr === null) return; // Cancelled
-          const endCash = parseFloat(endCashStr);
-          if (isNaN(endCash)) return alert('المبلغ غير صحيح');
-
-          if (confirm('هل أنت متأكد من إغلاق الوردية الحالية؟')) {
-              const expectedCash = (currentShift.startCash || 0) + stats.sales - stats.expenses; // Simplified
-              const updatedShift: Shift = {
-                  ...currentShift,
-                  endTime: new Date().toISOString(),
-                  status: 'closed',
-                  endCash: endCash,
-                  expectedCash: expectedCash,
-                  difference: endCash - expectedCash
-              };
-              await db.shifts.upsert(updatedShift);
-              setCurrentShift(null);
-              notify(`تم إغلاق الوردية. العجز/الزيادة: ${updatedShift.difference?.toFixed(2)}`, 'success');
-              
-              await db.activityLogs.add({
-                  action: 'إغلاق وردية',
-                  details: `تم إغلاق الوردية رقم ${updatedShift.id.substring(0,8)} - العجز/الزيادة: ${updatedShift.difference}`,
-                  user: 'الكاشير',
-                  type: 'info'
-              });
-          }
+          const expectedCash = (currentShift.startCash || 0) + stats.sales - stats.expenses; // Simplified
+          const updatedShift: Shift = {
+              ...currentShift,
+              endTime: new Date().toISOString(),
+              status: 'closed',
+              endCash: amount,
+              expectedCash: expectedCash,
+              difference: amount - expectedCash
+          };
+          await db.shifts.upsert(updatedShift);
+          setCurrentShift(null);
+          window.dispatchEvent(new Event('shiftChanged'));
+          notify(`تم إغلاق الوردية. العجز/الزيادة: ${updatedShift.difference?.toFixed(2)}`, 'success');
+          
+          await db.activityLogs.add({
+              action: 'إغلاق وردية',
+              details: `تم إغلاق الوردية رقم ${updatedShift.id.substring(0,8)} - العجز/الزيادة: ${updatedShift.difference}`,
+              user: currentUser.fullName,
+              type: 'info'
+          });
       } else {
-          const startCashStr = prompt('الرجاء إدخال المبلغ النقدي الافتتاحي:', '0');
-          if (startCashStr === null) return;
-          const startCash = parseFloat(startCashStr);
-          if (isNaN(startCash)) return alert('المبلغ غير صحيح');
-
           const newShift: Shift = {
               id: crypto.randomUUID(),
-              userId: 'current-user-id', 
-              userName: 'الكاشير', 
+              userId: currentUser.id, 
+              userName: currentUser.fullName, 
               startTime: new Date().toISOString(),
-              startCash: startCash, 
+              startCash: amount, 
               status: 'open'
           };
           await db.shifts.upsert(newShift);
           setCurrentShift(newShift);
+          window.dispatchEvent(new Event('shiftChanged'));
           notify('تم فتح وردية جديدة', 'success');
 
           await db.activityLogs.add({
               action: 'فتح وردية',
-              details: `تم فتح وردية جديدة - رصيد افتتاحي: ${startCash}`,
-              user: 'الكاشير',
+              details: `تم فتح وردية جديدة - رصيد افتتاحي: ${amount}`,
+              user: currentUser.fullName,
               type: 'info'
           });
       }
+      setShowShiftModal(false);
+  };
+
+  const confirmCashDrawerAction = async () => {
+      const val = parseFloat(cashDrawerAmount);
+      if (isNaN(val) || val <= 0) {
+          notify('المبلغ غير صحيح', 'error');
+          return;
+      }
+      if (currentShift) {
+          if (cashDrawerAction === 'deposit') {
+              await db.shifts.upsert({ ...currentShift, startCash: currentShift.startCash + val });
+              setCurrentShift({ ...currentShift, startCash: currentShift.startCash + val });
+              window.dispatchEvent(new Event('shiftChanged'));
+              notify(`تم إيداع ${val} ريال`, 'success');
+          } else {
+              await db.shifts.upsert({ ...currentShift, startCash: currentShift.startCash - val });
+              setCurrentShift({ ...currentShift, startCash: currentShift.startCash - val });
+              window.dispatchEvent(new Event('shiftChanged'));
+              notify(`تم سحب ${val} ريال`, 'success');
+          }
+      }
+      setShowCashDrawerModal(false);
   };
 
   const fetchStats = async () => {
@@ -194,7 +226,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   useEffect(() => { 
       fetchStats(); 
       checkOpenShift();
-  }, [products]); // Add products to dependency array to refresh when products change
+  }, [products, currentUser]); // Add products to dependency array to refresh when products change
 
   const handleDismissAlert = async (e: React.MouseEvent, alertItem: ExpiryAlert) => {
       e.stopPropagation(); 
@@ -330,16 +362,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
               <div className="flex gap-2">
                   <button 
                       onClick={() => {
-                          const amount = prompt('أدخل المبلغ للإيداع (نثريات واردة):');
-                          if (amount && !isNaN(parseFloat(amount))) {
-                              // Ideally we should have a transaction log for this, for now we just update startCash or track it separately
-                              // Since we don't have a separate table for cash movements yet, we will treat it as a "negative expense" or just update startCash for simplicity in this iteration
-                              // Better: Add to startCash
-                              const val = parseFloat(amount);
-                              db.shifts.upsert({ ...currentShift, startCash: currentShift.startCash + val });
-                              setCurrentShift({ ...currentShift, startCash: currentShift.startCash + val });
-                              notify(`تم إيداع ${val} ريال`, 'success');
-                          }
+                          setCashDrawerAction('deposit');
+                          setCashDrawerAmount('');
+                          setShowCashDrawerModal(true);
                       }}
                       className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-bold hover:bg-green-100"
                   >
@@ -347,13 +372,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                   </button>
                   <button 
                       onClick={() => {
-                          const amount = prompt('أدخل المبلغ للسحب (نثريات صادرة):');
-                          if (amount && !isNaN(parseFloat(amount))) {
-                              const val = parseFloat(amount);
-                              db.shifts.upsert({ ...currentShift, startCash: currentShift.startCash - val });
-                              setCurrentShift({ ...currentShift, startCash: currentShift.startCash - val });
-                              notify(`تم سحب ${val} ريال`, 'success');
-                          }
+                          setCashDrawerAction('withdraw');
+                          setCashDrawerAmount('');
+                          setShowCashDrawerModal(true);
                       }}
                       className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-bold hover:bg-red-100"
                   >
@@ -587,6 +608,100 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                           ))}
                       </tbody>
                   </table>
+              </div>
+          </div>
+      )}
+
+      {/* Shift Modal */}
+      {showShiftModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                  <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                      <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                          {currentShift ? <LogOut size={20} className="text-red-500" /> : <LogIn size={20} className="text-emerald-500" />}
+                          {currentShift ? 'إغلاق الوردية الحالية' : 'بدء وردية جديدة'}
+                      </h3>
+                      <button onClick={() => setShowShiftModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  <div className="p-6">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                          {currentShift ? 'المبلغ النقدي في الدرج عند الإغلاق:' : 'المبلغ النقدي الافتتاحي:'}
+                      </label>
+                      <input
+                          type="number"
+                          value={shiftAmount}
+                          onChange={(e) => setShiftAmount(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sap-primary focus:border-transparent mb-6 text-xl font-mono text-center"
+                          placeholder="0.00"
+                          autoFocus
+                          onKeyDown={(e) => {
+                              if (e.key === 'Enter') confirmShiftAction();
+                          }}
+                      />
+                      <div className="flex gap-3">
+                          <button 
+                              onClick={() => setShowShiftModal(false)}
+                              className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                          >
+                              إلغاء
+                          </button>
+                          <button 
+                              onClick={confirmShiftAction}
+                              className={`flex-1 py-3 px-4 text-white rounded-xl font-bold transition-colors shadow-md ${currentShift ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                          >
+                              تأكيد
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Cash Drawer Modal */}
+      {showCashDrawerModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                  <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                      <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                          <Wallet size={20} className={cashDrawerAction === 'deposit' ? 'text-green-500' : 'text-red-500'} />
+                          {cashDrawerAction === 'deposit' ? 'إيداع نقدي (نثريات واردة)' : 'سحب نقدي (نثريات صادرة)'}
+                      </h3>
+                      <button onClick={() => setShowCashDrawerModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  <div className="p-6">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                          المبلغ:
+                      </label>
+                      <input
+                          type="number"
+                          value={cashDrawerAmount}
+                          onChange={(e) => setCashDrawerAmount(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sap-primary focus:border-transparent mb-6 text-xl font-mono text-center"
+                          placeholder="0.00"
+                          autoFocus
+                          onKeyDown={(e) => {
+                              if (e.key === 'Enter') confirmCashDrawerAction();
+                          }}
+                      />
+                      <div className="flex gap-3">
+                          <button 
+                              onClick={() => setShowCashDrawerModal(false)}
+                              className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                          >
+                              إلغاء
+                          </button>
+                          <button 
+                              onClick={confirmCashDrawerAction}
+                              className={`flex-1 py-3 px-4 text-white rounded-xl font-bold transition-colors shadow-md ${cashDrawerAction === 'deposit' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                          >
+                              تأكيد
+                          </button>
+                      </div>
+                  </div>
               </div>
           </div>
       )}

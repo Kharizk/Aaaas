@@ -27,6 +27,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showBarcodePrinter, setShowBarcodePrinter] = useState(false);
+  const [showExpiryModal, setShowExpiryModal] = useState(false);
   
   // Form State
   const [code, setCode] = useState('');
@@ -39,12 +40,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const [isFavorite, setIsFavorite] = useState(false);
   const [supplierId, setSupplierId] = useState('');
   const [taxRate, setTaxRate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [originalPrice, setOriginalPrice] = useState('');
   
   // Stock Adjustment State
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockAdjustmentQty, setStockAdjustmentQty] = useState('');
   const [stockAdjustmentReason, setStockAdjustmentReason] = useState('');
   const [stockAdjustmentType, setStockAdjustmentType] = useState<'add' | 'remove'>('add');
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [selectedProductForDiscount, setSelectedProductForDiscount] = useState<Product | null>(null);
 
   const canEdit = currentUser?.role === 'admin' || currentUser?.permissions.includes('manage_products');
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -75,6 +81,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setIsFavorite(product.isFavorite || false);
       setSupplierId(product.supplierId || '');
       setTaxRate(product.taxRate?.toString() || '');
+      setExpiryDate(product.expiryDate || '');
+      setOriginalPrice(product.originalPrice || '');
     } else {
       setEditingProduct(null);
       setCode(''); setName(''); setUnitId(''); setPrice(''); setCostPrice(''); setColor('#ffffff');
@@ -82,8 +90,37 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setIsFavorite(false);
       setSupplierId('');
       setTaxRate('');
+      setExpiryDate('');
+      setOriginalPrice('');
     }
     setIsModalOpen(true);
+  };
+
+  const confirmDiscount = async () => {
+      if (!selectedProductForDiscount) return;
+      
+      const discountNum = parseFloat(discountAmount);
+      if (isNaN(discountNum) || discountNum <= 0 || discountNum >= 100) {
+          alert('نسبة غير صحيحة');
+          return;
+      }
+      
+      const p = selectedProductForDiscount;
+      const currentPrice = parseFloat(p.price || '0');
+      const newPrice = (currentPrice * (1 - discountNum / 100)).toFixed(2);
+      
+      const updatedProduct = {
+          ...p,
+          originalPrice: p.originalPrice || p.price, // Keep original if exists
+          price: newPrice
+      };
+      
+      await db.products.upsert(updatedProduct);
+      setProducts(prev => prev.map(prod => prod.id === p.id ? updatedProduct : prod));
+      alert(`تم تطبيق الخصم بنجاح. السعر الجديد: ${newPrice} SAR`);
+      setShowDiscountModal(false);
+      setDiscountAmount('');
+      setSelectedProductForDiscount(null);
   };
 
   const handleStockAdjustment = async () => {
@@ -131,6 +168,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       setIsFavorite(product.isFavorite || false);
       setSupplierId(product.supplierId || '');
       setTaxRate(product.taxRate?.toString() || '');
+      setExpiryDate(product.expiryDate || '');
+      setOriginalPrice(product.originalPrice || '');
       
       setIsModalOpen(true);
   };
@@ -146,7 +185,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
           lowStockThreshold: lowStockThreshold ? Number(lowStockThreshold) : undefined,
           isFavorite,
           supplierId: supplierId || undefined,
-          taxRate: taxRate ? Number(taxRate) : undefined
+          taxRate: taxRate ? Number(taxRate) : undefined,
+          expiryDate: expiryDate || undefined,
+          originalPrice: originalPrice.trim() || undefined
         };
         await db.products.upsert(productData);
         if (editingProduct) setProducts(prev => prev.map(p => p.id === editingProduct.id ? productData : p));
@@ -226,6 +267,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
         <div className="flex items-center gap-3 w-full md:w-auto">
             {/* Import/Export Buttons */}
             <div className="flex items-center gap-2 border-l border-gray-200 pl-3 ml-1">
+                <button onClick={() => setShowExpiryModal(true)} className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors" title="إدارة الصلاحية والخصومات">
+                    <AlertTriangle size={18}/>
+                </button>
                 <button onClick={() => setShowBarcodePrinter(true)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors" title="طباعة باركود">
                     <Printer size={18}/>
                 </button>
@@ -463,6 +507,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                           <span className="text-xs text-gray-400 font-bold ml-1">%</span>
                                       </div>
                                   </div>
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">السعر الأصلي</label>
+                                      <div className="flex-1 flex items-center border-b border-gray-300 focus-within:border-sap-primary">
+                                          <input type="number" value={originalPrice} onChange={e => setOriginalPrice(e.target.value)} className="w-full outline-none py-1 text-gray-500" placeholder="قبل الخصم (اختياري)" />
+                                          <span className="text-xs text-gray-400 font-bold ml-1">SAR</span>
+                                      </div>
+                                  </div>
+                                  <div className="flex items-center">
+                                      <label className="w-24 text-sm font-bold text-gray-600">تاريخ الانتهاء</label>
+                                      <div className="flex-1 flex items-center border-b border-gray-300 focus-within:border-sap-primary">
+                                          <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} className="w-full outline-none py-1 text-gray-500" />
+                                      </div>
+                                  </div>
                                   {/* Profit Margin Display */}
                                   {price && costPrice && (
                                       <div className="flex items-center justify-end text-xs font-bold mt-2">
@@ -614,8 +671,126 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
           <BarcodePrinter 
               products={selectedIds.size > 0 ? products.filter(p => selectedIds.has(p.id)) : filteredProducts} 
               onClose={() => setShowBarcodePrinter(false)} 
+              isClearance={showExpiryModal} // If opened from expiry modal, it's a clearance label
           />
       )}
+
+      {/* Expiry Management Modal */}
+      {showExpiryModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                  <div className="p-4 bg-amber-500 text-white flex justify-between items-center">
+                      <h3 className="font-bold flex items-center gap-2"><AlertTriangle size={20}/> إدارة الصلاحية والخصومات الذكية</h3>
+                      <button onClick={() => setShowExpiryModal(false)} className="hover:bg-white/20 p-1 rounded-full"><X size={20}/></button>
+                  </div>
+                  <div className="p-6 overflow-y-auto bg-gray-50 flex-1">
+                      <div className="mb-6 bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-800 text-sm">
+                          هذه الشاشة تعرض المنتجات التي ستنتهي صلاحيتها قريباً (خلال 30 يوماً). يمكنك تطبيق خصم تلقائي عليها لتسريع بيعها.
+                      </div>
+                      <div className="space-y-4">
+                          {products.filter(p => {
+                              if (!p.expiryDate) return false;
+                              const days = Math.ceil((new Date(p.expiryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+                              return days >= 0 && days <= 30;
+                          }).length === 0 ? (
+                              <div className="text-center text-gray-500 py-10">لا توجد منتجات تقترب من انتهاء الصلاحية.</div>
+                          ) : (
+                              products.filter(p => {
+                                  if (!p.expiryDate) return false;
+                                  const days = Math.ceil((new Date(p.expiryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+                                  return days >= 0 && days <= 30;
+                              }).map(p => {
+                                  const days = Math.ceil((new Date(p.expiryDate!).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+                                  return (
+                                      <div key={p.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex items-center justify-between">
+                                          <div>
+                                              <div className="font-bold text-gray-800">{p.name}</div>
+                                              <div className="text-sm text-gray-500">ينتهي في: {p.expiryDate} <span className="text-amber-600 font-bold">({days} يوم)</span></div>
+                                              <div className="text-sm font-bold mt-1">
+                                                  السعر الحالي: {p.price} SAR 
+                                                  {p.originalPrice && <span className="line-through text-gray-400 ml-2 text-xs">{p.originalPrice} SAR</span>}
+                                              </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                              <button 
+                                                  onClick={() => {
+                                                      setSelectedIds(new Set([p.id]));
+                                                      setShowBarcodePrinter(true);
+                                                  }}
+                                                  className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-1"
+                                              >
+                                                  <Printer size={16} /> ملصق تصفية
+                                              </button>
+                                              <button 
+                                                  onClick={() => {
+                                                      setSelectedProductForDiscount(p);
+                                                      setDiscountAmount('');
+                                                      setShowDiscountModal(true);
+                                                  }}
+                                                  className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-4 py-2 rounded-lg font-bold text-sm transition-colors"
+                                              >
+                                                  تطبيق خصم %
+                                              </button>
+                                          </div>
+                                      </div>
+                                  );
+                              })
+                          )}
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Discount Modal */}
+      {showDiscountModal && selectedProductForDiscount && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                  <div className="p-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                      <h3 className="font-bold text-amber-800 flex items-center gap-2">
+                          تطبيق خصم
+                      </h3>
+                      <button onClick={() => setShowDiscountModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  <div className="p-6">
+                      <p className="text-gray-700 mb-4 text-center">
+                          أدخل نسبة الخصم للمنتج: <br/>
+                          <strong>{selectedProductForDiscount.name}</strong>
+                      </p>
+                      <input
+                          type="number"
+                          value={discountAmount}
+                          onChange={(e) => setDiscountAmount(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent mb-6 text-xl font-mono text-center"
+                          placeholder="مثال: 30"
+                          autoFocus
+                          onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                  confirmDiscount();
+                              }
+                          }}
+                      />
+                      <div className="flex gap-3">
+                          <button 
+                              onClick={() => setShowDiscountModal(false)}
+                              className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                          >
+                              إلغاء
+                          </button>
+                          <button 
+                              onClick={confirmDiscount}
+                              className="flex-1 py-3 px-4 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors shadow-md"
+                          >
+                              تأكيد
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };
