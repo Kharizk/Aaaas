@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { DailySales, Branch } from '../types';
+import { ReportLayout } from './ReportLayout';
 import { 
   Printer, TrendingUp, Filter, FileLineChart, 
   MapPin, Clock, Calendar, ChevronUp, ChevronDown, Award, PieChart, Activity,
@@ -104,7 +105,12 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-20 print:p-0 print:m-0 print:block printable">
+    <ReportLayout 
+        title="الذكاء المالي - تحليل أداء المبيعات" 
+        subtitle={reportType === 'monthly' ? `شهر ${selectedMonth}` : reportType === 'yearly' ? `سنة ${selectedYear}` : 'تراكمي'}
+        branchName={selectedBranch === 'all' ? 'كافة الفروع' : branches.find(b => b.id === selectedBranch)?.name}
+    >
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20 print:p-0 print:m-0 print:block">
       
       {/* Search & Header UI */}
       <div className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-white p-6 border border-sap-border rounded-[2.5rem] shadow-sm print:hidden">
@@ -335,5 +341,6 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
         </div>
       </div>
     </div>
+    </ReportLayout>
   );
 };

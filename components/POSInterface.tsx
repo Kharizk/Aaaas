@@ -602,7 +602,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                 {settings.showHeaderOnReceipt && settings.receiptHeader && (
                     <div className="whitespace-pre-wrap font-bold text-lg mb-2">{settings.receiptHeader}</div>
                 )}
-                <div className="font-bold text-xl">{settings.storeName || 'متجرنا'}</div>
+                <div className="font-bold text-xl">{settings.orgName || 'متجرنا'}</div>
                 {settings.taxNumber && <div className="text-xs mt-1">الرقم الضريبي: {settings.taxNumber}</div>}
             </div>
 

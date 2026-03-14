@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Award, ShieldCheck, Globe, Calendar, Clock, FileText } from 'lucide-react';
-import { db } from '../services/supabase';
+import { useSystemSettings } from './SystemSettingsContext';
 
 interface ReportLayoutProps {
   title: string;
@@ -24,24 +24,13 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
   branchName,
   dateRange
 }) => {
-  const [orgName, setOrgName] = useState(localStorage.getItem('print_org_name') || 'مؤسسة المدير برو التجارية');
-  const [taxNumber, setTaxNumber] = useState('');
-  const [invoiceTerms, setInvoiceTerms] = useState('');
+  const { settings } = useSystemSettings();
+  const orgName = settings.orgName || 'مؤسسة المدير برو التجارية';
+  const taxNumber = settings.taxNumber || '';
+  const invoiceTerms = settings.invoiceTerms || '';
   
   const currentDate = new Date().toLocaleDateString('ar-SA');
   const currentTime = new Date().toLocaleTimeString('ar-SA');
-
-  useEffect(() => {
-    const fetchOrg = async () => {
-      try {
-        const settings = await db.settings.get();
-        if (settings?.orgName) setOrgName(settings.orgName);
-        if (settings?.taxNumber) setTaxNumber(settings.taxNumber);
-        if (settings?.invoiceTerms) setInvoiceTerms(settings.invoiceTerms);
-      } catch (e) { console.error(e); }
-    };
-    fetchOrg();
-  }, []);
 
   return (
     <div className="report-container printable bg-white p-12 print:p-0 print:m-0 overflow-visible relative text-right font-sans" dir="rtl">
