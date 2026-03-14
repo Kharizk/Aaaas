@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { Product, DailySales, Customer, POSPoint, HeldOrder, CartItem, User, Shift } from '../types';
 import { db } from '../services/supabase';
 import { useNotification } from './Notifications';
@@ -39,6 +40,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
   const [showDiscountConfirmModal, setShowDiscountConfirmModal] = useState(false);
   const [showWhatsAppPrompt, setShowWhatsAppPrompt] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
   
   // Shift State
   const [currentShift, setCurrentShift] = useState<Shift | null>(null);
@@ -588,7 +590,105 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
       }
   };
 
-  return (
+    // Print Receipt Portal
+    const printContainer = document.getElementById('print-container');
+    const receiptContent = lastSale ? (
+        <div className="bg-white p-4 w-[80mm] mx-auto text-black font-sans text-sm print:block" dir="rtl">
+            {/* Header */}
+            <div className="text-center mb-4 border-b border-black pb-4 border-dashed">
+                {settings.showLogoOnReceipt && settings.receiptLogo && (
+                    <img src={settings.receiptLogo} alt="Logo" className="max-h-16 mx-auto mb-2" />
+                )}
+                {settings.showHeaderOnReceipt && settings.receiptHeader && (
+                    <div className="whitespace-pre-wrap font-bold text-lg mb-2">{settings.receiptHeader}</div>
+                )}
+                <div className="font-bold text-xl">{settings.storeName || 'متجرنا'}</div>
+                {settings.taxNumber && <div className="text-xs mt-1">الرقم الضريبي: {settings.taxNumber}</div>}
+            </div>
+
+            {/* Meta */}
+            <div className="mb-4 text-xs space-y-1 border-b border-black pb-4 border-dashed">
+                <div className="flex justify-between">
+                    <span>رقم الفاتورة:</span>
+                    <span className="font-mono">{lastSale.id.substring(0, 8)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>التاريخ:</span>
+                    <span className="font-mono">{new Date(lastSale.date).toLocaleString('ar-SA')}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>الكاشير:</span>
+                    <span>{lastSale.cashierId || currentUser?.username || 'غير محدد'}</span>
+                </div>
+                {lastSale.customerName && (
+                    <div className="flex justify-between">
+                        <span>العميل:</span>
+                        <span>{lastSale.customerName}</span>
+                    </div>
+                )}
+                <div className="flex justify-between">
+                    <span>طريقة الدفع:</span>
+                    <span>{
+                        lastSale.paymentMethod === 'cash' ? 'نقدي' :
+                        lastSale.paymentMethod === 'card' ? 'شبكة' :
+                        lastSale.paymentMethod === 'transfer' ? 'تحويل بنكي' : 'آجل'
+                    }</span>
+                </div>
+            </div>
+
+            {/* Items */}
+            <table className="w-full text-xs mb-4">
+                <thead>
+                    <tr className="border-b border-black border-dashed">
+                        <th className="text-right py-1">الصنف</th>
+                        <th className="text-center py-1">الكمية</th>
+                        <th className="text-left py-1">السعر</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {lastSale.cart.map((item, idx) => (
+                        <tr key={idx} className="border-b border-gray-200 border-dotted">
+                            <td className="py-2 pr-1">{item.product.name}</td>
+                            <td className="py-2 text-center">{item.quantity}</td>
+                            <td className="py-2 text-left font-mono">{(item.product.price * item.quantity).toFixed(2)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {/* Totals */}
+            <div className="border-t border-black border-dashed pt-4 space-y-1 text-sm">
+                <div className="flex justify-between font-bold text-lg">
+                    <span>الإجمالي:</span>
+                    <span className="font-mono">{lastSale.amount.toFixed(2)} SAR</span>
+                </div>
+                {lastSale.paidAmount !== undefined && lastSale.paymentMethod === 'cash' && (
+                    <>
+                        <div className="flex justify-between text-xs">
+                            <span>المدفوع:</span>
+                            <span className="font-mono">{lastSale.paidAmount.toFixed(2)} SAR</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                            <span>المتبقي:</span>
+                            <span className="font-mono">{lastSale.changeAmount?.toFixed(2) || '0.00'} SAR</span>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Footer */}
+            <div className="mt-6 text-center text-xs border-t border-black pt-4 border-dashed">
+                {settings.showFooterOnReceipt && settings.receiptFooter && (
+                    <div className="whitespace-pre-wrap mb-2">{settings.receiptFooter}</div>
+                )}
+                <div>شكراً لتسوقكم معنا!</div>
+            </div>
+        </div>
+    ) : null;
+
+    return (
+        <>
+        {isPrintingReceipt && lastSale && printContainer && createPortal(receiptContent, printContainer)}
     <div className="h-full flex flex-col bg-gray-100 overflow-hidden animate-in fade-in relative">
         {/* Shift Warning Overlay */}
         {!loadingShift && !currentShift && (
@@ -1105,8 +1205,15 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         <div className="space-y-3">
                             <button 
                                 onClick={() => {
-                                    // Trigger print
-                                    window.print();
+                                    setIsPrintingReceipt(true);
+                                    setTimeout(() => {
+                                        const afterPrint = () => {
+                                            setIsPrintingReceipt(false);
+                                            window.removeEventListener('afterprint', afterPrint);
+                                        };
+                                        window.addEventListener('afterprint', afterPrint);
+                                        window.print();
+                                    }, 100);
                                 }}
                                 className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 flex items-center justify-center gap-2"
                             >
@@ -1327,5 +1434,6 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
         )}
 
     </div>
+    </>
   );
 };

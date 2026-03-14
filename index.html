@@ -124,27 +124,35 @@
         }
 
         @media print {
-            body { overflow: visible !important; height: auto !important; }
+            html, body, #root, main, .flex-1 { 
+                overflow: visible !important; 
+                height: auto !important; 
+                max-height: none !important; 
+                display: block !important;
+                position: static !important;
+            }
             body * { visibility: hidden; }
             #print-container, #print-container * { visibility: visible !important; }
             .printable, .printable * { visibility: visible !important; }
             
+            #print-container:not(:empty) ~ #root {
+                display: none !important;
+            }
+
             #print-container {
-                position: absolute !important;
-                left: 0 !important; top: 0 !important;
+                position: static !important;
                 margin: 0 !important; padding: 0 !important;
                 display: block !important;
                 background: white !important;
-                width: 100% !important; height: 100% !important;
+                width: 100% !important; height: auto !important; min-height: 100% !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 z-index: 9999;
             }
             
             .printable {
-                position: absolute !important;
-                left: 0 !important; top: 0 !important;
-                width: 100% !important;
+                position: static !important;
+                width: 100% !important; height: auto !important; min-height: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
@@ -185,6 +193,9 @@
     <!-- Error Display -->
     <div id="fatal-error"></div>
 
+    <!-- Dedicated container for printing -->
+    <div id="print-container" class="print-only-overlay"></div>
+
     <!-- Root container -->
     <div id="root" class="h-screen w-screen flex flex-col">
         <!-- Initial Loading State -->
@@ -195,9 +206,6 @@
             <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
         </div>
     </div>
-    
-    <!-- Dedicated container for printing -->
-    <div id="print-container" class="print-only-overlay"></div>
 
     <script type="module" src="./index.tsx"></script>
   </body>

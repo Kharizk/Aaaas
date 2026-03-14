@@ -50,7 +50,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
 
   const handlePrintExpiry = () => {
       setShowExpiryPrint(true);
-      setTimeout(() => window.print(), 100);
+      setTimeout(() => {
+          const afterPrint = () => {
+              setShowExpiryPrint(false);
+              window.removeEventListener('afterprint', afterPrint);
+          };
+          window.addEventListener('afterprint', afterPrint);
+          window.print();
+      }, 100);
   };
 
   const handleCopyExpiry = () => {
@@ -276,48 +283,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const maxVal = Math.max(...chartData.map(d => d.total), 1);
   const points = chartData.map((d, i) => `${(i / 6) * 100},${100 - (d.total / maxVal) * 100}`).join(' ');
   
-  if (showExpiryPrint) {
-      return (
-          <div className="fixed inset-0 bg-white z-[9999] overflow-auto">
-              <ReportLayout title="تقرير تنبيهات صلاحية المنتجات" subtitle={`تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}`}>
-                  <div className="p-4">
-                      <table className="w-full text-right border-collapse">
-                          <thead>
-                              <tr className="bg-gray-100 border-b border-gray-300">
-                                  <th className="p-3 border border-gray-200">المنتج</th>
-                                  <th className="p-3 border border-gray-200">الكود</th>
-                                  <th className="p-3 border border-gray-200">تاريخ الانتهاء</th>
-                                  <th className="p-3 border border-gray-200">الأيام المتبقية</th>
-                                  <th className="p-3 border border-gray-200">الكمية</th>
+  const printContainer = document.getElementById('print-container');
+  const printContent = showExpiryPrint ? (
+      <div className="bg-white z-[9999] overflow-auto print:static print:h-auto print:overflow-visible">
+          <ReportLayout title="تقرير تنبيهات صلاحية المنتجات" subtitle={`تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}`}>
+              <div className="p-4 print:p-0">
+                  <table className="w-full text-right border-collapse">
+                      <thead>
+                          <tr className="bg-gray-100 border-b border-gray-300 print:bg-gray-200">
+                              <th className="p-3 border border-gray-200">المنتج</th>
+                              <th className="p-3 border border-gray-200">الكود</th>
+                              <th className="p-3 border border-gray-200">تاريخ الانتهاء</th>
+                              <th className="p-3 border border-gray-200">الأيام المتبقية</th>
+                              <th className="p-3 border border-gray-200">الكمية</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {expiryAlerts.map((alert, idx) => (
+                              <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="p-3 border border-gray-200 font-bold">{alert.productName}</td>
+                                  <td className="p-3 border border-gray-200 font-mono">{alert.productCode}</td>
+                                  <td className="p-3 border border-gray-200 font-mono" dir="ltr">{alert.expiryDate}</td>
+                                  <td className="p-3 border border-gray-200 font-bold text-red-600">{alert.daysLeft} يوم</td>
+                                  <td className="p-3 border border-gray-200 font-mono">{alert.qty}</td>
                               </tr>
-                          </thead>
-                          <tbody>
-                              {expiryAlerts.map((alert, idx) => (
-                                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                      <td className="p-3 border border-gray-200 font-bold">{alert.productName}</td>
-                                      <td className="p-3 border border-gray-200 font-mono">{alert.productCode}</td>
-                                      <td className="p-3 border border-gray-200 font-mono" dir="ltr">{alert.expiryDate}</td>
-                                      <td className="p-3 border border-gray-200 font-bold text-red-600">{alert.daysLeft} يوم</td>
-                                      <td className="p-3 border border-gray-200 font-mono">{alert.qty}</td>
-                                  </tr>
-                              ))}
-                          </tbody>
-                      </table>
-                      <div className="mt-8 pt-4 border-t border-gray-200 flex justify-between text-sm text-gray-500">
-                          <span>عدد التنبيهات: {expiryAlerts.length}</span>
-                          <span>تم الاستخراج من نظام StoreFlow</span>
-                      </div>
+                          ))}
+                      </tbody>
+                  </table>
+                  <div className="mt-8 pt-4 border-t border-gray-200 flex justify-between text-sm text-gray-500">
+                      <span>عدد التنبيهات: {expiryAlerts.length}</span>
+                      <span>تم الاستخراج من نظام StoreFlow</span>
                   </div>
-              </ReportLayout>
-              <button onClick={() => setShowExpiryPrint(false)} className="fixed top-4 left-4 bg-red-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg hover:bg-red-700 transition-colors print:hidden">
-                  إغلاق
-              </button>
-          </div>
-      );
-  }
+              </div>
+          </ReportLayout>
+      </div>
+  ) : null;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+    <>
+      {showExpiryPrint && printContainer && createPortal(printContent, printContainer)}
+      <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -706,5 +711,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
           </div>
       )}
     </div>
+    </>
   );
 };

@@ -216,7 +216,14 @@ export const PurchaseOrderManager: React.FC = () => {
 
     const handlePrint = (order: PurchaseOrder) => {
         setPrintOrder(order);
-        setTimeout(() => window.print(), 100);
+        setTimeout(() => {
+            const afterPrint = () => {
+                setPrintOrder(null);
+                window.removeEventListener('afterprint', afterPrint);
+            };
+            window.addEventListener('afterprint', afterPrint);
+            window.print();
+        }, 100);
     };
 
     const filteredOrders = orders.filter(order => {
@@ -225,62 +232,62 @@ export const PurchaseOrderManager: React.FC = () => {
         return supplierName.includes(searchQuery.toLowerCase()) || idMatch;
     });
 
-    if (printOrder) {
-        return (
-            <div className="fixed inset-0 bg-white z-[9999] overflow-auto">
-                <ReportLayout title={`أمر شراء #${printOrder.id.slice(0, 8)}`} subtitle={`المورد: ${getSupplierName(printOrder.supplierId)}`}>
-                    <div className="space-y-6">
-                        <div className="flex justify-between text-sm font-bold border-b pb-4">
-                            <div>
-                                <div className="text-gray-500">تاريخ الطلب</div>
-                                <div>{printOrder.date}</div>
-                            </div>
-                            <div>
-                                <div className="text-gray-500">الحالة</div>
-                                <div>{printOrder.status === 'pending' ? 'قيد الانتظار' : printOrder.status === 'received' ? 'تم الاستلام' : 'ملغي'}</div>
-                            </div>
+    const printContainer = document.getElementById('print-container');
+    const printContent = printOrder ? (
+        <div className="bg-white z-[9999] overflow-auto print:static print:h-auto print:overflow-visible">
+            <ReportLayout title={`أمر شراء #${printOrder.id.slice(0, 8)}`} subtitle={`المورد: ${getSupplierName(printOrder.supplierId)}`}>
+                <div className="space-y-6">
+                    <div className="flex justify-between text-sm font-bold border-b pb-4">
+                        <div>
+                            <div className="text-gray-500">تاريخ الطلب</div>
+                            <div>{printOrder.date}</div>
                         </div>
-
-                        <table className="w-full text-right border-collapse">
-                            <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="p-2 border">المنتج</th>
-                                    <th className="p-2 border">الكمية</th>
-                                    <th className="p-2 border">سعر التكلفة</th>
-                                    <th className="p-2 border">الإجمالي</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {printOrder.items.map((item, idx) => (
-                                    <tr key={idx}>
-                                        <td className="p-2 border">{getProductName(item.productId)}</td>
-                                        <td className="p-2 border">{item.quantity}</td>
-                                        <td className="p-2 border">{item.costPrice}</td>
-                                        <td className="p-2 border">{(item.quantity * item.costPrice).toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="bg-gray-50 font-black">
-                                    <td colSpan={3} className="p-2 border text-left">الإجمالي الكلي</td>
-                                    <td className="p-2 border">{printOrder.totalAmount.toFixed(2)}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-
-                        {printOrder.notes && (
-                            <div className="border p-4 rounded bg-gray-50 text-sm">
-                                <strong>ملاحظات:</strong> {printOrder.notes}
-                            </div>
-                        )}
+                        <div>
+                            <div className="text-gray-500">الحالة</div>
+                            <div>{printOrder.status === 'pending' ? 'قيد الانتظار' : printOrder.status === 'received' ? 'تم الاستلام' : 'ملغي'}</div>
+                        </div>
                     </div>
-                </ReportLayout>
-                <button onClick={() => setPrintOrder(null)} className="fixed top-4 left-4 bg-red-600 text-white px-4 py-2 rounded print:hidden shadow-lg hover:bg-red-700 transition-colors">إغلاق</button>
-            </div>
-        );
-    }
+
+                    <table className="w-full text-right border-collapse">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="p-2 border">المنتج</th>
+                                <th className="p-2 border">الكمية</th>
+                                <th className="p-2 border">سعر التكلفة</th>
+                                <th className="p-2 border">الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {printOrder.items.map((item, idx) => (
+                                <tr key={idx}>
+                                    <td className="p-2 border">{getProductName(item.productId)}</td>
+                                    <td className="p-2 border">{item.quantity}</td>
+                                    <td className="p-2 border">{item.costPrice}</td>
+                                    <td className="p-2 border">{(item.quantity * item.costPrice).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr className="bg-gray-50 font-black">
+                                <td colSpan={3} className="p-2 border text-left">الإجمالي الكلي</td>
+                                <td className="p-2 border">{printOrder.totalAmount.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    {printOrder.notes && (
+                        <div className="border p-4 rounded bg-gray-50 text-sm">
+                            <strong>ملاحظات:</strong> {printOrder.notes}
+                        </div>
+                    )}
+                </div>
+            </ReportLayout>
+        </div>
+    ) : null;
 
     return (
+        <>
+        {printOrder && printContainer && createPortal(printContent, printContainer)}
         <div className="h-full flex flex-col gap-6 animate-in fade-in p-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -541,5 +548,6 @@ export const PurchaseOrderManager: React.FC = () => {
                 </div>
             )}
         </div>
+        </>
     );
 };
