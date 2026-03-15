@@ -455,7 +455,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
           const customer = customers.find(c => c.id === selectedCustomerId);
           if (customer && customer.creditLimit && customer.creditLimit > 0) {
               const currentBalance = customer.balance || 0;
-              if (currentBalance + finalTotal > customer.creditLimit) {
+              const newDebt = finalTotal - absPaid;
+              if (currentBalance + newDebt > customer.creditLimit) {
                   return notify(`لا يمكن إتمام العملية. سقف الائتمان للعميل هو ${customer.creditLimit} SAR والرصيد الحالي ${currentBalance} SAR`, 'error');
               }
           }
@@ -468,7 +469,10 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
 
       // Determine Payment Method
       let paymentMethod: any = 'cash';
-      if (isCreditSale) paymentMethod = 'credit';
+      if (isCreditSale) {
+          if (absPaid > 0) paymentMethod = 'split'; // Partial payment
+          else paymentMethod = 'credit';
+      }
       else if (cash > 0 && card > 0) paymentMethod = 'split';
       else if (card > 0) paymentMethod = 'card';
 
@@ -477,8 +481,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
               id: crypto.randomUUID(),
               date: new Date().toISOString().split('T')[0],
               totalAmount: absTotal,
-              paidAmount: isCreditSale ? 0 : absPaid,
-              remainingAmount: isCreditSale ? finalTotal : (finalTotal - absPaid),
+              paidAmount: absPaid,
+              remainingAmount: isCreditSale ? Math.max(0, finalTotal - absPaid) : 0,
               paymentMethod: paymentMethod,
               cashAmount: cash,
               cardAmount: card,
@@ -506,7 +510,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
               const customer = customers.find(c => c.id === selectedCustomerId);
               if (customer) {
                   let newBalance = customer.balance || 0;
-                  if (isCreditSale) newBalance += finalTotal;
+                  const newDebt = isCreditSale ? Math.max(0, finalTotal - absPaid) : 0;
+                  newBalance += newDebt;
                   
                   // Loyalty Points: 1 point per 10 SAR spent (only on positive sales)
                   let newPoints = customer.loyaltyPoints || 0;
@@ -1051,7 +1056,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><Banknote size={16}/> نقداً</label>
                             <input type="number" value={paidCash} onChange={e => {
                                 setPaidCash(e.target.value);
-                                if (!isCreditSale && cartTotal > 0) {
+                                if (cartTotal > 0) {
                                     const cash = parseFloat(e.target.value || '0');
                                     if (cash < cartTotal) {
                                         setPaidCard((cartTotal - cash).toString());
@@ -1059,14 +1064,14 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                                         setPaidCard('0');
                                     }
                                 }
-                            }} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00" autoFocus/>
+                            }} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00" autoFocus/>
                             <div className="flex gap-2 mt-2">
                                 {[10, 20, 50, 100, 500].map(amt => (
                                     <button 
                                         key={amt} 
                                         onClick={() => {
                                             setPaidCash(amt.toString());
-                                            if (!isCreditSale && cartTotal > 0) {
+                                            if (cartTotal > 0) {
                                                 if (amt < cartTotal) {
                                                     setPaidCard((cartTotal - amt).toString());
                                                 } else {
@@ -1085,7 +1090,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><CreditCard size={16}/> شبكة / بطاقة</label>
                             <input type="number" value={paidCard} onChange={e => {
                                 setPaidCard(e.target.value);
-                                if (!isCreditSale && cartTotal > 0) {
+                                if (cartTotal > 0) {
                                     const card = parseFloat(e.target.value || '0');
                                     if (card < cartTotal) {
                                         setPaidCash((cartTotal - card).toString());
@@ -1093,7 +1098,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                                         setPaidCash('0');
                                     }
                                 }
-                            }} disabled={isCreditSale} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00"/>
+                            }} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-black text-lg outline-none focus:border-sap-primary disabled:opacity-50" placeholder="0.00"/>
                         </div>
                         <div>
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-500 mb-2"><FileText size={16}/> ملاحظات</label>
@@ -1175,8 +1180,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                         </div>
 
                         <div className="pt-4 border-t border-gray-100 flex justify-between items-center text-sm font-bold">
-                            <span>المدفوع: <span className="text-sap-primary">{isCreditSale ? '0' : (parseFloat(paidCash||'0') + parseFloat(paidCard||'0')).toLocaleString()}</span></span>
-                            <span>المتبقي: <span className="text-red-500">{isCreditSale ? cartTotal.toLocaleString() : (cartTotal - (parseFloat(paidCash||'0') + parseFloat(paidCard||'0'))).toLocaleString()}</span></span>
+                            <span>المدفوع: <span className="text-sap-primary">{(parseFloat(paidCash||'0') + parseFloat(paidCard||'0')).toLocaleString()}</span></span>
+                            <span>المتبقي: <span className="text-red-500">{(cartTotal - (parseFloat(paidCash||'0') + parseFloat(paidCard||'0'))).toLocaleString()}</span></span>
                         </div>
 
                         <div className="flex gap-3 mt-4">

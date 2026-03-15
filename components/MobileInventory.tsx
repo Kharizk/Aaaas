@@ -126,7 +126,7 @@ export const MobileInventory: React.FC<MobileInventoryProps> = ({ products, onCl
     };
 
     return (
-        <div className="fixed inset-0 bg-gray-50 z-[100] flex flex-col animate-in slide-in-from-bottom-full duration-300">
+        <div className="absolute inset-0 bg-gray-50 z-[100] flex flex-col animate-in slide-in-from-bottom-full duration-300">
             {/* Header */}
             <div className="bg-sap-primary text-white p-4 flex items-center justify-between shadow-md shrink-0">
                 <div className="flex items-center gap-3">

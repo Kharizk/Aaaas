@@ -187,6 +187,16 @@ export interface Customer {
   creditLimit?: number; // New field for credit limit
 }
 
+export interface CustomerTransaction {
+  id: string;
+  customerId: string;
+  date: string;
+  type: 'invoice' | 'payment' | 'note' | 'partial_delivery';
+  amount: number; // Positive = increases customer debt, Negative = decreases customer debt
+  referenceId?: string;
+  notes?: string;
+}
+
 export interface Network {
   id: string;
   name: string;

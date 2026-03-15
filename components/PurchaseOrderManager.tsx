@@ -235,7 +235,7 @@ export const PurchaseOrderManager: React.FC = () => {
     const printContainer = document.getElementById('print-container');
     const printContent = printOrder ? (
         <div className="bg-white z-[9999] overflow-auto print:static print:h-auto print:overflow-visible">
-            <ReportLayout title={`أمر شراء #${printOrder.id.slice(0, 8)}`} subtitle={`المورد: ${getSupplierName(printOrder.supplierId)}`}>
+            <ReportLayout printOnly={true} title={`أمر شراء #${printOrder.id.slice(0, 8)}`} subtitle={`المورد: ${getSupplierName(printOrder.supplierId)}`}>
                 <div className="space-y-6">
                     <div className="flex justify-between text-sm font-bold border-b pb-4">
                         <div>

@@ -521,7 +521,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     const portalNode = document.getElementById('print-container');
     if (!portalNode) return null;
     return createPortal(
-      <ReportLayout title={listType === 'inventory' ? "قائمة جرد المخزون" : "سند استلام بضاعة"} subtitle={listName || "مستند مستودعي"}>
+      <ReportLayout printOnly={true} title={listType === 'inventory' ? "قائمة جرد المخزون" : "سند استلام بضاعة"} subtitle={listName || "مستند مستودعي"}>
           <div className="grid grid-cols-2 gap-4 mb-4 text-[10px] font-bold bg-gray-50 p-2 border border-sap-border font-mono">
               <div className="space-y-1">
                   <div className="flex justify-between"><span>التاريخ:</span> <span>{listDate}</span></div>

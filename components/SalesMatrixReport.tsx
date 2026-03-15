@@ -141,6 +141,7 @@ export const SalesMatrixReport: React.FC<SalesMatrixReportProps> = ({ branches, 
 
       {/* Main Report View */}
       <ReportLayout 
+        printOnly={true}
         title="مصفوفة المبيعات اليومية المقارنة" 
         branchName={getBranchName(selectedBranch)}
         dateRange={`${monthsToDisplay[0]} - ${monthsToDisplay[monthsToDisplay.length-1]}`}

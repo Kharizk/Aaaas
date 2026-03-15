@@ -286,7 +286,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const printContainer = document.getElementById('print-container');
   const printContent = showExpiryPrint ? (
       <div className="bg-white z-[9999] overflow-auto print:static print:h-auto print:overflow-visible">
-          <ReportLayout title="تقرير تنبيهات صلاحية المنتجات" subtitle={`تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}`}>
+          <ReportLayout printOnly={true} title="تقرير تنبيهات صلاحية المنتجات" subtitle={`تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}`}>
               <div className="p-4 print:p-0">
                   <table className="w-full text-right border-collapse">
                       <thead>

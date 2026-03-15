@@ -12,6 +12,7 @@ interface ReportLayoutProps {
   orientation?: 'portrait' | 'landscape';
   branchName?: string;
   dateRange?: string;
+  printOnly?: boolean;
 }
 
 export const ReportLayout: React.FC<ReportLayoutProps> = ({ 
@@ -22,7 +23,8 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
   showHeader = true,
   orientation = 'portrait',
   branchName,
-  dateRange
+  dateRange,
+  printOnly = false
 }) => {
   const { settings } = useSystemSettings();
   const orgName = settings.orgName || 'مؤسسة المدير برو التجارية';
@@ -33,10 +35,10 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
   const currentTime = new Date().toLocaleTimeString('ar-SA');
 
   return (
-    <div className="report-container printable bg-white p-12 print:p-0 print:m-0 overflow-visible relative text-right font-sans" dir="rtl">
+    <div className={`report-container printable ${printOnly ? 'print:bg-white print:p-0 print:m-0' : 'bg-white p-12 print:p-0 print:m-0'} overflow-visible relative text-right font-sans`} dir="rtl">
       
       {showHeader && (
-        <div className="report-header mb-10 print:mb-6">
+        <div className={`report-header mb-10 print:mb-6 ${printOnly ? 'hidden print:block' : ''}`}>
           {/* Top Gold Bar */}
           <div className="h-2 w-full bg-sap-secondary mb-6 print:mb-4"></div>
 
@@ -86,7 +88,7 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
       )}
 
       {/* Title Section */}
-      <div className="text-center mb-8 print:mb-6">
+      <div className={`text-center mb-8 print:mb-6 ${printOnly ? 'hidden print:block' : ''}`}>
           <h2 className="text-2xl print:text-xl font-black text-sap-shell mb-2 inline-block border-b-4 border-sap-secondary pb-1">
             {title}
           </h2>
@@ -94,12 +96,12 @@ export const ReportLayout: React.FC<ReportLayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="report-body min-h-[400px] print:min-h-0">
+      <div className={`report-body ${printOnly ? '' : 'min-h-[400px]'} print:min-h-0`}>
         {children}
       </div>
 
       {showSignatures && (
-        <div className="mt-16 print:mt-10 pt-8 border-t border-gray-200 break-inside-avoid">
+        <div className={`mt-16 print:mt-10 pt-8 border-t border-gray-200 break-inside-avoid ${printOnly ? 'hidden print:block' : ''}`}>
           {invoiceTerms && (
               <div className="mb-8 text-xs text-gray-500 text-center px-10 whitespace-pre-wrap">
                   <strong>الشروط والأحكام:</strong> {invoiceTerms}

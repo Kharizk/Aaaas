@@ -4,7 +4,7 @@ import {
   getFirestore, 
   collection, 
   getDocs, 
-  setDoc, 
+  setDoc as firebaseSetDoc, 
   deleteDoc, 
   doc, 
   query, 
@@ -13,8 +13,8 @@ import {
   limit,
   getDoc,
   where,
-  addDoc,
-  updateDoc
+  addDoc as firebaseAddDoc,
+  updateDoc as firebaseUpdateDoc
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -36,6 +36,33 @@ try {
 } catch (error) {
     console.error("Firebase Initialization Error:", error);
 }
+
+const removeUndefined = (data: any): any => {
+    if (data === undefined) return null;
+    if (data === null || typeof data !== 'object') return data;
+    if (data instanceof Date) return data;
+    
+    // Handle Firestore Timestamp
+    if (data.toDate && typeof data.toDate === 'function') return data;
+    // Handle DocumentReference
+    if (data.firestore && data.path) return data;
+
+    if (Array.isArray(data)) {
+        return data.map(item => removeUndefined(item)).filter(item => item !== undefined);
+    }
+    
+    const prepared: any = {};
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key) && data[key] !== undefined) {
+            prepared[key] = removeUndefined(data[key]);
+        }
+    }
+    return prepared;
+};
+
+const setDoc = async (docRef: any, data: any) => firebaseSetDoc(docRef, removeUndefined(data));
+const addDoc = async (collectionRef: any, data: any) => firebaseAddDoc(collectionRef, removeUndefined(data));
+const updateDoc = async (docRef: any, data: any) => firebaseUpdateDoc(docRef, removeUndefined(data));
 
 const sanitizeData = (data: any, seen = new WeakSet()): any => {
     if (!data) return data;
@@ -218,6 +245,11 @@ export const db = {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "customers"))), []); },
     async upsert(customer: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "customers", customer.id), customer); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "customers", id)); }); }
+  },
+  customerTransactions: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "customer_transactions"), orderBy("date", "desc")))), []); },
+    async upsert(tx: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "customer_transactions", tx.id), tx); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "customer_transactions", id)); }); }
   },
   posPoints: {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "pos_points"))), []); },

@@ -104,6 +104,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
               </div>
 
               <ReportLayout 
+                  printOnly={true}
                   title="تقرير أفضل المنتجات مبيعاً" 
                   subtitle={`الفترة من ${dateFrom} إلى ${dateTo}`}
                   showHeader={showHeader}
@@ -253,6 +254,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
               </div>
 
               <ReportLayout 
+                  printOnly={true}
                   title="تقرير صافي الدخل والربحية" 
                   subtitle={`الفترة من ${dateFrom} إلى ${dateTo}`}
                   showHeader={showHeader}
@@ -404,6 +406,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             </div>
 
             <ReportLayout 
+                printOnly={true}
                 title="تقرير صلاحية المنتجات" 
                 subtitle={`المنتجات التي تنتهي صلاحيتها خلال ${daysThreshold} يوم`}
                 showHeader={showHeader}
@@ -607,6 +610,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
 
             {/* Report Content */}
             <ReportLayout 
+                printOnly={true}
                 title="تقرير تفصيلي لحركة المخزون" 
                 subtitle={`الفترة من ${dateFrom} إلى ${dateTo}`}
                 showHeader={showHeader}
@@ -705,6 +709,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         </div>
 
         <ReportLayout 
+          printOnly={true}
           title="دليل المنتجات والأصناف المعتمد" 
           subtitle="سجل رسمي شامل لبيانات المخزون"
           showHeader={showHeader}
@@ -824,6 +829,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             </div>
 
             <ReportLayout 
+                printOnly={true}
                 title="تقرير نواقص المخزون" 
                 subtitle="المنتجات التي تتطلب إعادة طلب"
                 showHeader={showHeader}

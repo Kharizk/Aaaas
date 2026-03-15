@@ -106,6 +106,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
 
   return (
     <ReportLayout 
+        printOnly={true}
         title="الذكاء المالي - تحليل أداء المبيعات" 
         subtitle={reportType === 'monthly' ? `شهر ${selectedMonth}` : reportType === 'yearly' ? `سنة ${selectedYear}` : 'تراكمي'}
         branchName={selectedBranch === 'all' ? 'كافة الفروع' : branches.find(b => b.id === selectedBranch)?.name}
