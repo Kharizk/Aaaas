@@ -195,30 +195,44 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches 
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-sap-border font-bold">
-                            {users.map(user => (
-                                <tr key={user.id} className="hover:bg-sap-highlight/20 transition-colors">
-                                    <td className="p-4 font-mono text-sap-primary">{user.username}</td>
-                                    <td className="p-4">{user.fullName}</td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-[10px] ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                                            {user.role === 'admin' ? 'مدير عام' : 'مستخدم'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4">
-                                        {user.role === 'admin' ? 
-                                            <span className="text-gray-400 text-xs">كل الفروع</span> : 
-                                            (branches.find(b => b.id === user.branchId)?.name || <span className="text-red-500">غير محدد</span>)
-                                        }
-                                    </td>
-                                    <td className="p-4 text-xs font-mono text-gray-500">
-                                        {user.lastLogin ? new Date(user.lastLogin).toLocaleString('ar-SA') : '-'}
-                                    </td>
-                                    <td className="p-4 flex justify-center gap-2">
-                                        <button onClick={() => handleOpenModal(user)} className="p-2 text-sap-text-variant hover:text-sap-primary hover:bg-sap-highlight rounded"><Edit2 size={16}/></button>
-                                        <button onClick={() => handleDelete(user)} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
+                            {users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="p-16 text-center">
+                                        <div className="flex flex-col items-center justify-center text-gray-400">
+                                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                                <Users size={24} className="text-gray-300" />
+                                            </div>
+                                            <p className="text-base font-bold text-gray-500 mb-1">لا يوجد مستخدمين</p>
+                                            <p className="text-xs">لم يتم العثور على أي مستخدمين.</p>
+                                        </div>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                users.map(user => (
+                                    <tr key={user.id} className="hover:bg-sap-highlight/20 transition-colors">
+                                        <td className="p-4 font-mono text-sap-primary">{user.username}</td>
+                                        <td className="p-4">{user.fullName}</td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-[10px] ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                {user.role === 'admin' ? 'مدير عام' : 'مستخدم'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            {user.role === 'admin' ? 
+                                                <span className="text-gray-400 text-xs">كل الفروع</span> : 
+                                                (branches.find(b => b.id === user.branchId)?.name || <span className="text-red-500">غير محدد</span>)
+                                            }
+                                        </td>
+                                        <td className="p-4 text-xs font-mono text-gray-500">
+                                            {user.lastLogin ? new Date(user.lastLogin).toLocaleString('ar-SA') : '-'}
+                                        </td>
+                                        <td className="p-4 flex justify-center gap-2">
+                                            <button onClick={() => handleOpenModal(user)} className="p-2 text-sap-text-variant hover:text-sap-primary hover:bg-sap-highlight rounded"><Edit2 size={16}/></button>
+                                            <button onClick={() => handleDelete(user)} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -237,14 +251,28 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-sap-border font-medium">
-                        {logs.map(log => (
-                            <tr key={log.id} className="hover:bg-gray-50">
-                                <td className="p-4 font-mono text-xs text-gray-500">{new Date(log.timestamp).toLocaleString('ar-SA')}</td>
-                                <td className="p-4 font-bold text-sap-primary">{log.user}</td>
-                                <td className="p-4 font-bold text-xs uppercase">{log.action}</td>
-                                <td className="p-4 text-xs text-gray-600">{log.details}</td>
+                        {logs.length === 0 ? (
+                            <tr>
+                                <td colSpan={4} className="p-16 text-center">
+                                    <div className="flex flex-col items-center justify-center text-gray-400">
+                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                            <History size={24} className="text-gray-300" />
+                                        </div>
+                                        <p className="text-base font-bold text-gray-500 mb-1">لا يوجد سجل عمليات</p>
+                                        <p className="text-xs">لم يتم العثور على أي عمليات مسجلة.</p>
+                                    </div>
+                                </td>
                             </tr>
-                        ))}
+                        ) : (
+                            logs.map(log => (
+                                <tr key={log.id} className="hover:bg-gray-50">
+                                    <td className="p-4 font-mono text-xs text-gray-500">{new Date(log.timestamp).toLocaleString('ar-SA')}</td>
+                                    <td className="p-4 font-bold text-sap-primary">{log.user}</td>
+                                    <td className="p-4 font-bold text-xs uppercase">{log.action}</td>
+                                    <td className="p-4 text-xs text-gray-600">{log.details}</td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                  </table>
             </div>

@@ -116,6 +116,8 @@ export interface DailySales {
   
   posPointId?: string;      
   networkId?: string;       
+  cashierId?: string;
+  changeAmount?: number;
   
   amount: number; 
   notes?: string;

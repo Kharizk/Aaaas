@@ -183,9 +183,14 @@ export const SupplierManager: React.FC = () => {
         {loading ? (
           <div className="col-span-full text-center py-20 text-gray-400">جاري التحميل...</div>
         ) : filteredSuppliers.length === 0 ? (
-          <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border border-dashed border-gray-200">
-            <Truck size={48} className="mx-auto text-gray-200 mb-4"/>
-            <p className="text-gray-400 font-bold">لا يوجد موردين مضافين</p>
+          <div className="col-span-full p-16 text-center bg-white border border-gray-200 rounded-md">
+              <div className="flex flex-col items-center justify-center text-gray-400">
+                  <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                      <Truck size={32} className="text-gray-300" />
+                  </div>
+                  <p className="text-lg font-bold text-gray-500 mb-1">لا يوجد موردين</p>
+                  <p className="text-sm">لم يتم العثور على أي موردين يطابقون بحثك.</p>
+              </div>
           </div>
         ) : (
           filteredSuppliers.map(supplier => (

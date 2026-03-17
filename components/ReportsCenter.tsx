@@ -144,18 +144,30 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-50">
-                                  {categoryData.map((item, idx) => (
-                                      <tr key={idx} className="hover:bg-gray-50">
-                                          <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-2">
-                                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
-                                              {item.name}
-                                          </td>
-                                          <td className="px-6 py-4 text-left font-mono font-black text-sap-primary">{item.value.toLocaleString()} SAR</td>
-                                          <td className="px-6 py-4 text-left text-xs text-gray-400">
-                                              {((item.value / categoryData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}%
+                                  {categoryData.length === 0 ? (
+                                      <tr>
+                                          <td colSpan={3} className="py-16 text-center">
+                                              <div className="flex flex-col items-center justify-center text-gray-400">
+                                                  <PieChart size={48} className="mb-4 opacity-20" />
+                                                  <p className="text-lg font-bold text-gray-600">لا توجد مبيعات</p>
+                                                  <p className="text-sm mt-1">لم يتم العثور على بيانات مبيعات في هذه الفترة</p>
+                                              </div>
                                           </td>
                                       </tr>
-                                  ))}
+                                  ) : (
+                                      categoryData.map((item, idx) => (
+                                          <tr key={idx} className="hover:bg-gray-50">
+                                              <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-2">
+                                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                                                  {item.name}
+                                              </td>
+                                              <td className="px-6 py-4 text-left font-mono font-black text-sap-primary">{item.value.toLocaleString()} SAR</td>
+                                              <td className="px-6 py-4 text-left text-xs text-gray-400">
+                                                  {((item.value / categoryData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}%
+                                              </td>
+                                          </tr>
+                                      ))
+                                  )}
                               </tbody>
                           </table>
                       </div>
@@ -444,7 +456,15 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                             </thead>
                             <tbody className="text-xs font-bold divide-y divide-gray-50 print:divide-gray-200">
                                 {expiryData.length === 0 ? (
-                                    <tr><td colSpan={7} className="p-10 text-center text-gray-400 italic">لا توجد منتجات قاربت على الانتهاء</td></tr>
+                                    <tr>
+                                        <td colSpan={7} className="py-16 text-center">
+                                            <div className="flex flex-col items-center justify-center text-gray-400">
+                                                <AlertTriangle size={48} className="mb-4 opacity-20" />
+                                                <p className="text-lg font-bold text-gray-600">لا توجد منتجات قاربت على الانتهاء</p>
+                                                <p className="text-sm mt-1">جميع المنتجات صالحة لفترة أطول من النطاق المحدد</p>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ) : (
                                     expiryData.map((item, idx) => {
                                         const isExpired = item.daysRemaining < 0;
@@ -645,7 +665,15 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                             </thead>
                             <tbody className="text-xs font-bold divide-y divide-gray-50">
                                 {filteredData.length === 0 ? (
-                                    <tr><td colSpan={8} className="p-10 text-center text-gray-400 italic">لا توجد بيانات مطابقة للبحث</td></tr>
+                                    <tr>
+                                        <td colSpan={8} className="py-16 text-center">
+                                            <div className="flex flex-col items-center justify-center text-gray-400">
+                                                <ClipboardList size={48} className="mb-4 opacity-20" />
+                                                <p className="text-lg font-bold text-gray-600">لا توجد بيانات مطابقة للبحث</p>
+                                                <p className="text-sm mt-1">حاول تغيير فترة البحث أو نوع القائمة</p>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ) : (
                                     filteredData.map((item, idx) => (
                                         <tr key={idx} className="hover:bg-indigo-50/30 transition-all group">
@@ -724,21 +752,33 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                         </tr>
                     </thead>
                     <tbody className="text-sm font-bold divide-y divide-gray-50">
-                        {filteredProducts.map(p => (
-                            <tr key={p.id} className="hover:bg-sap-highlight/20 transition-all group">
-                                <td className="px-8 py-5">
-                                    <div className="font-mono text-base font-black text-sap-primary">{p.code}</div>
-                                </td>
-                                <td className="px-8 py-5">
-                                    <div className="text-sap-text text-base">{p.name}</div>
-                                </td>
-                                <td className="px-8 py-5 text-center">
-                                    <span className="inline-flex px-4 py-1.5 bg-gray-100 rounded-full text-[10px] font-black text-gray-500 uppercase">
-                                        {units.find(u => u.id === p.unitId)?.name || 'قطعة'}
-                                    </span>
+                        {filteredProducts.length === 0 ? (
+                            <tr>
+                                <td colSpan={3} className="py-16 text-center">
+                                    <div className="flex flex-col items-center justify-center text-gray-400">
+                                        <Package size={48} className="mb-4 opacity-20" />
+                                        <p className="text-lg font-bold text-gray-600">لا توجد منتجات مطابقة</p>
+                                        <p className="text-sm mt-1">لم يتم العثور على منتجات تطابق بحثك</p>
+                                    </div>
                                 </td>
                             </tr>
-                        ))}
+                        ) : (
+                            filteredProducts.map(p => (
+                                <tr key={p.id} className="hover:bg-sap-highlight/20 transition-all group">
+                                    <td className="px-8 py-5">
+                                        <div className="font-mono text-base font-black text-sap-primary">{p.code}</div>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                        <div className="text-sap-text text-base">{p.name}</div>
+                                    </td>
+                                    <td className="px-8 py-5 text-center">
+                                        <span className="inline-flex px-4 py-1.5 bg-gray-100 rounded-full text-[10px] font-black text-gray-500 uppercase">
+                                            {units.find(u => u.id === p.unitId)?.name || 'قطعة'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -865,7 +905,15 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                             </thead>
                             <tbody className="text-xs font-bold divide-y divide-gray-50">
                                 {lowStockData.length === 0 ? (
-                                    <tr><td colSpan={5} className="p-10 text-center text-gray-400 italic">لا توجد منتجات تحت الحد الأدنى</td></tr>
+                                    <tr>
+                                        <td colSpan={5} className="py-16 text-center">
+                                            <div className="flex flex-col items-center justify-center text-gray-400">
+                                                <TrendingDown size={48} className="mb-4 opacity-20" />
+                                                <p className="text-lg font-bold text-gray-600">المخزون في حالة جيدة</p>
+                                                <p className="text-sm mt-1">لا توجد منتجات تحت الحد الأدنى حالياً</p>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ) : (
                                     lowStockData.map((item, idx) => {
                                         const isZero = item.currentStock <= 0;

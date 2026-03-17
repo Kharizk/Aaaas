@@ -24,6 +24,7 @@ import { CustomerManager } from './components/CustomerManager';
 import { PromotionsManager } from './components/PromotionsManager';
 import { MobileInventory } from './components/MobileInventory';
 import { ReturnsManager } from './components/ReturnsManager';
+import { MarketPriceDiscoverer } from './components/MarketPriceDiscoverer';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManager } from './components/UserManager';
@@ -98,7 +99,7 @@ const AppContent: React.FC = () => {
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'advanced_reports' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'purchase_orders' | 'activity_log' | 'promotions' | 'mobile_inventory' | 'returns'>('launcher');
+  const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'advanced_reports' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'purchase_orders' | 'activity_log' | 'promotions' | 'mobile_inventory' | 'returns' | 'market_prices'>('launcher');
   const [openApps, setOpenApps] = useState<string[]>([]);
 
   const handleOpenApp = (appId: string) => {
@@ -217,6 +218,7 @@ const AppContent: React.FC = () => {
             { id: 'products', label: t('nav.products'), icon: Package, color: COLORS.DARK_GRAY, permissions: ['view_products', 'manage_products'] },
             { id: 'list', label: t('nav.inventory'), icon: ClipboardListIcon, color: COLORS.BURGUNDY, permission: 'manage_products' },
             { id: 'mobile_inventory', label: t('nav.mobile_inventory'), icon: Package, color: COLORS.GOLD, permission: 'manage_products' },
+            { id: 'market_prices', label: 'مكتشف الأسعار', icon: Search, color: COLORS.SLATE, permissions: ['view_products', 'manage_products'] },
             { id: 'units', label: t('nav.units'), icon: Ruler, color: COLORS.SLATE, permission: 'manage_products' },
             { id: 'suppliers', label: t('nav.suppliers'), icon: Truck, color: COLORS.GOLD, permission: 'manage_suppliers' },
             { id: 'purchase_orders', label: t('nav.purchase_orders'), icon: ShoppingBag, color: COLORS.DARK_GRAY, permission: 'manage_purchase_orders' },
@@ -698,6 +700,7 @@ const AppContent: React.FC = () => {
                             {appId === 'pos' && <POSInterface products={products} setDailySales={setDailySales} currentUser={currentUser} />}
                             {appId === 'returns' && <ReturnsManager products={products} currentUser={currentUser} sales={dailySales} />}
                             {appId === 'products' && <ProductManager products={products} setProducts={setProducts} units={units} setUnits={setUnits} currentUser={currentUser} />}
+                            {appId === 'market_prices' && <MarketPriceDiscoverer />}
                             {appId === 'mobile_inventory' && <MobileInventory products={products} onClose={() => handleCloseApp('mobile_inventory')} />}
                             {appId === 'promotions' && <PromotionsManager products={products} />}
                             {appId === 'expenses' && <ExpenseManager />}

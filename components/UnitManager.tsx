@@ -85,7 +85,17 @@ export const UnitManager: React.FC<UnitManagerProps> = ({ units, setUnits }) => 
           </thead>
           <tbody className="divide-y divide-sap-border">
             {filteredUnits.length === 0 ? (
-              <tr><td colSpan={2} className="p-12 text-center text-sap-text-variant italic">لا توجد وحدات قياس معرفة</td></tr>
+              <tr>
+                <td colSpan={2} className="p-16 text-center">
+                  <div className="flex flex-col items-center justify-center text-gray-400">
+                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                          <Ruler size={24} className="text-gray-300" />
+                      </div>
+                      <p className="text-base font-bold text-gray-500 mb-1">لا توجد وحدات قياس</p>
+                      <p className="text-xs">لم يتم العثور على أي وحدات تطابق بحثك.</p>
+                  </div>
+                </td>
+              </tr>
             ) : (
               filteredUnits.map(unit => (
                 <tr key={unit.id} className="sap-table-row group">

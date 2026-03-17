@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { PurchaseOrder, Supplier, Product } from '../types';
 import { db } from '../services/supabase';
 import { Plus, Trash2, Save, ShoppingBag, Calendar, User, Package, CheckCircle2, XCircle, FileText, Printer, Search, Filter, ArrowRight, Loader2 } from 'lucide-react';
@@ -375,9 +376,14 @@ export const PurchaseOrderManager: React.FC = () => {
                                 ))}
                                 {filteredOrders.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="p-12 text-center text-gray-400">
-                                            <ShoppingBag size={48} className="mx-auto mb-4 opacity-20" />
-                                            <p className="font-bold">لا توجد أوامر شراء مطابقة للبحث</p>
+                                        <td colSpan={6} className="p-16 text-center">
+                                            <div className="flex flex-col items-center justify-center text-gray-400">
+                                                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                                    <ShoppingBag size={32} className="text-gray-300" />
+                                                </div>
+                                                <p className="text-lg font-bold text-gray-500 mb-1">لا توجد أوامر شراء</p>
+                                                <p className="text-sm">لم يتم العثور على أي أوامر شراء تطابق بحثك.</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}

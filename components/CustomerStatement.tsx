@@ -260,7 +260,17 @@ export const CustomerStatement: React.FC<CustomerStatementProps> = ({ customer, 
                                         </tr>
                                     ))}
                                     {ledger.length === 0 && (
-                                        <tr><td colSpan={5} className="p-10 text-center text-gray-400 font-bold">لا توجد حركات مسجلة لهذا العميل</td></tr>
+                                        <tr>
+                                            <td colSpan={5} className="p-16 text-center">
+                                                <div className="flex flex-col items-center justify-center text-gray-400">
+                                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                                        <FileText size={32} className="text-gray-300" />
+                                                    </div>
+                                                    <p className="text-lg font-bold text-gray-500 mb-1">لا توجد حركات مسجلة</p>
+                                                    <p className="text-sm">لم يتم العثور على أي حركات مالية لهذا العميل.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     )}
                                 </tbody>
                             </table>

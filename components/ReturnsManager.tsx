@@ -343,8 +343,14 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({ products, curren
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={6} className="p-8 text-center text-gray-500 font-bold">
-                                                لا توجد سجلات مرتجعات
+                                            <td colSpan={6} className="p-16 text-center">
+                                                <div className="flex flex-col items-center justify-center text-gray-400">
+                                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                                        <RotateCcw size={32} className="text-gray-300" />
+                                                    </div>
+                                                    <p className="text-lg font-bold text-gray-500 mb-1">لا توجد سجلات مرتجعات</p>
+                                                    <p className="text-sm">لم يتم العثور على أي مرتجعات مسجلة.</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

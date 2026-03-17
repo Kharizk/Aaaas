@@ -159,9 +159,14 @@ export const ExpenseManager: React.FC = () => {
                         </div>
                     ))}
                     {expenses.length === 0 && (
-                        <div className="text-center py-20 text-gray-400">
-                            <TrendingDown size={48} className="mx-auto mb-4 opacity-50"/>
-                            <p>لا توجد مصروفات مسجلة</p>
+                        <div className="col-span-full p-16 text-center bg-white border border-gray-200 rounded-md">
+                            <div className="flex flex-col items-center justify-center text-gray-400">
+                                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                    <TrendingDown size={32} className="text-gray-300" />
+                                </div>
+                                <p className="text-lg font-bold text-gray-500 mb-1">لا توجد مصروفات</p>
+                                <p className="text-sm">لم يتم العثور على أي مصروفات مسجلة.</p>
+                            </div>
                         </div>
                     )}
                 </div>

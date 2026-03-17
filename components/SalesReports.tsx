@@ -334,7 +334,17 @@ export const SalesReports: React.FC<SalesReportsProps> = ({ branches, sales }) =
                             </tr>
                         ))}
                         {monthlyData.records.length === 0 && (
-                            <tr><td colSpan={4} className="py-24 text-center opacity-30 italic font-black text-xl">عذراً، لم يتم العثور على مبيعات في هذا النطاق</td></tr>
+                            <tr>
+                                <td colSpan={5} className="p-16 text-center">
+                                    <div className="flex flex-col items-center justify-center text-gray-400">
+                                        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                            <FileLineChart size={32} className="text-gray-300" />
+                                        </div>
+                                        <p className="text-lg font-bold text-gray-500 mb-1">لا توجد مبيعات</p>
+                                        <p className="text-sm">لم يتم العثور على أي مبيعات في هذا النطاق الزمني.</p>
+                                    </div>
+                                </td>
+                            </tr>
                         )}
                     </tbody>
                 </table>

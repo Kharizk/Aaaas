@@ -82,6 +82,9 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   const [searchTerm, setSearchTerm] = useState('');
   const [hasStarted, setHasStarted] = useState(false);
   const [pickerSelectedIndex, setPickerSelectedIndex] = useState(0);
+  const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
+
+  const [isMultipleAdd, setIsMultipleAdd] = useState(false);
 
   // Accordion State
   const [openSections, setOpenSections] = useState({
@@ -170,7 +173,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       setActiveListId(listData.id);
       fetchSavedLists();
       addToast("تم الحفظ بنجاح", "success");
-    } catch (e) { addToast("خطأ في الحفظ", "error"); }
+    } catch (e) { 
+      console.error("Save Project Error:", e);
+      addToast("خطأ في الحفظ", "error"); 
+    }
     finally { setIsSaving(false); }
   };
 
@@ -188,13 +194,22 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   };
 
   const deleteProject = async (id: string) => {
-    if (!confirm('هل أنت متأكد من الحذف؟')) return;
-    try {
-      await db.tagLists.delete(id);
-      if (activeListId === id) { setActiveListId(null); setListName('مشروع جديد'); setSelectedTags([]); setActiveTagIds([]); }
-      fetchSavedLists();
-      addToast("تم الحذف بنجاح", "success");
-    } catch (e) { addToast("فشل الحذف", "error"); }
+    setConfirmDialog({
+      isOpen: true,
+      message: 'هل أنت متأكد من الحذف؟',
+      onConfirm: async () => {
+        try {
+          await db.tagLists.delete(id);
+          if (activeListId === id) { setActiveListId(null); setListName('مشروع جديد'); setSelectedTags([]); setActiveTagIds([]); }
+          fetchSavedLists();
+          addToast("تم الحذف بنجاح", "success");
+        } catch (e) { 
+          console.error("Delete Project Error:", e);
+          addToast("فشل الحذف", "error"); 
+        }
+        setConfirmDialog(null);
+      }
+    });
   };
 
   const addTag = (product?: Product) => {
@@ -229,9 +244,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       originalPrice: '',
       unitName: unitName
     };
-    setSelectedTags([...selectedTags, newTag]);
-    setActiveTagIds([newTag.id]);
-    setShowProductPicker(false);
+    setSelectedTags(prev => [...prev, newTag]);
+    if (!isMultipleAdd) {
+        setActiveTagIds([newTag.id]);
+        setShowProductPicker(false);
+    } else {
+        setActiveTagIds([]);
+        addToast("تمت الإضافة", "success");
+    }
     setHasStarted(true);
   };
 
@@ -338,7 +358,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   const renderTagLayout = (tag: SelectedTag | undefined, s: any) => {
       if (!tag) {
           return (
-            <div className="h-full w-full flex items-center justify-center group cursor-pointer bg-gray-50/30 hover:bg-gray-50 transition-colors duration-300" onClick={() => setShowProductPicker(true)}>
+            <div className="h-full w-full flex items-center justify-center group cursor-pointer bg-gray-50/30 hover:bg-gray-50 transition-colors duration-300 print:hidden" onClick={() => { setActiveTagIds([]); setShowProductPicker(true); }}>
                 <div className="w-10 h-10 rounded-full bg-white border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 group-hover:border-sap-primary group-hover:text-sap-primary group-hover:scale-110 transition-all duration-300 shadow-sm">
                     <Plus size={20} strokeWidth={2.5} />
                 </div>
@@ -778,7 +798,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                           <div className="text-xs text-gray-400 font-mono mt-0.5">{new Date(list.date).toLocaleDateString('ar-SA')}</div>
                                       </div>
                                   </div>
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-sap-primary text-xs font-bold bg-sap-highlight/20 px-3 py-1 rounded-full">فتح</div>
+                                  <div className="flex items-center gap-2">
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity text-sap-primary text-xs font-bold bg-sap-highlight/20 px-3 py-1 rounded-full">فتح</div>
+                                      <button onClick={(e) => { e.stopPropagation(); deleteProject(list.id); }} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                                  </div>
                               </div>
                           ))}
                       </div>
@@ -1146,7 +1169,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             <AccordionHeader title="إجراءات" isOpen={openSections.actions} onClick={() => toggleSection('actions')} icon={Layers} />
             {openSections.actions && (
                 <div className="p-4 space-y-3 bg-white">
-                    <button onClick={() => setShowProductPicker(true)} className="w-full py-2.5 bg-sap-primary text-white font-bold shadow-md shadow-sap-primary/20 hover:bg-sap-primary-hover hover:shadow-lg hover:shadow-sap-primary/30 flex items-center justify-center gap-2 rounded-xl transition-all transform active:scale-[0.98]">
+                    <button onClick={() => { setActiveTagIds([]); setShowProductPicker(true); }} className="w-full py-2.5 bg-sap-primary text-white font-bold shadow-md shadow-sap-primary/20 hover:bg-sap-primary-hover hover:shadow-lg hover:shadow-sap-primary/30 flex items-center justify-center gap-2 rounded-xl transition-all transform active:scale-[0.98]">
                         <Plus size={18}/> إضافة منتج جديد
                     </button>
                     {activeTagIds.length > 0 && (
@@ -1187,11 +1210,24 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <span>فتح</span>
                     </button>
                     <button 
-                        onClick={() => { if(confirm('هل أنت متأكد من مسح جميع الملصقات؟')) { setSelectedTags([]); setActiveTagIds([]); addToast("تم مسح الصفحة", "info"); } }} 
-                        className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-all shadow-sm text-xs font-bold"
+                        onClick={() => { 
+                            if (selectedTags.length === 0) return;
+                            setConfirmDialog({
+                                isOpen: true,
+                                message: 'هل أنت متأكد من مسح جميع الملصقات؟',
+                                onConfirm: () => {
+                                    setSelectedTags([]); 
+                                    setActiveTagIds([]); 
+                                    addToast("تم مسح الصفحة", "info");
+                                    setConfirmDialog(null);
+                                }
+                            });
+                        }} 
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all shadow-sm text-xs font-bold ${selectedTags.length === 0 ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
                         title="مسح الكل"
                     >
                         <Trash2 size={16}/>
+                        <span>مسح الكل</span>
                     </button>
                     <button 
                         onClick={() => {
@@ -1203,7 +1239,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                 }
                             }
                         }}
-                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all shadow-sm text-xs font-bold ${activeTagIds.length === selectedTags.length && selectedTags.length > 0 ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all shadow-sm text-xs font-bold ${selectedTags.length === 0 ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' : activeTagIds.length === selectedTags.length ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
                         title={activeTagIds.length === selectedTags.length ? "إلغاء تحديد الكل" : "تحديد الكل"}
                     >
                         <CheckCircle2 size={16}/>
@@ -1214,22 +1250,43 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
             <div className="flex items-center gap-4">
                 {activeTagIds.length === 1 && (
-                    <button 
-                        onClick={() => {
-                            const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
-                            if (currentTag && selectedTags.length < 16) {
-                                const newTag = { ...currentTag, id: crypto.randomUUID() };
-                                setSelectedTags(prev => [...prev, newTag]);
-                                addToast("تم تكرار الملصق", "success");
-                            } else if (selectedTags.length >= 16) {
-                                addToast("الصفحة ممتلئة", "warning");
-                            }
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 transition-all shadow-sm text-xs font-bold animate-in fade-in"
-                    >
-                        <Copy size={16}/>
-                        <span>تكرار</span>
-                    </button>
+                    <>
+                        <button 
+                            onClick={() => {
+                                const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
+                                if (currentTag && selectedTags.length < 16) {
+                                    const newTag = { ...currentTag, id: crypto.randomUUID() };
+                                    setSelectedTags(prev => [...prev, newTag]);
+                                    addToast("تم تكرار الملصق", "success");
+                                } else if (selectedTags.length >= 16) {
+                                    addToast("الصفحة ممتلئة", "warning");
+                                }
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 transition-all shadow-sm text-xs font-bold animate-in fade-in"
+                        >
+                            <Copy size={16}/>
+                            <span>تكرار</span>
+                        </button>
+                        <button 
+                            onClick={() => {
+                                const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
+                                if (currentTag) {
+                                    const remainingSlots = 16 - selectedTags.length;
+                                    if (remainingSlots > 0) {
+                                        const newTags = Array.from({ length: remainingSlots }).map(() => ({ ...currentTag, id: crypto.randomUUID() }));
+                                        setSelectedTags(prev => [...prev, ...newTags]);
+                                        addToast(`تم تعبئة الصفحة بـ ${remainingSlots} ملصق`, "success");
+                                    } else {
+                                        addToast("الصفحة ممتلئة", "warning");
+                                    }
+                                }
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-all shadow-sm text-xs font-bold animate-in fade-in"
+                        >
+                            <LayoutGrid size={16}/>
+                            <span>تعبئة الصفحة</span>
+                        </button>
+                    </>
                 )}
                 <div className="flex items-center gap-1 bg-white border border-gray-200 p-1 rounded-lg shadow-sm">
                     <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><ZoomOut size={16}/></button>
@@ -1245,8 +1302,33 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
         </div>
 
         <div className="flex-1 bg-slate-100 overflow-auto p-8 relative flex justify-center custom-scrollbar">
+            <style>{`
+                @media print {
+                    .print-page {
+                        transform: none !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        margin: 0 !important;
+                    }
+                }
+            `}</style>
+            {selectedTags.length === 0 && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                    <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-gray-200 flex flex-col items-center text-center max-w-sm pointer-events-auto animate-in fade-in zoom-in duration-300">
+                        <div className="w-20 h-20 bg-sap-primary/10 text-sap-primary rounded-full flex items-center justify-center mb-4">
+                            <TagIcon size={40} />
+                        </div>
+                        <h3 className="text-xl font-black text-gray-800 mb-2">الصفحة فارغة</h3>
+                        <p className="text-gray-500 text-sm mb-6">ابدأ بإضافة منتجات لإنشاء ملصقات الأسعار الخاصة بك. يمكنك إضافة حتى 16 ملصق في الصفحة الواحدة.</p>
+                        <button onClick={() => setShowProductPicker(true)} className="w-full py-3 bg-sap-primary text-white font-bold rounded-xl shadow-md hover:bg-sap-primary-hover transition-all flex items-center justify-center gap-2">
+                            <Plus size={18} />
+                            إضافة منتج الآن
+                        </button>
+                    </div>
+                </div>
+            )}
             <div 
-              className="bg-white shadow-2xl transition-all ring-1 ring-black/5"
+              className="bg-white shadow-2xl transition-all ring-1 ring-black/5 print-page"
               style={{
                 width: '210mm', height: '297mm', transform: `scale(${globalStyles.previewZoom / 100})`, transformOrigin: 'top center',
                 display: 'grid', 
@@ -1268,7 +1350,11 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <div 
                           key={i} 
                           onClick={(e) => {
-                              if (!tag) return;
+                              if (!tag) {
+                                  setActiveTagIds([]);
+                                  setShowProductPicker(true);
+                                  return;
+                              }
                               if (e.ctrlKey || e.metaKey) {
                                   setActiveTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]);
                               } else {
@@ -1280,7 +1366,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                               setActiveTagIds([tag.id]);
                               setShowProductPicker(true);
                           }}
-                          className={`relative overflow-hidden transition-all ${tag ? 'cursor-pointer hover:shadow-md' : ''} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
+                          className={`relative overflow-hidden transition-all ${tag ? 'cursor-pointer hover:shadow-md' : 'cursor-pointer hover:bg-gray-50 flex items-center justify-center'} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
                           style={{ 
                               width: `${labelWidth}mm`, 
                               height: `${globalStyles.tagHeight}mm`, 
@@ -1289,7 +1375,12 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                               backgroundColor: tag ? s.backgroundColor : 'transparent' 
                           }}
                         >
-                            {renderTagLayout(tag, s)}
+                            {tag ? renderTagLayout(tag, s) : (
+                                <div className="opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-gray-400 transition-opacity">
+                                    <Plus size={24} className="mb-1" />
+                                    <span className="text-[10px] font-bold">إضافة ملصق</span>
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -1332,7 +1423,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 </div>
                 
                 <div className="p-4 bg-gray-50 border-b border-gray-200 shrink-0">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mb-3">
                         <div className="relative flex-1">
                             <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyDown={handlePickerKeyDown} placeholder="بحث باسم المنتج أو الكود..." className="w-full pl-3 pr-9 py-2.5 border border-gray-300 text-sm focus:border-sap-primary focus:ring-1 focus:ring-sap-primary font-bold rounded-lg shadow-sm" autoFocus />
                             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
@@ -1342,6 +1433,13 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             <span>إضافة يدوي</span>
                         </button>
                     </div>
+                    <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <div className="relative flex items-center">
+                            <input type="checkbox" checked={isMultipleAdd} onChange={e => setIsMultipleAdd(e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        </div>
+                        <span className="text-xs font-bold text-gray-600">إضافة متعددة (عدم إغلاق النافذة)</span>
+                    </label>
                 </div>
 
                 <div className="overflow-y-auto bg-white custom-scrollbar flex-1">
@@ -1365,6 +1463,36 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     </table>
                 </div>
              </div>
+          </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog?.isOpen && (
+          <div className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="p-6 text-center">
+                      <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Trash2 size={32} />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-800 mb-2">تأكيد الحذف</h3>
+                      <p className="text-gray-500">{confirmDialog.message}</p>
+                  </div>
+                  <div className="flex border-t border-gray-100">
+                      <button 
+                          onClick={() => setConfirmDialog(null)} 
+                          className="flex-1 p-4 text-gray-500 hover:bg-gray-50 font-bold transition-colors"
+                      >
+                          إلغاء
+                      </button>
+                      <div className="w-px bg-gray-100"></div>
+                      <button 
+                          onClick={confirmDialog.onConfirm} 
+                          className="flex-1 p-4 text-red-500 hover:bg-red-50 font-bold transition-colors"
+                      >
+                          حذف
+                      </button>
+                  </div>
+              </div>
           </div>
       )}
     </div>

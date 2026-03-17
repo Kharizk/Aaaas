@@ -282,7 +282,13 @@ export const db = {
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "units", id)); }); }
   },
   lists: {
-      async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "lists"), orderBy("date", "desc")))), []); },
+      async getAll() { 
+          return safeDbCall(async () => {
+              const snapshot = await getDocs(query(collection(firestore, "lists"), orderBy("date", "desc")));
+              const arr = snapshotToArray(snapshot);
+              return arr.filter((item: any) => !item.docType);
+          }, []); 
+      },
       async upsert(list: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "lists", list.id), list); }); },
       async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "lists", id)); }); },
       async updateRowDismissed(listId: string, rowId: string) {
@@ -298,25 +304,43 @@ export const db = {
       }
   },
   tagLists: {
-    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "tag_lists"), orderBy("date", "desc")))), []); },
-    async upsert(tagList: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "tag_lists", tagList.id), tagList); }); },
-    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "tag_lists", id)); }); }
+    async getAll() { 
+        return safeDbCall(async () => {
+            const snapshot = await getDocs(query(collection(firestore, "lists"), orderBy("date", "desc")));
+            const arr = snapshotToArray(snapshot);
+            return arr.filter((item: any) => item.docType === 'tag_list');
+        }, []); 
+    },
+    async upsert(tagList: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "lists", tagList.id), { ...tagList, docType: 'tag_list' }); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "lists", id)); }); }
   },
   offerLists: {
-    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "offer_lists"), orderBy("date", "desc")))), []); },
-    async upsert(offerList: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "offer_lists", offerList.id), offerList); }); },
-    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "offer_lists", id)); }); }
+    async getAll() { 
+        return safeDbCall(async () => {
+            const snapshot = await getDocs(query(collection(firestore, "lists"), orderBy("date", "desc")));
+            const arr = snapshotToArray(snapshot);
+            return arr.filter((item: any) => item.docType === 'offer_list');
+        }, []); 
+    },
+    async upsert(offerList: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "lists", offerList.id), { ...offerList, docType: 'offer_list' }); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "lists", id)); }); }
   },
   catalogs: {
-    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "catalogs"), orderBy("date", "desc")))), []); },
+    async getAll() { 
+        return safeDbCall(async () => {
+            const snapshot = await getDocs(query(collection(firestore, "lists"), orderBy("date", "desc")));
+            const arr = snapshotToArray(snapshot);
+            return arr.filter((item: any) => item.docType === 'catalog');
+        }, []); 
+    },
     async get(id: string) { 
         return safeDbCall(async () => {
-            const docSnap = await getDoc(doc(firestore, "catalogs", id));
-            return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+            const docSnap = await getDoc(doc(firestore, "lists", id));
+            return docSnap.exists() && docSnap.data().docType === 'catalog' ? { id: docSnap.id, ...docSnap.data() } : null;
         }, null);
     },
-    async upsert(cat: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "catalogs", cat.id), cat); }); },
-    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "catalogs", id)); }); }
+    async upsert(cat: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "lists", cat.id), { ...cat, docType: 'catalog' }); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "lists", id)); }); }
   },
   branches: {
       async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(collection(firestore, "branches"))), []); },

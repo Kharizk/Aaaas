@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Branch, DailySales } from '../types';
 import { db } from '../services/supabase';
-import { Plus, Edit2, Trash2, Save, X, Loader2, MapPin, Search, BarChart3, Calendar } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Loader2, MapPin, Search, BarChart3, Calendar, Building2 } from 'lucide-react';
 
 interface BranchManagerProps {
   branches: Branch[];
@@ -156,7 +156,17 @@ export const BranchManager: React.FC<BranchManagerProps> = ({ branches, setBranc
             </thead>
             <tbody>
                 {filteredBranches.length === 0 ? (
-                    <tr><td colSpan={4} className="py-10 text-center text-gray-500 italic">لا توجد فروع مسجلة</td></tr>
+                    <tr>
+                        <td colSpan={4} className="p-16 text-center">
+                            <div className="flex flex-col items-center justify-center text-gray-400">
+                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                    <Building2 size={24} className="text-gray-300" />
+                                </div>
+                                <p className="text-base font-bold text-gray-500 mb-1">لا توجد فروع</p>
+                                <p className="text-xs">لم يتم العثور على أي فروع تطابق بحثك.</p>
+                            </div>
+                        </td>
+                    </tr>
                 ) : (
                     filteredBranches.map((branch, idx) => (
                         <tr key={branch.id} className="group">

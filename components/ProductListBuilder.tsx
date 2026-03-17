@@ -61,6 +61,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   
   // Highlighting State
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
 
   const totalQty = rows.reduce((acc, row) => acc + (Number(row.qty) || 0), 0);
   const validRowsCount = rows.filter(r => r.name.trim()).length;
@@ -896,7 +897,18 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                                           <span className={`px-3 py-1 rounded-full text-[10px] font-black ${list.type === 'inventory' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
                                               {list.type === 'inventory' ? 'جرد' : 'استلام'}
                                           </span>
-                                          <Trash2 size={18} className="text-red-300 hover:text-red-500 transition-colors" onClick={async (e) => { e.stopPropagation(); if(confirm('هل أنت متأكد من الحذف؟')) { await db.lists.delete(list.id); fetchSavedLists(); } }} />
+                                          <Trash2 size={18} className="text-red-300 hover:text-red-500 transition-colors" onClick={(e) => { 
+                                              e.stopPropagation(); 
+                                              setConfirmDialog({
+                                                  isOpen: true,
+                                                  message: 'هل أنت متأكد من الحذف؟',
+                                                  onConfirm: async () => {
+                                                      await db.lists.delete(list.id); 
+                                                      fetchSavedLists();
+                                                      setConfirmDialog(null);
+                                                  }
+                                              });
+                                          }} />
                                       </div>
                                   </div>
                                   
@@ -911,6 +923,36 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                               </div>
                           )) : <div className="p-12 text-center text-gray-400 font-bold text-sm">لا توجد سجلات محفوظة مطابقة</div>
                       )}
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog?.isOpen && (
+          <div className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="p-6 text-center">
+                      <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Trash2 size={32} />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-800 mb-2">تأكيد الحذف</h3>
+                      <p className="text-gray-500">{confirmDialog.message}</p>
+                  </div>
+                  <div className="flex border-t border-gray-100">
+                      <button 
+                          onClick={() => setConfirmDialog(null)} 
+                          className="flex-1 p-4 text-gray-500 hover:bg-gray-50 font-bold transition-colors"
+                      >
+                          إلغاء
+                      </button>
+                      <div className="w-px bg-gray-100"></div>
+                      <button 
+                          onClick={confirmDialog.onConfirm} 
+                          className="flex-1 p-4 text-red-500 hover:bg-red-50 font-bold transition-colors"
+                      >
+                          حذف
+                      </button>
                   </div>
               </div>
           </div>

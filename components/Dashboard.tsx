@@ -439,9 +439,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                         </div>
                     ))}
                     {products.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0).length === 0 && (
-                        <div className="text-center text-amber-400 text-xs py-4 flex flex-col items-center gap-2">
-                            <CheckCircle size={24} />
-                            المخزون في حالة جيدة
+                        <div className="text-center text-amber-400 text-xs py-8 flex flex-col items-center justify-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-amber-100/50 flex items-center justify-center">
+                                <CheckCircle size={24} className="text-amber-500" />
+                            </div>
+                            <span className="font-bold text-amber-600">المخزون في حالة جيدة</span>
                         </div>
                     )}
                 </div>
@@ -498,7 +500,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                             <span className="font-black text-purple-700 text-xs font-mono">{c.total.toLocaleString()}</span>
                         </div>
                     ))}
-                    {salesData.length === 0 && <div className="text-center text-purple-400 text-xs py-4">لا توجد بيانات كافية</div>}
+                    {salesData.length === 0 && (
+                        <div className="text-center text-purple-400 text-xs py-8 flex flex-col items-center justify-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-purple-100/50 flex items-center justify-center">
+                                <Crown size={24} className="text-purple-300" />
+                            </div>
+                            <span className="font-bold text-purple-500">لا توجد بيانات كافية</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -528,7 +537,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                             <span className="font-black text-indigo-700 text-xs font-mono">{p.total.toLocaleString()}</span>
                         </div>
                     ))}
-                    {salesData.length === 0 && <div className="text-center text-indigo-400 text-xs py-4">لا توجد بيانات كافية</div>}
+                    {salesData.length === 0 && (
+                        <div className="text-center text-indigo-400 text-xs py-8 flex flex-col items-center justify-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-indigo-100/50 flex items-center justify-center">
+                                <ShoppingBag size={24} className="text-indigo-300" />
+                            </div>
+                            <span className="font-bold text-indigo-500">لا توجد بيانات كافية</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -567,7 +583,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                             </div>
                         </div>
                     ))}
-                    {salesData.length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد عمليات حديثة</div>}
+                    {salesData.length === 0 && (
+                        <div className="text-center text-gray-400 text-xs py-8 flex flex-col items-center justify-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
+                                <Clock size={24} className="text-gray-300" />
+                            </div>
+                            <span className="font-bold text-gray-500">لا توجد عمليات حديثة</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -651,11 +651,11 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                     </tr>
                 </thead>
                 <tbody>
-                    {lastSale.cart.map((item, idx) => (
+                    {lastSale.cart?.map((item, idx) => (
                         <tr key={idx} className="border-b border-gray-200 border-dotted">
-                            <td className="py-2 pr-1">{item.product.name}</td>
+                            <td className="py-2 pr-1">{item.name || 'منتج غير معروف'}</td>
                             <td className="py-2 text-center">{item.quantity}</td>
-                            <td className="py-2 text-left font-mono">{(item.product.price * item.quantity).toFixed(2)}</td>
+                            <td className="py-2 text-left font-mono">{(item.price * item.quantity).toFixed(2)}</td>
                         </tr>
                     ))}
                 </tbody>
