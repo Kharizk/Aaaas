@@ -12,6 +12,7 @@ import {
   Smartphone, Monitor, Layout, Zap, Flame, Crown, Boxes, Type, 
   Paintbrush, Palette, Check, ArrowRight, Eye, Grid, Shapes, Diamond,
   Trophy, Activity, AlignRight, Bold, Maximize2, Move, ChevronLeft, ChevronRight,
+  ChevronUp, ChevronDown,
   ArrowLeftRight, RefreshCw, Trash, Sparkles, Moon, Sun, Ghost, Wand2
 } from 'lucide-react';
 
@@ -35,11 +36,15 @@ export const PriceGroupManager: React.FC = () => {
   const [themeId, setThemeId] = useState<PriceGroupTheme>('geometric_luxe');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(45);
+
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'content' | 'styling' | 'projects'>('content');
   const [boardsPerPage, setBoardsPerPage] = useState<1 | 2>(2);
+  const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
+  const [showAdvancedColors, setShowAdvancedColors] = useState(false);
 
   const [styles, setStyles] = useState<PriceGroupStyles>({
     primaryColor: '#006C35',
@@ -83,6 +88,7 @@ export const PriceGroupManager: React.FC = () => {
 
   const handleSave = async () => {
     setIsSaving(true);
+    setSaveSuccess(false);
     try {
       const projectData: PriceGroup = {
         id: activeProjectId || crypto.randomUUID(),
@@ -97,7 +103,8 @@ export const PriceGroupManager: React.FC = () => {
       await db.priceGroups.upsert(projectData);
       setActiveProjectId(projectData.id);
       fetchData();
-      alert("تم حفظ المشروع بنجاح");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) { alert("حدث خطأ أثناء الحفظ"); }
     finally { setIsSaving(false); }
   };
@@ -166,6 +173,13 @@ export const PriceGroupManager: React.FC = () => {
       { id: 'abstract_gradient', name: 'تدرج تجريدي', icon: Sparkles }
   ];
 
+  const colorPresets = [
+      { name: 'أخضر كلاسيكي', colors: { primaryColor: '#006C35', secondaryColor: '#C5A059', backgroundColor: '#ffffff', textColor: '#1e293b', priceColor: '#006C35', borderColor: '#006C35' } },
+      { name: 'أسود ملكي', colors: { primaryColor: '#0f172a', secondaryColor: '#fbbf24', backgroundColor: '#ffffff', textColor: '#0f172a', priceColor: '#0f172a', borderColor: '#0f172a' } },
+      { name: 'أزرق تقني', colors: { primaryColor: '#2563eb', secondaryColor: '#0ea5e9', backgroundColor: '#f8fafc', textColor: '#0f172a', priceColor: '#2563eb', borderColor: '#e2e8f0' } },
+      { name: 'أحمر ناري', colors: { primaryColor: '#dc2626', secondaryColor: '#f97316', backgroundColor: '#fff1f2', textColor: '#450a0a', priceColor: '#dc2626', borderColor: '#fecdd3' } },
+  ];
+
   const GeometricPattern = ({ color }: { color: string }) => (
     <svg className="absolute inset-0 w-full h-full opacity-[0.06] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -216,28 +230,36 @@ export const PriceGroupManager: React.FC = () => {
         </div>
 
         <div className="flex-1 space-y-5">
-            {board.items.map((item, idx) => (
-                <div key={item.id} className={`flex transition-all ${currentTheme.itemContainer} ${item.isOffer ? 'animate-pulse' : ''}`}>
-                    <div 
-                        className={`w-10 h-10 flex items-center justify-center font-black text-white shrink-0 shadow-md`} 
-                        style={{ 
-                            backgroundColor: item.isOffer ? '#ef4444' : s.primaryColor,
-                            clipPath: themeId === 'geometric_luxe' ? 'polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%)' : 'none'
-                        }}
-                    >
-                        {idx + 1}
-                    </div>
-                    <div className="flex-1 flex items-end border-b-2 pb-2 mr-4 gap-4" style={{ borderColor: `${s.primaryColor}20` }}>
-                        <div className="font-black" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, WebkitPrintColorAdjust: 'exact' }}>{item.label}</div>
-                        <div className="flex items-start gap-1 bg-gray-50/50 px-4 py-1 rounded-lg">
-                            <span className="font-black font-mono leading-none" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor, WebkitPrintColorAdjust: 'exact' }}>{item.price}</span>
-                            <div className="mt-1">
-                                <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} className="opacity-50" style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+            {board.items.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-30">
+                    <Boxes size={64} className="mb-4" style={{ color: s.primaryColor }} />
+                    <p className="font-black text-2xl" style={{ color: s.textColor }}>اللوحة فارغة</p>
+                    <p className="font-bold text-sm mt-2" style={{ color: s.textColor }}>قم بإضافة منتجات من القائمة الجانبية</p>
+                </div>
+            ) : (
+                board.items.map((item, idx) => (
+                    <div key={item.id} className={`flex transition-all ${currentTheme.itemContainer} ${item.isOffer ? 'animate-pulse' : ''}`}>
+                        <div 
+                            className={`w-10 h-10 flex items-center justify-center font-black text-white shrink-0 shadow-md`} 
+                            style={{ 
+                                backgroundColor: item.isOffer ? '#ef4444' : s.primaryColor,
+                                clipPath: themeId === 'geometric_luxe' ? 'polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%)' : 'none'
+                            }}
+                        >
+                            {idx + 1}
+                        </div>
+                        <div className="flex-1 flex items-end border-b-2 pb-2 mr-4 gap-4" style={{ borderColor: `${s.primaryColor}20` }}>
+                            <div className="font-black" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, WebkitPrintColorAdjust: 'exact' }}>{item.label}</div>
+                            <div className="flex items-start gap-1 bg-gray-50/50 px-4 py-1 rounded-lg">
+                                <span className="font-black font-mono leading-none" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor, WebkitPrintColorAdjust: 'exact' }}>{item.price}</span>
+                                <div className="mt-1">
+                                    <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} className="opacity-50" style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            ))}
+                ))
+            )}
         </div>
 
         <div className="mt-6 pt-4 border-t-2 border-gray-100 flex justify-between items-center opacity-40">
@@ -267,7 +289,29 @@ export const PriceGroupManager: React.FC = () => {
           background: 'white'
         }}
       >
-        <style>{`@media print { @page { size: A4 landscape; margin: 0 !important; } }`}</style>
+        <style>{`
+          @media print { 
+            @page { size: A4 landscape; margin: 0 !important; } 
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+              text-shadow: var(--tw-text-shadow, none) !important;
+              animation: none !important;
+              transition: none !important;
+            }
+            body, html {
+              margin: 0 !important;
+              padding: 0 !important;
+              background-color: white !important;
+            }
+            #print-container {
+              width: 297mm !important;
+              height: 210mm !important;
+              overflow: hidden !important;
+            }
+          }
+        `}</style>
         <div className="w-full h-full relative overflow-hidden">
             <BoardRenderer board={boards[0]} s={styles} isSmall={boardsPerPage === 2} isPrinting={true} />
         </div>
@@ -345,6 +389,19 @@ export const PriceGroupManager: React.FC = () => {
 
       {/* 3. SETTINGS SIDEBAR */}
       <aside className="w-[420px] border-l border-slate-200 bg-white flex flex-col shrink-0 no-print z-50 shadow-2xl overflow-hidden">
+        <div className="p-6 bg-slate-50 border-b border-slate-100">
+            <input 
+                type="text" 
+                value={projectName} 
+                onChange={e => setProjectName(e.target.value)} 
+                placeholder="اسم المشروع..."
+                className="w-full text-xl font-black bg-transparent border-none focus:ring-0 p-0 text-slate-800 placeholder:text-slate-300"
+            />
+            <div className="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-1">
+                <FolderOpen size={12} /> {activeProjectId ? 'مشروع محفوظ' : 'مشروع جديد (غير محفوظ)'}
+            </div>
+        </div>
+
         <div className="flex bg-slate-50 border-b border-slate-100 p-2 gap-1 shrink-0">
             {[
                 { id: 'content', icon: Type, label: 'المحتوى' },
@@ -364,16 +421,29 @@ export const PriceGroupManager: React.FC = () => {
                     <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white space-y-6 shadow-xl">
                         <div className="flex justify-between items-center">
                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[4px]">تعديل اللوحة النشطة</span>
-                           <div className="flex gap-2">
-                               <button onClick={() => setActiveBoardIdx(0)} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeBoardIdx === 0 ? 'bg-sap-primary text-white' : 'bg-white/10 text-white/40'}`}>أ</button>
-                               <button onClick={() => setActiveBoardIdx(1)} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeBoardIdx === 1 ? 'bg-sap-primary text-white' : 'bg-white/10 text-white/40'}`}>ب</button>
-                           </div>
+                           {boardsPerPage === 2 && (
+                               <div className="flex gap-2">
+                                   <button onClick={() => setActiveBoardIdx(0)} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeBoardIdx === 0 ? 'bg-sap-primary text-white shadow-md' : 'bg-white/10 text-white/40 hover:bg-white/20'}`}>اللوحة أ</button>
+                                   <button onClick={() => setActiveBoardIdx(1)} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeBoardIdx === 1 ? 'bg-sap-primary text-white shadow-md' : 'bg-white/10 text-white/40 hover:bg-white/20'}`}>اللوحة ب</button>
+                               </div>
+                           )}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                             <button onClick={duplicateBoard} className="py-3 bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-all">
-                                 <Copy size={16}/> نسخ أ إلى ب
-                             </button>
-                             <button onClick={() => setBoards(prev => prev.map((b, i) => i === activeBoardIdx ? { ...b, items: [] } : b))} className="py-3 bg-red-500/20 text-red-400 rounded-2xl text-[10px] font-black flex items-center justify-center gap-2">
+                             {boardsPerPage === 2 && (
+                                 <button onClick={duplicateBoard} disabled={boards[activeBoardIdx].items.length === 0} className="py-3 bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                     <Copy size={16}/> نسخ أ إلى ب
+                                 </button>
+                             )}
+                             <button onClick={() => {
+                                 setConfirmDialog({
+                                     isOpen: true,
+                                     message: 'هل أنت متأكد من مسح جميع المنتجات من هذه اللوحة؟',
+                                     onConfirm: () => {
+                                         setBoards(prev => prev.map((b, i) => i === activeBoardIdx ? { ...b, items: [] } : b));
+                                         setConfirmDialog(null);
+                                     }
+                                 });
+                             }} disabled={boards[activeBoardIdx].items.length === 0} className={`py-3 bg-red-500/20 text-red-400 rounded-2xl text-[10px] font-black flex items-center justify-center gap-2 hover:bg-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${boardsPerPage === 1 ? 'col-span-2' : ''}`}>
                                  <Trash size={16}/> مسح اللوحة
                              </button>
                         </div>
@@ -390,37 +460,67 @@ export const PriceGroupManager: React.FC = () => {
                             <button onClick={() => setShowProductPicker(true)} className="text-[10px] font-black text-sap-primary hover:underline">+ إضافة منتج</button>
                         </div>
                         <div className="space-y-3">
-                            {boards[activeBoardIdx].items.map((item, idx) => (
-                                <div key={item.id} className={`p-5 rounded-[2rem] border-2 transition-all ${item.isOffer ? 'bg-red-50 border-red-100' : 'bg-white border-slate-100'}`}>
-                                    <div className="flex justify-between items-center mb-4">
-                                        <span className="bg-slate-100 text-slate-400 text-[9px] font-black px-3 py-1 rounded-full">#{idx+1}</span>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => {
+                            {boards[activeBoardIdx].items.length === 0 ? (
+                                <div className="p-10 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center text-center gap-4 bg-slate-50">
+                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                        <Boxes size={32} className="text-slate-300" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-slate-600 text-sm">اللوحة فارغة</h4>
+                                        <p className="text-[10px] font-bold text-slate-400 mt-1">قم بإضافة منتجات للبدء في تصميم اللوحة</p>
+                                    </div>
+                                    <button onClick={() => setShowProductPicker(true)} className="mt-2 px-6 py-2 bg-sap-primary text-white rounded-xl text-xs font-black hover:bg-sap-primary-hover transition-all shadow-md">
+                                        + إضافة منتج
+                                    </button>
+                                </div>
+                            ) : (
+                                boards[activeBoardIdx].items.map((item, idx) => (
+                                    <div key={item.id} className={`p-4 rounded-[1.5rem] border-2 transition-all ${item.isOffer ? 'bg-red-50 border-red-100' : 'bg-white border-slate-100'}`}>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="bg-slate-100 text-slate-400 text-[9px] font-black px-3 py-1 rounded-full">#{idx+1}</span>
+                                            <div className="flex gap-1 items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
+                                                <button onClick={() => {
+                                                    if (idx === 0) return;
+                                                    const n = [...boards];
+                                                    const items = n[activeBoardIdx].items;
+                                                    [items[idx - 1], items[idx]] = [items[idx], items[idx - 1]];
+                                                    setBoards(n);
+                                                }} disabled={idx === 0} className="p-1.5 text-slate-400 hover:text-sap-primary hover:bg-white rounded-lg disabled:opacity-30 transition-all"><ChevronUp size={14}/></button>
+                                                <button onClick={() => {
+                                                    const n = [...boards];
+                                                    const items = n[activeBoardIdx].items;
+                                                    if (idx === items.length - 1) return;
+                                                    [items[idx + 1], items[idx]] = [items[idx], items[idx + 1]];
+                                                    setBoards(n);
+                                                }} disabled={idx === boards[activeBoardIdx].items.length - 1} className="p-1.5 text-slate-400 hover:text-sap-primary hover:bg-white rounded-lg disabled:opacity-30 transition-all"><ChevronDown size={14}/></button>
+                                                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                                <button onClick={() => {
+                                                    const n = [...boards];
+                                                    n[activeBoardIdx].items[idx].isOffer = !n[activeBoardIdx].items[idx].isOffer;
+                                                    setBoards(n);
+                                                }} className={`p-1.5 rounded-lg transition-all ${item.isOffer ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:bg-white hover:text-amber-500'}`} title="تحديد كعرض خاص"><Zap size={14}/></button>
+                                                <button onClick={() => {
+                                                    const n = [...boards];
+                                                    n[activeBoardIdx].items = n[activeBoardIdx].items.filter(i => i.id !== item.id);
+                                                    setBoards(n);
+                                                }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all" title="حذف"><Trash size={14}/></button>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-12 gap-3">
+                                            <input type="text" value={item.label} onChange={e => {
                                                 const n = [...boards];
-                                                n[activeBoardIdx].items[idx].isOffer = !n[activeBoardIdx].items[idx].isOffer;
+                                                n[activeBoardIdx].items[idx].label = e.target.value;
                                                 setBoards(n);
-                                            }} className={`p-2 rounded-xl ${item.isOffer ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-300'}`}><Zap size={14}/></button>
-                                            <button onClick={() => {
+                                            }} className="col-span-8 p-3 text-xs font-black bg-slate-50 border border-slate-100 rounded-xl focus:border-sap-primary outline-none transition-all" placeholder="اسم المنتج" />
+                                            <input type="text" value={item.price} onChange={e => {
                                                 const n = [...boards];
-                                                n[activeBoardIdx].items = n[activeBoardIdx].items.filter(i => i.id !== item.id);
+                                                n[activeBoardIdx].items[idx].price = e.target.value;
                                                 setBoards(n);
-                                            }} className="p-2 text-slate-200 hover:text-red-500"><Trash size={14}/></button>
+                                            }} className="col-span-4 p-3 text-xs font-black text-left text-sap-primary bg-sap-highlight border border-sap-primary/10 rounded-xl focus:border-sap-primary outline-none transition-all" placeholder="السعر" />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-12 gap-4">
-                                        <input type="text" value={item.label} onChange={e => {
-                                            const n = [...boards];
-                                            n[activeBoardIdx].items[idx].label = e.target.value;
-                                            setBoards(n);
-                                        }} className="col-span-8 p-3 text-sm font-black bg-slate-50 border border-slate-100 rounded-xl" />
-                                        <input type="text" value={item.price} onChange={e => {
-                                            const n = [...boards];
-                                            n[activeBoardIdx].items[idx].price = e.target.value;
-                                            setBoards(n);
-                                        }} className="col-span-4 p-3 text-sm font-black text-left text-sap-primary bg-sap-highlight border border-sap-primary/10 rounded-xl" />
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
@@ -435,57 +535,119 @@ export const PriceGroupManager: React.FC = () => {
                                 <button 
                                     key={t.id} 
                                     onClick={() => setThemeId(t.id as PriceGroupTheme)}
-                                    className={`p-4 rounded-[1.5rem] border-2 flex flex-col items-center gap-2 transition-all ${themeId === t.id ? 'bg-sap-primary text-white border-sap-primary shadow-lg scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
+                                    className={`relative p-4 rounded-[1.5rem] border-2 flex flex-col items-center gap-2 transition-all overflow-hidden ${themeId === t.id ? 'bg-sap-primary text-white border-sap-primary shadow-lg scale-[1.02]' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}
                                 >
-                                    <t.icon size={20}/>
-                                    <span className="text-[10px] font-black">{t.name}</span>
+                                    {themeId === t.id && (
+                                        <div className="absolute top-2 right-2 bg-white text-sap-primary rounded-full p-0.5 shadow-sm">
+                                            <Check size={12} strokeWidth={4} />
+                                        </div>
+                                    )}
+                                    <t.icon size={24} className={themeId === t.id ? 'text-white' : 'text-slate-300'}/>
+                                    <span className="text-[11px] font-black">{t.name}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     <div className="space-y-6 pt-6 border-t border-slate-100">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">باليتة الألوان المخصصة</label>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                            {[
-                                { label: 'خلفية اللوحة', key: 'backgroundColor' },
-                                { label: 'لون الإطار', key: 'borderColor' },
-                                { label: 'لون العناوين', key: 'textColor' },
-                                { label: 'اللون الأساسي', key: 'primaryColor' },
-                                { label: 'لون الأسعار', key: 'priceColor' },
-                                { label: 'لون العناصر', key: 'secondaryColor' }
-                            ].map(color => (
-                                <div key={color.key} className="space-y-2 bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                                    <span className="text-[9px] font-black text-slate-400">{color.label}</span>
-                                    <div className="flex items-center gap-2">
-                                        <input 
-                                            type="color" 
-                                            value={(styles as any)[color.key]} 
-                                            onChange={e => setStyles({...styles, [color.key]: e.target.value})} 
-                                            className="w-10 h-8 rounded border-none cursor-pointer p-0" 
-                                        />
-                                        <span className="text-[8px] font-mono font-bold uppercase">{(styles as any)[color.key]}</span>
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="flex justify-between items-center px-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الألوان والتنسيق</label>
+                            <button 
+                                onClick={() => setStyles({
+                                    primaryColor: '#006C35',
+                                    secondaryColor: '#C5A059',
+                                    backgroundColor: '#ffffff',
+                                    textColor: '#1e293b',
+                                    priceColor: '#006C35',
+                                    borderColor: '#006C35',
+                                    titleFontSize: 60,
+                                    itemFontSize: 24,
+                                    priceFontSize: 48,
+                                    currencyFontSize: 24,
+                                    currencySymbolType: 'icon'
+                                })}
+                                className="text-[9px] font-bold text-sap-primary hover:text-sap-primary/80 transition-colors"
+                            >
+                                استعادة الافتراضي
+                            </button>
                         </div>
+                        
+                        <div className="space-y-4">
+                            <p className="text-[10px] font-bold text-slate-400 px-2">ألوان جاهزة (اختر لتطبيق سريع):</p>
+                            <div className="flex gap-2 px-2 overflow-x-auto custom-scrollbar pb-2">
+                                {colorPresets.map((preset, i) => (
+                                    <button 
+                                        key={i}
+                                        onClick={() => setStyles({ ...styles, ...preset.colors })}
+                                        className="shrink-0 flex flex-col items-center gap-2 group"
+                                    >
+                                        <div className="w-12 h-12 rounded-full border-2 border-slate-200 flex overflow-hidden shadow-sm group-hover:scale-110 group-hover:border-sap-primary transition-all">
+                                            <div className="flex-1 h-full" style={{ backgroundColor: preset.colors.primaryColor }}></div>
+                                            <div className="flex-1 h-full" style={{ backgroundColor: preset.colors.secondaryColor }}></div>
+                                        </div>
+                                        <span className="text-[9px] font-bold text-slate-500">{preset.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="px-2">
+                            <button 
+                                onClick={() => setShowAdvancedColors(!showAdvancedColors)}
+                                className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black flex items-center justify-between px-4 transition-all"
+                            >
+                                <span>تخصيص الألوان المتقدم</span>
+                                <ChevronDown size={14} className={`transition-transform duration-300 ${showAdvancedColors ? 'rotate-180' : ''}`} />
+                            </button>
+                        </div>
+
+                        {showAdvancedColors && (
+                            <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                                {[
+                                    { label: 'خلفية اللوحة', key: 'backgroundColor' },
+                                    { label: 'لون الإطار', key: 'borderColor' },
+                                    { label: 'لون العناوين', key: 'textColor' },
+                                    { label: 'اللون الأساسي', key: 'primaryColor' },
+                                    { label: 'لون الأسعار', key: 'priceColor' },
+                                    { label: 'لون العناصر', key: 'secondaryColor' }
+                                ].map(color => (
+                                    <div key={color.key} className="space-y-2 bg-gray-50 p-3 rounded-2xl border border-gray-100 hover:border-sap-primary/30 transition-all">
+                                        <span className="text-[9px] font-black text-slate-500">{color.label}</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-slate-200 shrink-0">
+                                                <input 
+                                                    type="color" 
+                                                    value={(styles as any)[color.key]} 
+                                                    onChange={e => setStyles({...styles, [color.key]: e.target.value})} 
+                                                    className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer" 
+                                                />
+                                            </div>
+                                            <span className="text-[9px] font-mono font-bold uppercase text-slate-600">{(styles as any)[color.key]}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    <div className="space-y-8 pt-6 border-t">
-                        <h4 className="text-xs font-black text-sap-primary flex items-center gap-2">أحجام الخطوط</h4>
+                    <div className="space-y-8 pt-6 border-t border-slate-100">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">أحجام الخطوط</label>
                         {[
                             { label: 'حجم العنوان', key: 'titleFontSize', min: 20, max: 120 },
                             { label: 'حجم المنتج', key: 'itemFontSize', min: 10, max: 60 },
                             { label: 'حجم السعر', key: 'priceFontSize', min: 20, max: 150 },
                             { label: 'حجم رمز العملة', key: 'currencyFontSize', min: 10, max: 100 }
                         ].map(font => (
-                            <div key={font.key} className="space-y-3">
-                                <div className="flex justify-between items-center text-[10px] font-black text-slate-400">
+                            <div key={font.key} className="space-y-3 px-2">
+                                <div className="flex justify-between items-center text-[10px] font-black text-slate-500">
                                     <span>{font.label}</span>
-                                    <span className="text-sap-primary">{(styles as any)[font.key]}px</span>
+                                    <span className="text-sap-primary bg-sap-highlight px-2 py-0.5 rounded-md">{(styles as any)[font.key]}px</span>
                                 </div>
-                                <input type="range" min={font.min} max={font.max} value={(styles as any)[font.key]} onChange={e => setStyles({...styles, [font.key]: Number(e.target.value)})} className="w-full accent-sap-primary" />
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] text-slate-300 font-bold">A</span>
+                                    <input type="range" min={font.min} max={font.max} value={(styles as any)[font.key]} onChange={e => setStyles({...styles, [font.key]: Number(e.target.value)})} className="flex-1 accent-sap-primary h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                    <span className="text-[14px] text-slate-400 font-bold">A</span>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -528,10 +690,10 @@ export const PriceGroupManager: React.FC = () => {
                     <div className="space-y-4 pt-6 border-t">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">تخطيط الورقة (A4)</label>
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={() => setBoardsPerPage(1)} className={`p-6 rounded-[2rem] border-4 flex flex-col items-center gap-3 transition-all ${boardsPerPage === 1 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400'}`}>
+                            <button onClick={() => { setBoardsPerPage(1); setActiveBoardIdx(0); }} className={`p-6 rounded-[2rem] border-4 flex flex-col items-center gap-3 transition-all ${boardsPerPage === 1 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 hover:border-slate-200'}`}>
                                 <Monitor size={28}/> <span className="text-[12px] font-black">لوحة واحدة</span>
                             </button>
-                            <button onClick={() => setBoardsPerPage(2)} className={`p-6 rounded-[2rem] border-4 flex flex-col items-center gap-3 transition-all ${boardsPerPage === 2 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400'}`}>
+                            <button onClick={() => setBoardsPerPage(2)} className={`p-6 rounded-[2rem] border-4 flex flex-col items-center gap-3 transition-all ${boardsPerPage === 2 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 hover:border-slate-200'}`}>
                                 <LayoutGrid size={28}/> <span className="text-[12px] font-black">لوحة مزدوجة</span>
                             </button>
                         </div>
@@ -541,37 +703,58 @@ export const PriceGroupManager: React.FC = () => {
 
             {activeTab === 'projects' && (
                 <div className="space-y-4">
-                    <button onClick={createNew} className="w-full p-12 border-4 border-dashed border-slate-100 text-slate-300 hover:border-sap-primary hover:text-sap-primary rounded-[3rem] font-black text-sm flex flex-col items-center gap-4 transition-all">
+                    <button onClick={createNew} className="w-full p-12 border-4 border-dashed border-slate-100 text-slate-300 hover:border-sap-primary hover:text-sap-primary hover:bg-sap-primary/5 rounded-[3rem] font-black text-sm flex flex-col items-center gap-4 transition-all">
                         <FilePlus size={40}/> إنشاء مشروع جديد
                     </button>
-                    {projects.map(pj => (
-                        <div key={pj.id} className="p-6 bg-white border border-slate-100 rounded-[2rem] hover:border-sap-primary hover:shadow-xl cursor-pointer flex justify-between items-center group transition-all" onClick={() => loadProject(pj)}>
-                             <div className="text-right">
-                                 <div className="font-black text-slate-800 text-lg">{pj.name}</div>
-                                 <div className="text-[10px] text-gray-400 font-bold mt-1">{new Date(pj.date).toLocaleDateString('ar-SA')}</div>
-                             </div>
-                             <button onClick={(e) => { e.stopPropagation(); db.priceGroups.delete(pj.id); fetchData(); }} className="p-3 text-red-300 hover:text-red-500"><Trash2 size={20}/></button>
+                    {projects.length === 0 ? (
+                        <div className="p-10 flex flex-col items-center justify-center text-center gap-4 opacity-50">
+                            <FolderOpen size={48} className="text-slate-300" />
+                            <div>
+                                <h4 className="font-black text-slate-600 text-sm">لا توجد مشاريع محفوظة</h4>
+                                <p className="text-[10px] font-bold text-slate-400 mt-1">قم بإنشاء مشروع جديد للبدء</p>
+                            </div>
                         </div>
-                    ))}
+                    ) : (
+                        projects.map(pj => (
+                            <div key={pj.id} className={`p-6 bg-white border-2 rounded-[2rem] hover:border-sap-primary hover:shadow-xl cursor-pointer flex justify-between items-center group transition-all ${activeProjectId === pj.id ? 'border-sap-primary shadow-md' : 'border-slate-100'}`} onClick={() => loadProject(pj)}>
+                                 <div className="text-right">
+                                     <div className="font-black text-slate-800 text-lg">{pj.name}</div>
+                                     <div className="text-[10px] text-gray-400 font-bold mt-1">{new Date(pj.date).toLocaleDateString('ar-SA')}</div>
+                                 </div>
+                                 <button onClick={(e) => { 
+                                     e.stopPropagation(); 
+                                     setConfirmDialog({
+                                         isOpen: true,
+                                         message: 'هل أنت متأكد من حذف هذا المشروع نهائياً؟',
+                                         onConfirm: () => {
+                                             db.priceGroups.delete(pj.id); 
+                                             fetchData();
+                                             setConfirmDialog(null);
+                                         }
+                                     });
+                                 }} className="p-3 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20}/></button>
+                            </div>
+                        ))
+                    )}
                 </div>
             )}
         </div>
 
         <div className="p-8 border-t border-slate-100 bg-white shrink-0">
-             <button onClick={handleSave} disabled={isSaving} className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-base flex items-center justify-center gap-4 shadow-2xl">
-                {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />} 
-                <span>حفظ المشروع سحابياً</span>
+             <button onClick={handleSave} disabled={isSaving || saveSuccess} className={`w-full py-5 text-white rounded-[2rem] font-black text-base flex items-center justify-center gap-4 shadow-2xl transition-all ${saveSuccess ? 'bg-green-500 hover:bg-green-600' : 'bg-slate-900 hover:bg-slate-800'}`}>
+                {isSaving ? <Loader2 size={24} className="animate-spin" /> : saveSuccess ? <Check size={24} /> : <Save size={24} />} 
+                <span>{saveSuccess ? 'تم الحفظ بنجاح' : 'حفظ المشروع سحابياً'}</span>
             </button>
         </div>
       </aside>
 
       {/* PRODUCT PICKER MODAL */}
       {showProductPicker && (
-          <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in">
-              <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-200">
+              <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
                 <div className="p-8 bg-sap-shell text-white flex justify-between items-center">
                    <h3 className="font-black text-2xl flex items-center gap-4"><Boxes size={32} className="text-sap-secondary"/> قاعدة البيانات</h3>
-                   <button onClick={() => setShowProductPicker(false)} className="p-3 hover:bg-white/10 rounded-full"><X size={28}/></button>
+                   <button onClick={() => setShowProductPicker(false)} className="p-3 hover:bg-white/10 rounded-full transition-all"><X size={28}/></button>
                 </div>
                 <div className="p-8 border-b">
                     <div className="relative">
@@ -579,9 +762,9 @@ export const PriceGroupManager: React.FC = () => {
                         <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300" size={32} />
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-4">
-                        <button onClick={() => addProductToBoard()} className="w-full p-8 border-4 border-dashed border-slate-100 text-sap-primary hover:bg-sap-highlight/20 rounded-[2.5rem] font-black text-lg flex items-center justify-center gap-4">
-                            <Plus size={28}/> إضافة صنف يدوي
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-3">
+                        <button onClick={() => addProductToBoard()} className="w-full p-4 border-2 border-dashed border-sap-primary/30 text-sap-primary bg-sap-highlight/10 hover:bg-sap-highlight/30 rounded-[1.5rem] font-black text-sm flex items-center justify-center gap-3 transition-all">
+                            <Plus size={20}/> إضافة صنف يدوي
                         </button>
                         {filteredProducts.map((p) => (
                             <div key={p.id} onClick={() => addProductToBoard(p)} className="p-6 border-2 border-slate-50 rounded-[2rem] hover:border-sap-primary hover:shadow-xl cursor-pointer flex justify-between items-center transition-all group">
@@ -594,6 +777,28 @@ export const PriceGroupManager: React.FC = () => {
                         ))}
                 </div>
              </div>
+          </div>
+      )}
+      {/* CONFIRMATION DIALOG */}
+      {confirmDialog?.isOpen && (
+          <div className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-200">
+              <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                  <div className="p-8 text-center space-y-4">
+                      <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                          <Trash2 size={32} />
+                      </div>
+                      <h3 className="font-black text-xl text-slate-800">تأكيد الحذف</h3>
+                      <p className="text-slate-500 font-bold text-sm">{confirmDialog.message}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                      <button onClick={() => setConfirmDialog(null)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black text-sm hover:bg-slate-50 transition-all">
+                          إلغاء
+                      </button>
+                      <button onClick={confirmDialog.onConfirm} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black text-sm hover:bg-red-600 transition-all shadow-md shadow-red-500/20">
+                          نعم، احذف
+                      </button>
+                  </div>
+              </div>
           </div>
       )}
     </div>

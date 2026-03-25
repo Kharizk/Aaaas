@@ -742,6 +742,19 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             backgroundColor: 'white',
             boxSizing: 'border-box'
         } as any}>
+            <style>{`
+                @media print {
+                    @page { size: A4 portrait; margin: 0 !important; }
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+                        text-shadow: var(--tw-text-shadow, none) !important;
+                        animation: none !important;
+                        transition: none !important;
+                    }
+                }
+            `}</style>
             {Array.from({ length: 16 }).map((_, i) => {
                 const tag = selectedTags[i];
                 const s = getEffectiveStyle(tag);

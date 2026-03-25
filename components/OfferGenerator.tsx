@@ -377,6 +377,14 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     size: A4 ${orientation};
                     margin: 0 !important;
                 }
+                * {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+                    text-shadow: var(--tw-text-shadow, none) !important;
+                    animation: none !important;
+                    transition: none !important;
+                }
             }
         `}</style>
         {Array.from({ length: labelsPerPage }).map((_, i) => (
