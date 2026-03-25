@@ -66,15 +66,6 @@ export const PriceGroupManager: React.FC = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Sync styles with global settings
-  useEffect(() => {
-    setStyles(prev => ({
-      ...prev,
-      currencySymbolType: settings.currencySymbolType,
-      currencySymbolImage: settings.currencySymbolImage
-    }));
-  }, [settings.currencySymbolType, settings.currencySymbolImage]);
-
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -236,11 +227,13 @@ export const PriceGroupManager: React.FC = () => {
                     >
                         {idx + 1}
                     </div>
-                    <div className="flex-1 flex justify-between items-end border-b-2 pb-2 mr-4" style={{ borderColor: `${s.primaryColor}20` }}>
+                    <div className="flex-1 flex items-end border-b-2 pb-2 mr-4 gap-4" style={{ borderColor: `${s.primaryColor}20` }}>
                         <div className="font-black" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, WebkitPrintColorAdjust: 'exact' }}>{item.label}</div>
-                        <div className="flex items-baseline gap-1 bg-gray-50/50 px-4 py-1 rounded-lg">
-                            <span className="font-black font-mono" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor, WebkitPrintColorAdjust: 'exact' }}>{item.price}</span>
-                            <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color={s.textColor} className="opacity-50" style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                        <div className="flex items-start gap-1 bg-gray-50/50 px-4 py-1 rounded-lg">
+                            <span className="font-black font-mono leading-none" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor, WebkitPrintColorAdjust: 'exact' }}>{item.price}</span>
+                            <div className="mt-1">
+                                <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} className="opacity-50" style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -484,7 +477,8 @@ export const PriceGroupManager: React.FC = () => {
                         {[
                             { label: 'حجم العنوان', key: 'titleFontSize', min: 20, max: 120 },
                             { label: 'حجم المنتج', key: 'itemFontSize', min: 10, max: 60 },
-                            { label: 'حجم السعر', key: 'priceFontSize', min: 20, max: 150 }
+                            { label: 'حجم السعر', key: 'priceFontSize', min: 20, max: 150 },
+                            { label: 'حجم رمز العملة', key: 'currencyFontSize', min: 10, max: 100 }
                         ].map(font => (
                             <div key={font.key} className="space-y-3">
                                 <div className="flex justify-between items-center text-[10px] font-black text-slate-400">
@@ -494,6 +488,41 @@ export const PriceGroupManager: React.FC = () => {
                                 <input type="range" min={font.min} max={font.max} value={(styles as any)[font.key]} onChange={e => setStyles({...styles, [font.key]: Number(e.target.value)})} className="w-full accent-sap-primary" />
                             </div>
                         ))}
+                    </div>
+
+                    <div className="space-y-4 pt-6 border-t">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">رمز العملة</label>
+                        <div className="space-y-3">
+                            <select 
+                                value={styles.currencySymbolType || 'icon'} 
+                                onChange={e => setStyles({...styles, currencySymbolType: e.target.value as any})}
+                                className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:border-sap-primary outline-none"
+                            >
+                                <option value="icon">رمز (أيقونة)</option>
+                                <option value="text">نص (ر.س)</option>
+                                <option value="custom_image">صورة مخصصة</option>
+                            </select>
+                            
+                            {styles.currencySymbolType === 'custom_image' && (
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span className="text-xs font-bold text-gray-500">صورة العملة</span>
+                                    <div className="flex items-center gap-2">
+                                        {styles.currencySymbolImage && <img src={styles.currencySymbolImage} className="w-8 h-8 object-contain border border-gray-200 rounded bg-white" />}
+                                        <label className="cursor-pointer bg-white hover:bg-gray-100 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 shadow-sm transition-all">
+                                            رفع صورة
+                                            <input type="file" className="hidden" onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) { 
+                                                    const reader = new FileReader(); 
+                                                    reader.onload = (re) => setStyles({...styles, currencySymbolImage: re.target?.result as string}); 
+                                                    reader.readAsDataURL(file); 
+                                                }
+                                            }} />
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="space-y-4 pt-6 border-t">
