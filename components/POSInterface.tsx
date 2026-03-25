@@ -838,21 +838,23 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                             key={product.id}
                             onClick={() => addToCart(product)}
                             onContextMenu={(e) => handleRightClickProduct(e, product)}
-                            className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col gap-2 hover:border-sap-primary hover:shadow-lg transition-all group text-right h-32 relative overflow-hidden"
+                            className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col justify-between hover:border-sap-primary hover:shadow-lg transition-all group text-right h-28 relative overflow-hidden"
                         >
-                            <div className="flex-1 w-full">
-                                <h3 className="font-bold text-sm text-gray-800 line-clamp-2 leading-tight group-hover:text-sap-primary transition-colors">{product.name}</h3>
-                                <p className="text-[10px] text-gray-400 font-mono mt-1">{product.code}</p>
+                            <div className="flex justify-between items-start w-full gap-2">
+                                <div className="flex-1">
+                                    <h3 className="font-bold text-sm text-gray-800 line-clamp-2 leading-tight group-hover:text-sap-primary transition-colors">{product.name}</h3>
+                                    <p className="text-[10px] text-gray-400 font-mono mt-1">{product.code}</p>
+                                </div>
+                                <span className="font-black text-sm text-sap-secondary bg-sap-secondary/10 px-2 py-1 rounded-lg shrink-0">{parseFloat(product.price || '0').toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between items-end w-full mt-auto">
-                                <span className="font-black text-lg text-sap-secondary">{parseFloat(product.price || '0').toLocaleString()}</span>
+                            <div className="flex justify-end w-full mt-auto">
                                 <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-sap-primary group-hover:text-white transition-colors">
                                     <Plus size={14}/>
                                 </div>
                             </div>
                             {/* Stock Indicator */}
                             {(product.stock || 0) <= (product.lowStockThreshold || 5) && (
-                                <div className="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" title="مخزون منخفض"/>
+                                <div className="absolute bottom-3 right-3 w-2 h-2 bg-red-500 rounded-full animate-pulse" title="مخزون منخفض"/>
                             )}
                         </button>
                     ))}
@@ -894,12 +896,15 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                     {cart.map((item, idx) => (
                         <div key={`${item.productId}-${idx}`} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${item.quantity < 0 ? 'bg-red-100 border-red-200' : 'bg-gray-50 border-gray-100 group hover:border-gray-300'}`}>
                             <div className="flex-1">
-                                <h4 className="font-bold text-sm text-gray-800">{item.name} {item.quantity < 0 && <span className="text-[10px] text-red-600 bg-white px-1 rounded border border-red-200 mr-1">مرتجع</span>}</h4>
-                                <div className="text-xs text-gray-500 font-mono flex items-center gap-2">
-                                    <span>{item.price.toLocaleString()} × {Math.abs(item.quantity)}</span>
-                                    {item.discount && item.discount > 0 && <span className="text-red-500 bg-red-50 px-1 rounded">-{item.discount}</span>}
+                                <div className="flex justify-between items-start gap-2">
+                                    <h4 className="font-bold text-sm text-gray-800 line-clamp-2">{item.name} {item.quantity < 0 && <span className="text-[10px] text-red-600 bg-white px-1 rounded border border-red-200 mr-1">مرتجع</span>}</h4>
+                                    <span className="font-black text-sm text-sap-secondary font-mono shrink-0">{item.price.toLocaleString()}</span>
                                 </div>
-                                <div className="mt-1 flex items-center gap-1">
+                                <div className="text-xs text-gray-500 font-mono flex items-center gap-2 mt-1">
+                                    <span>الكمية: {Math.abs(item.quantity)}</span>
+                                    {item.discount && item.discount > 0 && <span className="text-red-500 bg-red-50 px-1 rounded">خصم: {item.discount}</span>}
+                                </div>
+                                <div className="mt-2 flex items-center gap-1">
                                     <span className="text-[10px] text-gray-400">خصم:</span>
                                     <input 
                                         type="number" 
