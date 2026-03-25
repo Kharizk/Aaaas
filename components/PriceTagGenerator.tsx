@@ -372,29 +372,31 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
           const position = s.currencySymbolPosition || 'after';
           
           const symbol = (
-              <CurrencySymbolRenderer 
-                  type={s.currencySymbolType} 
-                  imageUrl={s.currencySymbolImage} 
-                  color={s.currencyColor} 
-                  size={s.currencySymbolSize || 14}
-              />
+              <div className="shrink-0">
+                  <CurrencySymbolRenderer 
+                      type={s.currencySymbolType} 
+                      imageUrl={s.currencySymbolImage} 
+                      color={s.currencyColor} 
+                      size={s.currencySymbolSize || 14}
+                  />
+              </div>
           );
 
-          const price = priceComponent || <span style={{ fontSize: `${s.priceFontSize * scale}pt`, color: s.priceColor, fontWeight: s.priceWeight, fontFamily: 'monospace' }}>{tag.price}</span>;
+          const price = priceComponent || <span className="shrink-0" style={{ fontSize: `${s.priceFontSize * scale}pt`, color: s.priceColor, fontWeight: s.priceWeight, fontFamily: 'monospace' }}>{tag.price}</span>;
 
           if (position === 'before') {
-              return <div className="flex items-center" style={{ gap: `${margin}px` }}>{symbol}{price}</div>;
+              return <div className="flex items-center flex-nowrap shrink-0" style={{ gap: `${margin}px` }}>{symbol}{price}</div>;
           }
           if (position === 'after') {
-              return <div className="flex items-center" style={{ gap: `${margin}px` }}>{price}{symbol}</div>;
+              return <div className="flex items-center flex-nowrap shrink-0" style={{ gap: `${margin}px` }}>{price}{symbol}</div>;
           }
           if (position === 'superscript_before') {
-              return <div className="flex items-start" style={{ gap: `${margin}px` }}><div className="mt-1">{symbol}</div>{price}</div>;
+              return <div className="flex items-start flex-nowrap shrink-0" style={{ gap: `${margin}px` }}><div className="mt-1 shrink-0">{symbol}</div>{price}</div>;
           }
           if (position === 'superscript_after') {
-              return <div className="flex items-start" style={{ gap: `${margin}px` }}>{price}<div className="mt-1">{symbol}</div></div>;
+              return <div className="flex items-start flex-nowrap shrink-0" style={{ gap: `${margin}px` }}>{price}<div className="mt-1 shrink-0">{symbol}</div></div>;
           }
-          return <div className="flex items-center gap-1">{price}{symbol}</div>;
+          return <div className="flex items-center gap-1 flex-nowrap shrink-0">{price}{symbol}</div>;
       };
 
       if (s.template === 'classic_vertical') {
@@ -472,9 +474,9 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
           const itemCode = product?.code || tag.productId.slice(0,8).toUpperCase() || 'REF-001';
           const [intPart, decPart] = tag.price.split('.');
           return (
-            <div className="flex flex-row h-full w-full relative overflow-hidden font-sans">
+            <div className="flex flex-row flex-nowrap h-full w-full relative overflow-hidden font-sans">
                 {/* Left Side (Price Focus Section) */}
-                <div className="w-[38%] flex flex-col items-center justify-center border-l-2 border-gray-200 p-2 relative" style={{ backgroundColor: s.backgroundColor }}>
+                <div className="w-[38%] shrink-0 flex flex-col items-center justify-center border-l-2 border-gray-200 p-2 relative" style={{ backgroundColor: s.backgroundColor }}>
                     <div className="absolute top-1 left-2 flex flex-col items-start gap-0.5 opacity-20">
                        <BarcodeIcon size={12} />
                        <div className="w-8 h-1 bg-black rounded-full"></div>
@@ -490,11 +492,11 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     <div className="flex items-start mt-2">
                         <PriceWithCurrency 
                             priceComponent={
-                                <div className="flex items-baseline">
-                                    <span style={{ fontSize: `${s.priceFontSize * 1.4}pt`, color: s.priceColor, fontWeight: '900', fontFamily: 'monospace', letterSpacing: '-2px' }} className="leading-none">
+                                <div className="flex items-baseline flex-nowrap">
+                                    <span style={{ fontSize: `${s.priceFontSize * 1.4}pt`, color: s.priceColor, fontWeight: '900', fontFamily: 'monospace', letterSpacing: '-2px' }} className="leading-none shrink-0">
                                       {intPart}
                                     </span>
-                                    <span className="text-[12pt] font-black leading-none ml-1" style={{color: s.priceColor}}>
+                                    <span className="text-[12pt] font-black leading-none ml-1 shrink-0" style={{color: s.priceColor}}>
                                        .{decPart || '00'}
                                     </span>
                                 </div>
@@ -505,8 +507,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 </div>
 
                 {/* Right Side (Information Section) */}
-                <div className="w-[62%] flex flex-col justify-between p-3" style={{ backgroundColor: s.backgroundColor }}>
-                    <div className="flex justify-between items-start">
+                <div className="w-[62%] shrink-0 flex flex-col justify-between p-3" style={{ backgroundColor: s.backgroundColor }}>
+                    <div className="flex justify-between items-start flex-nowrap">
                         {s.showLogo && globalStyles.logoUrl ? (
                             <img src={globalStyles.logoUrl} alt="Logo" style={{ height: `${globalStyles.logoSize * 0.7}px` }} className="object-contain" />
                         ) : (
@@ -664,9 +666,9 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
           const unitDisplay = (s.showUnit && tag.unitName) ? tag.unitName : 'حبة';
           
           return (
-            <div className="flex flex-row h-full w-full border border-black relative overflow-hidden font-sans text-black" style={{ backgroundColor: s.backgroundColor, direction: 'rtl' }}>
+            <div className="flex flex-row flex-nowrap h-full w-full border border-black relative overflow-hidden font-sans text-black" style={{ backgroundColor: s.backgroundColor, direction: 'rtl' }}>
                 {/* Right Section (Product Details) */}
-                <div className="w-[65%] flex flex-col p-2 relative border-l border-black/20">
+                <div className="w-[65%] shrink-0 flex flex-col p-2 relative border-l border-black/20">
                     {/* Product Name */}
                     <div 
                         className="flex-1 flex items-start justify-start text-right leading-snug break-words mb-1 font-bold"
@@ -677,18 +679,18 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     
                     {/* Bottom Details */}
                     <div className="mt-auto text-[9px] font-bold space-y-0.5 pt-1">
-                        <div className="flex justify-between items-center" style={{ color: s.unitColor }}>
-                            <span>العبوة: 1</span>
-                            <span>الوحدة: {unitDisplay}</span>
+                        <div className="flex justify-between items-center flex-nowrap" style={{ color: s.unitColor }}>
+                            <span className="shrink-0">العبوة: 1</span>
+                            <span className="shrink-0">الوحدة: {unitDisplay}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="font-mono tracking-tighter">Barcode: {barcode}</span>
+                        <div className="flex justify-between items-center flex-nowrap">
+                            <span className="font-mono tracking-tighter shrink-0">Barcode: {barcode}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Left Section (Price) */}
-                <div className="w-[35%] flex flex-col items-center justify-between p-1" style={{ backgroundColor: s.backgroundColor }}>
+                <div className="w-[35%] shrink-0 flex flex-col items-center justify-between p-1" style={{ backgroundColor: s.backgroundColor }}>
                     <div className="flex-1 flex flex-col items-center justify-center">
                         <PriceWithCurrency />
                     </div>

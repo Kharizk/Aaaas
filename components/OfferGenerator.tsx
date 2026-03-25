@@ -250,9 +250,9 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                 </span>
                              )}
                         </div>
-                        <div className="flex items-baseline" dir="ltr">
-                            <span className="font-black tracking-tighter text-black" style={{ fontSize: isPrint ? `${pFontSize * 0.85}pt` : `${pFontSize}px` }}>{priceMain}</span>
-                            <div className="flex flex-col items-start ml-1 leading-none">
+                        <div className="flex items-baseline flex-nowrap shrink-0" dir="ltr">
+                            <span className="font-black tracking-tighter text-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 0.85}pt` : `${pFontSize}px` }}>{priceMain}</span>
+                            <div className="flex flex-col items-start ml-1 leading-none shrink-0">
                                 <span className="font-black text-black" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>.{priceDec}</span>
                                 <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="black" className="w-4 h-4 mt-1" />
                             </div>
@@ -321,18 +321,18 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         </div>
                     )}
 
-                    <div className="flex-1 flex items-center justify-center gap-1.5" dir="ltr">
-                        <div className="flex items-baseline leading-none">
-                            <span className="font-black tracking-tighter" style={{ fontSize: isPrint ? `${pFontSize * 0.75}pt` : `${pFontSize}px` }}>
+                    <div className="flex-1 flex items-center justify-center gap-1.5 flex-nowrap" dir="ltr">
+                        <div className="flex items-baseline leading-none flex-nowrap shrink-0">
+                            <span className="font-black tracking-tighter shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 0.75}pt` : `${pFontSize}px` }}>
                                 {priceMain}
                             </span>
                         </div>
 
-                        <div className="flex items-center h-full">
+                        <div className="flex items-center h-full shrink-0">
                             <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
                         </div>
 
-                        <div className="flex flex-col items-start leading-none pt-1">
+                        <div className="flex flex-col items-start leading-none pt-1 shrink-0">
                             <span className="font-black text-red-500" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>
                                 {priceDec}
                             </span>

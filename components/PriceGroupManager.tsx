@@ -166,11 +166,11 @@ export const PriceGroupManager: React.FC = () => {
   }, [searchTerm, products]);
 
   const themesList = [
-      { id: 'geometric_luxe', name: 'النمط الهندسي', icon: Shapes },
-      { id: 'modern_grid', name: 'الشبكة العصرية', icon: Grid },
-      { id: 'royal_minimal', name: 'ملكي فاخر', icon: Crown },
-      { id: 'digital_punch', name: 'رقمي جريء', icon: Zap },
-      { id: 'abstract_gradient', name: 'تدرج تجريدي', icon: Sparkles }
+      { id: 'geometric_luxe', name: 'الحديث النظيف', icon: Layout },
+      { id: 'modern_grid', name: 'الشبكة التقنية', icon: Grid },
+      { id: 'royal_minimal', name: 'الكلاسيكي الفاخر', icon: Crown },
+      { id: 'digital_punch', name: 'العروض الجريئة', icon: Zap },
+      { id: 'abstract_gradient', name: 'الناعم العضوي', icon: Sparkles }
   ];
 
   const colorPresets = [
@@ -180,95 +180,160 @@ export const PriceGroupManager: React.FC = () => {
       { name: 'أحمر ناري', colors: { primaryColor: '#dc2626', secondaryColor: '#f97316', backgroundColor: '#fff1f2', textColor: '#450a0a', priceColor: '#dc2626', borderColor: '#fecdd3' } },
   ];
 
-  const GeometricPattern = ({ color }: { color: string }) => (
-    <svg className="absolute inset-0 w-full h-full opacity-[0.06] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <pattern id="geo-pattern" width="80" height="80" patternUnits="userSpaceOnUse">
-          <path d="M0 80L80 0M-20 20L20 -20M60 100L100 60" stroke={color} strokeWidth="1.5" fill="none" />
-          <circle cx="40" cy="40" r="3" fill={color} />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#geo-pattern)" />
-    </svg>
-  );
-
   const BoardRenderer = ({ board, s, isSmall = false, isPrinting = false }: { board: PriceGroupBoard, s: PriceGroupStyles, isSmall?: boolean, isPrinting?: boolean }) => {
     const scale = isSmall ? 0.75 : 1;
-    const themeStyles: Record<PriceGroupTheme, any> = {
-        geometric_luxe: { container: "border-solid", header: "flex-row border-b-4", itemContainer: "items-center", pattern: true },
-        modern_grid: { container: "border-double", header: "flex-col items-center text-center border-b-8", itemContainer: "items-end bg-black/5 rounded-2xl p-2", pattern: false },
-        royal_minimal: { container: "border-solid rounded-[3rem]", header: "flex-row-reverse border-b-2 italic", itemContainer: "items-baseline", pattern: false },
-        digital_punch: { container: "border-solid", header: "flex-row bg-black text-white p-6 mb-10", itemContainer: "items-center border-r-8", pattern: false },
-        abstract_gradient: { container: "border-none shadow-2xl rounded-[4rem]", header: "flex-col items-start border-none", itemContainer: "items-center backdrop-blur-md bg-white/30 rounded-[2rem] p-4", pattern: false }
-    };
-    const currentTheme = themeStyles[themeId] || themeStyles.geometric_luxe;
-
-    return (
-      <div 
-        className={`w-full h-full flex flex-col relative text-right overflow-hidden ${currentTheme.container}`}
-        style={{ 
-          backgroundColor: s.backgroundColor, 
-          padding: `${isSmall ? s.padding * 0.8 : s.padding}px`,
-          border: `${isSmall ? s.borderWidth * 0.8 : s.borderWidth}px solid ${s.borderColor || s.primaryColor}`,
-          background: themeId === 'abstract_gradient' ? `linear-gradient(135deg, ${s.backgroundColor}, ${s.primaryColor}20)` : s.backgroundColor,
-          WebkitPrintColorAdjust: 'exact',
-          printColorAdjust: 'exact',
-        } as any}
-      >
-        {s.showGeometricPattern && currentTheme.pattern && <GeometricPattern color={s.primaryColor} />}
-        
-        <div className={`flex justify-between items-center mb-8 pb-4 ${currentTheme.header}`} style={{ borderColor: s.secondaryColor }}>
-          {showLogo && logoUrl ? (
-            <img src={logoUrl} className={`${isSmall ? 'h-12' : 'h-20'} object-contain`} />
-          ) : (
-            <div className="w-14 h-14 text-white flex items-center justify-center font-black rounded-2xl text-2xl rotate-3 shadow-lg" style={{ backgroundColor: s.primaryColor }}>SF</div>
-          )}
-          <div className={`flex-1 text-right ${themeId === 'digital_punch' ? 'mr-0' : 'mr-6'}`}>
-              <h1 className="font-black leading-none" style={{ fontSize: `${isSmall ? s.titleFontSize * 0.85 : s.titleFontSize}px`, color: themeId === 'digital_punch' ? 'white' : s.textColor, fontWeight: s.titleWeight }}>{board.title}</h1>
-              <div className="h-1 mt-2 rounded-full w-24" style={{ backgroundColor: s.secondaryColor }}></div>
-          </div>
+    
+    const EmptyState = () => (
+        <div className="h-full flex flex-col items-center justify-center opacity-30">
+            <Boxes size={64} className="mb-4" style={{ color: s.primaryColor }} />
+            <p className="font-black text-2xl" style={{ color: s.textColor }}>اللوحة فارغة</p>
+            <p className="font-bold text-sm mt-2" style={{ color: s.textColor }}>قم بإضافة منتجات من القائمة الجانبية</p>
         </div>
+    );
 
-        <div className="flex-1 space-y-5">
-            {board.items.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-30">
-                    <Boxes size={64} className="mb-4" style={{ color: s.primaryColor }} />
-                    <p className="font-black text-2xl" style={{ color: s.textColor }}>اللوحة فارغة</p>
-                    <p className="font-bold text-sm mt-2" style={{ color: s.textColor }}>قم بإضافة منتجات من القائمة الجانبية</p>
+    // Theme 1: geometric_luxe (الحديث النظيف)
+    if (themeId === 'geometric_luxe') {
+        return (
+            <div className="w-full h-full flex flex-col relative text-right overflow-hidden bg-white shadow-sm" style={{ padding: `${s.padding * scale}px`, border: `${s.borderWidth * scale}px solid ${s.borderColor || s.primaryColor}`, backgroundColor: s.backgroundColor }}>
+                <div className="flex flex-col items-center mb-10 pb-8 border-b" style={{ borderColor: `${s.secondaryColor}30` }}>
+                    {showLogo && logoUrl ? <img src={logoUrl} className={`${isSmall ? 'h-16' : 'h-24'} object-contain mb-6`} /> : null}
+                    <h1 className="font-black text-center tracking-tight" style={{ fontSize: `${s.titleFontSize * scale * 1.1}px`, color: s.textColor }}>{board.title}</h1>
                 </div>
-            ) : (
-                board.items.map((item, idx) => (
-                    <div key={item.id} className={`flex transition-all ${currentTheme.itemContainer} ${item.isOffer ? 'animate-pulse' : ''}`}>
-                        <div 
-                            className={`w-10 h-10 flex items-center justify-center font-black text-white shrink-0 shadow-md`} 
-                            style={{ 
-                                backgroundColor: item.isOffer ? '#ef4444' : s.primaryColor,
-                                clipPath: themeId === 'geometric_luxe' ? 'polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%)' : 'none'
-                            }}
-                        >
-                            {idx + 1}
+                <div className="flex-1 space-y-5">
+                    {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
+                        <div key={item.id} className="flex items-center justify-between py-3 group hover:bg-gray-50/50 transition-colors px-4 rounded-xl flex-nowrap">
+                            <div className="flex items-center gap-5 flex-1 min-w-0">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-sm shrink-0" style={{ backgroundColor: s.primaryColor }}>{idx + 1}</div>
+                                <div className="font-bold truncate" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
+                            </div>
+                            <div className="flex items-baseline gap-1.5 shrink-0 mr-4 flex-nowrap">
+                                <span className="font-black shrink-0" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
+                                <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                            </div>
                         </div>
-                        <div className="flex-1 flex items-end border-b-2 pb-2 mr-4 gap-4" style={{ borderColor: `${s.primaryColor}20` }}>
-                            <div className="font-black" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, WebkitPrintColorAdjust: 'exact' }}>{item.label}</div>
-                            <div className="flex items-start gap-1 bg-gray-50/50 px-4 py-1 rounded-lg">
-                                <span className="font-black font-mono leading-none" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor, WebkitPrintColorAdjust: 'exact' }}>{item.price}</span>
-                                <div className="mt-1">
-                                    <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} className="opacity-50" style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Theme 2: modern_grid (الشبكة التقنية)
+    if (themeId === 'modern_grid') {
+        return (
+            <div className="w-full h-full flex flex-col relative text-right overflow-hidden" style={{ padding: `${s.padding * scale}px`, border: `${s.borderWidth * scale}px solid ${s.borderColor || s.primaryColor}`, backgroundColor: s.backgroundColor }}>
+                <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `linear-gradient(${s.primaryColor} 2px, transparent 2px), linear-gradient(90deg, ${s.primaryColor} 2px, transparent 2px)`, backgroundSize: '30px 30px' }}></div>
+                <div className="flex justify-between items-end mb-10 border-b-4 pb-4 relative z-10" style={{ borderColor: s.primaryColor }}>
+                    <div className="bg-black text-white px-8 py-3 inline-block shadow-[4px_4px_0px_rgba(0,0,0,0.2)]" style={{ backgroundColor: s.primaryColor }}>
+                        <h1 className="font-mono font-black uppercase tracking-widest" style={{ fontSize: `${s.titleFontSize * scale * 0.8}px` }}>{board.title}</h1>
+                    </div>
+                    {showLogo && logoUrl ? <img src={logoUrl} className={`${isSmall ? 'h-12' : 'h-16'} object-contain`} /> : null}
+                </div>
+                <div className="flex-1 grid grid-cols-2 gap-6 relative z-10 content-start">
+                    {board.items.length === 0 ? <div className="col-span-2"><EmptyState /></div> : board.items.map((item, idx) => (
+                        <div key={item.id} className="border-2 p-5 flex flex-col justify-between bg-white shadow-[4px_4px_0px_rgba(0,0,0,0.05)] hover:shadow-[6px_6px_0px_rgba(0,0,0,0.1)] transition-shadow" style={{ borderColor: `${s.secondaryColor}40` }}>
+                            <div className="flex justify-between items-start mb-5 flex-nowrap">
+                                <div className="font-mono text-xs font-bold px-3 py-1 bg-gray-100 rounded shrink-0" style={{ color: s.primaryColor }}>#{String(idx + 1).padStart(2, '0')}</div>
+                                {item.isOffer && <div className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 animate-pulse rounded shrink-0">عرض خاص</div>}
+                            </div>
+                            <div className="font-bold leading-tight mb-5" style={{ fontSize: `${s.itemFontSize * scale * 0.9}px`, color: s.textColor }}>{item.label}</div>
+                            <div className="flex items-baseline gap-1.5 justify-end mt-auto pt-4 border-t border-dashed flex-nowrap shrink-0" style={{ borderColor: `${s.secondaryColor}30` }}>
+                                <span className="font-black font-mono shrink-0" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
+                                <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Theme 3: royal_minimal (الكلاسيكي الفاخر)
+    if (themeId === 'royal_minimal') {
+        return (
+            <div className="w-full h-full flex flex-col relative text-right overflow-hidden rounded-[2rem]" style={{ padding: `${s.padding * scale}px`, border: `${s.borderWidth * scale}px double ${s.borderColor || s.primaryColor}`, backgroundColor: s.backgroundColor }}>
+                <div className="absolute inset-0 border-[8px] border-transparent rounded-[1.5rem] pointer-events-none" style={{ borderColor: `${s.secondaryColor}15` }}></div>
+                <div className="flex flex-col items-center mb-12 relative z-10">
+                    {showLogo && logoUrl ? <img src={logoUrl} className={`${isSmall ? 'h-16' : 'h-20'} object-contain mb-8`} /> : null}
+                    <h1 className="font-black text-center" style={{ fontSize: `${s.titleFontSize * scale * 1.1}px`, color: s.textColor, fontFamily: 'Georgia, serif' }}>{board.title}</h1>
+                    <div className="flex items-center gap-3 mt-6 w-2/3 mx-auto opacity-70">
+                        <div className="h-[2px] flex-1" style={{ backgroundColor: s.secondaryColor }}></div>
+                        <div className="w-3 h-3 rotate-45" style={{ backgroundColor: s.primaryColor }}></div>
+                        <div className="h-[2px] flex-1" style={{ backgroundColor: s.secondaryColor }}></div>
+                    </div>
+                </div>
+                <div className="flex-1 space-y-8 px-10 relative z-10">
+                    {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
+                        <div key={item.id} className="flex items-baseline w-full group flex-nowrap">
+                            <div className="font-bold truncate shrink-0 max-w-[50%]" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
+                            <div className="flex-1 border-b-2 border-dotted mx-6 relative top-[-8px] opacity-40 group-hover:opacity-70 transition-opacity min-w-[20px]" style={{ borderColor: s.secondaryColor }}></div>
+                            <div className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
+                                <span className="font-black" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
+                                <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Theme 4: digital_punch (العروض الجريئة)
+    if (themeId === 'digital_punch') {
+        return (
+            <div className="w-full h-full flex flex-col relative text-right overflow-hidden" style={{ padding: `${s.padding * scale}px`, border: `${s.borderWidth * scale}px solid ${s.borderColor || s.primaryColor}`, backgroundColor: s.backgroundColor }}>
+                <div className="flex justify-between items-center mb-8 p-8 rounded-3xl shadow-xl" style={{ backgroundColor: s.primaryColor }}>
+                    <h1 className="font-black text-white leading-none tracking-tight" style={{ fontSize: `${s.titleFontSize * scale * 1.2}px` }}>{board.title}</h1>
+                    {showLogo && logoUrl ? <img src={logoUrl} className={`${isSmall ? 'h-16' : 'h-20'} object-contain brightness-0 invert drop-shadow-md`} /> : null}
+                </div>
+                <div className="flex-1 space-y-5">
+                    {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
+                        <div key={item.id} className="flex items-stretch border-4 rounded-2xl overflow-hidden shadow-md bg-white transform transition-transform hover:scale-[1.01] flex-nowrap" style={{ borderColor: item.isOffer ? '#ef4444' : s.secondaryColor }}>
+                            <div className="w-20 flex items-center justify-center font-black text-3xl text-white shadow-inner shrink-0" style={{ backgroundColor: item.isOffer ? '#ef4444' : s.secondaryColor }}>
+                                {idx + 1}
+                            </div>
+                            <div className="flex-1 flex items-center justify-between p-5 min-w-0 flex-nowrap">
+                                <div className="font-black leading-tight truncate flex-1 min-w-0" style={{ fontSize: `${s.itemFontSize * scale * 1.1}px`, color: s.textColor }}>{item.label}</div>
+                                <div className="flex items-baseline gap-1.5 bg-gray-100 px-6 py-3 rounded-xl shadow-inner border border-gray-200 shrink-0 mr-4 flex-nowrap">
+                                    <span className="font-black shrink-0" style={{ fontSize: `${s.priceFontSize * scale * 1.3}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
+                                    <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))
-            )}
-        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
-        <div className="mt-6 pt-4 border-t-2 border-gray-100 flex justify-between items-center opacity-40">
-            <span className="text-[10px] font-black uppercase tracking-[3px]" style={{ color: s.textColor }}>Official Inventory Display</span>
-            <div className="flex gap-2">
-                {[1,2,3,4].map(i => <div key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: s.secondaryColor, opacity: i * 0.2 }}></div>)}
+    // Theme 5: abstract_gradient (الناعم العضوي)
+    return (
+        <div className="w-full h-full flex flex-col relative text-right overflow-hidden rounded-[3rem] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]" style={{ padding: `${s.padding * scale}px`, background: `linear-gradient(135deg, ${s.backgroundColor}, ${s.primaryColor}15)` }}>
+            <div className="absolute top-0 right-0 w-64 h-64 rounded-full mix-blend-multiply filter blur-3xl opacity-30 pointer-events-none" style={{ backgroundColor: s.primaryColor, transform: 'translate(30%, -30%)' }}></div>
+            <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full mix-blend-multiply filter blur-3xl opacity-30 pointer-events-none" style={{ backgroundColor: s.secondaryColor, transform: 'translate(-30%, 30%)' }}></div>
+            
+            <div className="flex justify-between items-center mb-10 relative z-10">
+                <div className="flex-1">
+                    <h1 className="font-black tracking-tight" style={{ fontSize: `${s.titleFontSize * scale * 1.1}px`, color: s.textColor }}>{board.title}</h1>
+                    <div className="w-16 h-2 rounded-full mt-3" style={{ backgroundColor: s.primaryColor }}></div>
+                </div>
+                {showLogo && logoUrl ? <img src={logoUrl} className={`${isSmall ? 'h-16' : 'h-20'} object-contain`} /> : null}
+            </div>
+            
+            <div className="flex-1 space-y-4 relative z-10">
+                {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
+                    <div key={item.id} className="flex items-center justify-between bg-white/70 backdrop-blur-md p-3 rounded-full shadow-sm border border-white/60 hover:bg-white/90 transition-colors flex-nowrap">
+                        <div className="flex items-center gap-4 pl-4 flex-1 min-w-0">
+                            <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-inner shrink-0" style={{ backgroundColor: item.isOffer ? '#ef4444' : s.primaryColor }}>{idx + 1}</div>
+                            <div className="font-bold truncate" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
+                        </div>
+                        <div className="flex items-baseline gap-1.5 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-100 shrink-0 mr-4 flex-nowrap">
+                            <span className="font-black shrink-0" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
+                            <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
-      </div>
     );
   };
 
