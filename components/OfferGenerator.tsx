@@ -157,10 +157,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       offerPrice: product?.price || '0.00',
       template: 'mega_sale_50',
       discountText: 'خصم 10%', // Updated default to be specific
+      topBannerText: 'العروض معك تفرق',
       showLogo: true,
       hideOriginalPrice: false,
+      offerQuantity: '1',
       // @ts-ignore
-      unitName: unitName, 
+      unitName: unitName || 'حبة', 
       customColors: {
         // @ts-ignore
         nameFontSize: 40,
@@ -172,6 +174,8 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         discountFontSize: 35,
         // @ts-ignore
         originalPriceFontSize: 30,
+        // @ts-ignore
+        taxFontSize: 12,
         background: product?.color || '#ffffff'
       }
     };
@@ -196,9 +200,11 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     const discFontSize = tag.customColors?.discountFontSize || 35;
     // @ts-ignore
     const origFontSize = tag.customColors?.originalPriceFontSize || 30;
+    // @ts-ignore
+    const taxFontSize = tag.customColors?.taxFontSize || 12;
     const bgColor = tag.customColors?.background || '#ffffff';
 
-    const unitText = showUnit && tag.unitName ? tag.unitName : '';
+    const unitText = showUnit ? `${tag.offerQuantity ? formatNum(tag.offerQuantity) + ' ' : ''}${tag.unitName || ''}`.trim() : '';
     
     const displayOfferPrice = formatNum(tag.offerPrice);
     const displayOriginalPrice = formatNum(tag.originalPrice);
@@ -265,6 +271,158 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                 <div className="absolute top-0 left-0 w-3 h-3 bg-black z-20"></div>
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-black z-20"></div>
                 <div className="absolute bottom-0 left-0 w-3 h-3 bg-black z-20"></div>
+            </div>
+        );
+    }
+
+    // --- DESIGN 3: YELLOW RED BANNER ---
+    if (tag.template === 'yellow_red_banner') {
+        return (
+            <div 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${!isPrint && showCuttingBorders ? 'border-dashed' : ''}`} 
+                dir="rtl"
+                style={{ 
+                    backgroundColor: '#FFEA00', // Yellow background
+                    border: `${globalBorderWidth}px solid ${globalBorderColor}`,
+                    borderStyle: isPrint ? 'solid' : (showCuttingBorders ? 'dashed' : 'solid')
+                }}
+            >
+                {/* Top Banner */}
+                <div className="bg-[#B22222] text-white w-full py-1 flex flex-col items-center justify-center border-b-[3px] border-[#B22222] relative z-10 shrink-0" style={{ minHeight: isPrint ? '25%' : '85px' }}>
+                    <span className="font-black tracking-widest text-center leading-none" style={{ fontSize: isPrint ? `${discFontSize * 0.9}pt` : `${discFontSize * 1.2}px`, color: '#FFEA00' }}>
+                        {tag.topBannerText || 'العروض معك تفرق'}
+                    </span>
+                    <span className="font-bold tracking-widest text-center leading-none mt-1" style={{ fontSize: isPrint ? `${discFontSize * 0.5}pt` : `${discFontSize * 0.6}px`, color: '#FFEA00' }}>
+                        {tag.discountText || 'عرض خاص PROMOTION'}
+                    </span>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 flex flex-col p-4 relative z-10 justify-between">
+                    {/* Top Right: Regular Price */}
+                    <div className="flex justify-end w-full mb-2">
+                        {!tag.hideOriginalPrice && tag.originalPrice && tag.originalPrice !== '0.00' && (
+                            <div className="border-2 border-[#B22222] rounded-lg px-3 py-1 flex flex-col items-center">
+                                <span className="text-[#5C2C16] font-bold text-[10px] leading-none mb-1">السعر العادي Regular Price</span>
+                                <div className="relative inline-block">
+                                    <span className="font-black text-[#5C2C16] line-through decoration-2 decoration-[#B22222]" style={{ fontSize: isPrint ? `${origFontSize * 0.75}pt` : `${origFontSize}px` }}>
+                                        {formatNum(tag.originalPrice)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Center: Large Price */}
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="flex items-baseline gap-2 flex-nowrap shrink-0 text-[#5C2C16]" dir="ltr">
+                            <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                {formatNum(priceMain)}
+                            </span>
+                            <div className="flex flex-col items-start justify-end h-full">
+                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                    {formatNum(priceDec)}
+                                </span>
+                                {unitText && (
+                                    <span className="font-bold shrink-0 mt-1" style={{ fontSize: isPrint ? `${dFontSize * 0.4}pt` : `${dFontSize * 0.5}px` }}>
+                                        {unitText}
+                                    </span>
+                                )}
+                                <span className="font-bold shrink-0 mt-0.5 opacity-80" style={{ fontSize: isPrint ? `${taxFontSize * 0.75}pt` : `${taxFontSize}px` }}>
+                                    السعر شامل الضريبة
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom: Product Name */}
+                    <div className="w-full text-center mt-2">
+                        <h2 className="font-black leading-tight text-[#5C2C16] w-full line-clamp-2" style={{ fontSize: isPrint ? `${nFontSize * 0.75}pt` : `${nFontSize}px` }}>
+                            {tag.name}
+                        </h2>
+                        {tag.productId && (
+                            <div className="text-left w-full mt-1">
+                                <span className="text-[#5C2C16] text-[8px] font-mono font-bold tracking-widest">{formatNum(tag.productId)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // --- DESIGN 4: BLACK & WHITE BANNER ---
+    if (tag.template === 'bw_banner') {
+        return (
+            <div 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${!isPrint && showCuttingBorders ? 'border-dashed' : ''}`} 
+                dir="rtl"
+                style={{ 
+                    backgroundColor: '#FFFFFF', // White background
+                    border: `${globalBorderWidth}px solid ${globalBorderColor}`,
+                    borderStyle: isPrint ? 'solid' : (showCuttingBorders ? 'dashed' : 'solid')
+                }}
+            >
+                {/* Top Banner */}
+                <div className="bg-black text-white w-full py-1 flex flex-col items-center justify-center border-b-[3px] border-black relative z-10 shrink-0" style={{ minHeight: isPrint ? '25%' : '85px' }}>
+                    <span className="font-black tracking-widest text-center leading-none" style={{ fontSize: isPrint ? `${discFontSize * 0.9}pt` : `${discFontSize * 1.2}px`, color: '#FFFFFF' }}>
+                        {tag.topBannerText || 'العروض معك تفرق'}
+                    </span>
+                    <span className="font-bold tracking-widest text-center leading-none mt-1" style={{ fontSize: isPrint ? `${discFontSize * 0.5}pt` : `${discFontSize * 0.6}px`, color: '#FFFFFF' }}>
+                        {tag.discountText || 'عرض خاص PROMOTION'}
+                    </span>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 flex flex-col p-4 relative z-10 justify-between">
+                    {/* Top Right: Regular Price */}
+                    <div className="flex justify-end w-full mb-2">
+                        {!tag.hideOriginalPrice && tag.originalPrice && tag.originalPrice !== '0.00' && (
+                            <div className="border-2 border-black rounded-lg px-3 py-1 flex flex-col items-center">
+                                <span className="text-black font-bold text-[10px] leading-none mb-1">السعر العادي Regular Price</span>
+                                <div className="relative inline-block">
+                                    <span className="font-black text-black line-through decoration-2 decoration-black" style={{ fontSize: isPrint ? `${origFontSize * 0.75}pt` : `${origFontSize}px` }}>
+                                        {formatNum(tag.originalPrice)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Center: Large Price */}
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="flex items-baseline gap-2 flex-nowrap shrink-0 text-black" dir="ltr">
+                            <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                {formatNum(priceMain)}
+                            </span>
+                            <div className="flex flex-col items-start justify-end h-full">
+                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                    {formatNum(priceDec)}
+                                </span>
+                                {unitText && (
+                                    <span className="font-bold shrink-0 mt-1" style={{ fontSize: isPrint ? `${dFontSize * 0.4}pt` : `${dFontSize * 0.5}px` }}>
+                                        {unitText}
+                                    </span>
+                                )}
+                                <span className="font-bold shrink-0 mt-0.5 opacity-80" style={{ fontSize: isPrint ? `${taxFontSize * 0.75}pt` : `${taxFontSize}px` }}>
+                                    السعر شامل الضريبة
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom: Product Name */}
+                    <div className="w-full text-center mt-2">
+                        <h2 className="font-black leading-tight text-black w-full line-clamp-2" style={{ fontSize: isPrint ? `${nFontSize * 0.75}pt` : `${nFontSize}px` }}>
+                            {tag.name}
+                        </h2>
+                        {tag.productId && (
+                            <div className="text-left w-full mt-1">
+                                <span className="text-black text-[8px] font-mono font-bold tracking-widest">{formatNum(tag.productId)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -421,6 +579,14 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <div className="w-8 h-8 bg-[#FFD700] rounded-sm border border-black flex items-center justify-center text-black font-bold text-[8px] shadow-sm">NEW</div>
                         <span className="text-[10px] font-black">صناعي (أصفر)</span>
                     </button>
+                    <button onClick={() => updateTag(activeTag.id, { template: 'yellow_red_banner' })} className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 transition-all ${activeTag.template === 'yellow_red_banner' ? 'border-sap-primary bg-sap-highlight text-sap-primary' : 'border-gray-100 hover:border-gray-300'}`}>
+                        <div className="w-8 h-8 bg-[#FFEA00] rounded-sm border-t-[8px] border-[#B22222] flex items-center justify-center text-[#5C2C16] font-bold text-[8px] shadow-sm">OFFER</div>
+                        <span className="text-[10px] font-black">بانر أحمر وأصفر</span>
+                    </button>
+                    <button onClick={() => updateTag(activeTag.id, { template: 'bw_banner' })} className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 transition-all ${activeTag.template === 'bw_banner' ? 'border-sap-primary bg-sap-highlight text-sap-primary' : 'border-gray-100 hover:border-gray-300'}`}>
+                        <div className="w-8 h-8 bg-white rounded-sm border-t-[8px] border-black flex items-center justify-center text-black font-bold text-[8px] shadow-sm">OFFER</div>
+                        <span className="text-[10px] font-black">بانر أبيض وأسود</span>
+                    </button>
                 </div>
             ) : openSections.template && <div className="p-4 text-center text-gray-400 italic">حدد ملصقاً لتغيير تصميمه</div>}
 
@@ -441,10 +607,26 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <input type="text" value={activeTag.offerPrice} onChange={e => updateTag(activeTag.id, { offerPrice: e.target.value })} className="w-full p-2 border font-black text-sap-primary text-xs rounded" />
                         </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">الكمية (للعرض)</label>
+                            <input type="text" value={activeTag.offerQuantity || ''} onChange={e => updateTag(activeTag.id, { offerQuantity: e.target.value })} className="w-full p-2 border text-xs rounded" placeholder="مثال: 1" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">الوحدة</label>
+                            <input type="text" value={activeTag.unitName || ''} onChange={e => updateTag(activeTag.id, { unitName: e.target.value })} className="w-full p-2 border text-xs rounded" placeholder="مثال: حبة، كرتون" />
+                        </div>
+                    </div>
                     <div className="space-y-1">
                         <label className="text-[9px] font-black text-red-500 uppercase">نص شارة العرض (كامل)</label>
                         <input type="text" value={activeTag.discountText} onChange={e => updateTag(activeTag.id, { discountText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: خصم 50% / عرض خاص" />
                     </div>
+                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner') && (
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black text-red-500 uppercase">نص البانر العلوي</label>
+                            <input type="text" value={activeTag.topBannerText || ''} onChange={e => updateTag(activeTag.id, { topBannerText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: العروض معك تفرق" />
+                        </div>
+                    )}
                 </div>
             ) : openSections.data && <div className="p-4 text-center text-gray-400 italic">حدد ملصقاً لتعديله</div>}
 
@@ -489,6 +671,16 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         </div>
                         <input type="range" min="10" max="200" value={(activeTag.customColors as any)?.discountFontSize} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, discountFontSize: Number(e.target.value) } })} className="w-full accent-red-600" />
                     </div>
+
+                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner') && (
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center text-[9px] font-black text-gray-600 uppercase">
+                                <span>حجم نص الضريبة</span>
+                                <span className="text-gray-600 font-mono">{(activeTag.customColors as any)?.taxFontSize || 12}px</span>
+                            </div>
+                            <input type="range" min="8" max="50" value={(activeTag.customColors as any)?.taxFontSize || 12} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, taxFontSize: Number(e.target.value) } })} className="w-full accent-gray-600" />
+                        </div>
+                    )}
                 </div>
             )}
 

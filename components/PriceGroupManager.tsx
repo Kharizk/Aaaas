@@ -203,7 +203,6 @@ export const PriceGroupManager: React.FC = () => {
                     {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
                         <div key={item.id} className="flex items-center justify-between py-3 group hover:bg-gray-50/50 transition-colors px-4 rounded-xl flex-nowrap">
                             <div className="flex items-center gap-5 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-sm shrink-0" style={{ backgroundColor: s.primaryColor }}>{idx + 1}</div>
                                 <div className="font-bold truncate" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
                             </div>
                             <div className="flex items-baseline gap-1.5 shrink-0 mr-4 flex-nowrap">
@@ -232,7 +231,7 @@ export const PriceGroupManager: React.FC = () => {
                     {board.items.length === 0 ? <div className="col-span-2"><EmptyState /></div> : board.items.map((item, idx) => (
                         <div key={item.id} className="border-2 p-5 flex flex-col justify-between bg-white shadow-[4px_4px_0px_rgba(0,0,0,0.05)] hover:shadow-[6px_6px_0px_rgba(0,0,0,0.1)] transition-shadow" style={{ borderColor: `${s.secondaryColor}40` }}>
                             <div className="flex justify-between items-start mb-5 flex-nowrap">
-                                <div className="font-mono text-xs font-bold px-3 py-1 bg-gray-100 rounded shrink-0" style={{ color: s.primaryColor }}>#{String(idx + 1).padStart(2, '0')}</div>
+                                <div></div>
                                 {item.isOffer && <div className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 animate-pulse rounded shrink-0">عرض خاص</div>}
                             </div>
                             <div className="font-bold leading-tight mb-5" style={{ fontSize: `${s.itemFontSize * scale * 0.9}px`, color: s.textColor }}>{item.label}</div>
@@ -288,9 +287,6 @@ export const PriceGroupManager: React.FC = () => {
                 <div className="flex-1 space-y-5">
                     {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
                         <div key={item.id} className="flex items-stretch border-4 rounded-2xl overflow-hidden shadow-md bg-white transform transition-transform hover:scale-[1.01] flex-nowrap" style={{ borderColor: item.isOffer ? '#ef4444' : s.secondaryColor }}>
-                            <div className="w-20 flex items-center justify-center font-black text-3xl text-white shadow-inner shrink-0" style={{ backgroundColor: item.isOffer ? '#ef4444' : s.secondaryColor }}>
-                                {idx + 1}
-                            </div>
                             <div className="flex-1 flex items-center justify-between p-5 min-w-0 flex-nowrap">
                                 <div className="font-black leading-tight truncate flex-1 min-w-0" style={{ fontSize: `${s.itemFontSize * scale * 1.1}px`, color: s.textColor }}>{item.label}</div>
                                 <div className="flex items-baseline gap-1.5 bg-gray-100 px-6 py-3 rounded-xl shadow-inner border border-gray-200 shrink-0 mr-4 flex-nowrap">
@@ -323,7 +319,6 @@ export const PriceGroupManager: React.FC = () => {
                 {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
                     <div key={item.id} className="flex items-center justify-between bg-white/70 backdrop-blur-md p-3 rounded-full shadow-sm border border-white/60 hover:bg-white/90 transition-colors flex-nowrap">
                         <div className="flex items-center gap-4 pl-4 flex-1 min-w-0">
-                            <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-inner shrink-0" style={{ backgroundColor: item.isOffer ? '#ef4444' : s.primaryColor }}>{idx + 1}</div>
                             <div className="font-bold truncate" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
                         </div>
                         <div className="flex items-baseline gap-1.5 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-100 shrink-0 mr-4 flex-nowrap">

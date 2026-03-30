@@ -236,7 +236,7 @@ export interface User {
   lastLogin?: string;
 }
 
-export type OfferTemplate = 'modern_clean' | 'industrial' | 'vibrant_red' | 'discount' | '1plus1' | 'luxury' | 'mega_sale_50';
+export type OfferTemplate = 'modern_clean' | 'industrial' | 'vibrant_red' | 'discount' | '1plus1' | 'luxury' | 'mega_sale_50' | 'yellow_red_banner';
 
 export interface OfferTag {
   id: string;
@@ -246,8 +246,10 @@ export interface OfferTag {
   offerPrice: string;
   template: OfferTemplate;
   discountText: string;
+  topBannerText?: string;
   showLogo: boolean;
   hideOriginalPrice: boolean;
+  offerQuantity?: string;
   unitName?: string;
   customColors?: {
     primary?: string;
@@ -261,6 +263,7 @@ export interface OfferTag {
     decimalFontSize?: number;
     discountFontSize?: number;
     originalPriceFontSize?: number;
+    taxFontSize?: number;
   };
 }
 
