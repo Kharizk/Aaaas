@@ -17,7 +17,7 @@ interface OfferGeneratorProps {
   units: Unit[];
 }
 
-type LabelsCount = 2 | 4 | 6 | 8 | 12 | 14 | 16 | 20 | 24;
+type LabelsCount = 1 | 2 | 4 | 6 | 8 | 12 | 14 | 16 | 20 | 24;
 
 export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units }) => {
   const { settings } = useSystemSettings();
@@ -119,7 +119,9 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
   const layoutConfig = useMemo(() => {
     let columns = 2;
-    if (orientation === 'landscape') {
+    if (labelsPerPage === 1) {
+        columns = 1;
+    } else if (orientation === 'landscape') {
         if (labelsPerPage === 2) columns = 2;
         else if (labelsPerPage >= 6) columns = 3;
         if (labelsPerPage >= 12) columns = 4;
@@ -160,6 +162,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       topBannerText: 'العروض معك تفرق',
       showLogo: true,
       hideOriginalPrice: false,
+      customCurrencyImage: null,
       offerQuantity: '1',
       // @ts-ignore
       unitName: unitName || 'حبة', 
@@ -176,6 +179,8 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         originalPriceFontSize: 30,
         // @ts-ignore
         taxFontSize: 12,
+        // @ts-ignore
+        currencySize: 32,
         background: product?.color || '#ffffff'
       }
     };
@@ -202,7 +207,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     const origFontSize = tag.customColors?.originalPriceFontSize || 30;
     // @ts-ignore
     const taxFontSize = tag.customColors?.taxFontSize || 12;
+    // @ts-ignore
+    const currencySize = tag.customColors?.currencySize || 32;
     const bgColor = tag.customColors?.background || '#ffffff';
+
+    const currencyType = tag.customCurrencyImage ? 'custom_image' : settings.currencySymbolType;
+    const currencyImage = tag.customCurrencyImage || settings.currencySymbolImage;
 
     const unitText = showUnit ? `${tag.offerQuantity ? formatNum(tag.offerQuantity) + ' ' : ''}${tag.unitName || ''}`.trim() : '';
     
@@ -260,7 +270,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <span className="font-black tracking-tighter text-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 0.85}pt` : `${pFontSize}px` }}>{priceMain}</span>
                             <div className="flex flex-col items-start ml-1 leading-none shrink-0">
                                 <span className="font-black text-black" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>.{priceDec}</span>
-                                <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="black" className="w-4 h-4 mt-1" />
+                                <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="w-4 h-4 mt-1" />
                             </div>
                         </div>
                     </div>
@@ -327,14 +337,17 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
                     {/* Center: Large Price */}
                     <div className="flex-1 flex flex-col items-center justify-center">
-                        <div className="flex items-baseline gap-2 flex-nowrap shrink-0 text-[#5C2C16]" dir="ltr">
-                            <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
-                                {formatNum(priceMain)}
-                            </span>
-                            <div className="flex flex-col items-start justify-end h-full">
-                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
-                                    {formatNum(priceDec)}
+                        <div className="flex items-center gap-2 flex-nowrap shrink-0 text-[#5C2C16]" dir="ltr">
+                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#5C2C16" className="shrink-0" style={{ width: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px`, height: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px` }} />
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                    {formatNum(priceMain)}
                                 </span>
+                                <div className="flex flex-col items-start justify-end h-full">
+                                    <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                        {formatNum(priceDec)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <span className="font-bold shrink-0 mt-2 opacity-80 text-[#5C2C16]" style={{ fontSize: isPrint ? `${taxFontSize * 0.75}pt` : `${taxFontSize}px` }}>
@@ -410,14 +423,17 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
                     {/* Center: Large Price */}
                     <div className="flex-1 flex flex-col items-center justify-center">
-                        <div className="flex items-baseline gap-2 flex-nowrap shrink-0 text-black" dir="ltr">
-                            <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
-                                {formatNum(priceMain)}
-                            </span>
-                            <div className="flex flex-col items-start justify-end h-full">
-                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
-                                    {formatNum(priceDec)}
+                        <div className="flex items-center gap-2 flex-nowrap shrink-0 text-black" dir="ltr">
+                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="shrink-0" style={{ width: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px`, height: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px` }} />
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                    {formatNum(priceMain)}
                                 </span>
+                                <div className="flex flex-col items-start justify-end h-full">
+                                    <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                        {formatNum(priceDec)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <span className="font-bold shrink-0 mt-2 opacity-80 text-black" style={{ fontSize: isPrint ? `${taxFontSize * 0.75}pt` : `${taxFontSize}px` }}>
@@ -508,7 +524,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <span className="font-black text-red-500" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>
                                 {priceDec}
                             </span>
-                            <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="#94a3b8" className="w-3 h-3 mt-1" />
+                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#94a3b8" className="w-3 h-3 mt-1" />
                         </div>
                     </div>
                 </div>
@@ -641,6 +657,43 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <input type="text" value={activeTag.topBannerText || ''} onChange={e => updateTag(activeTag.id, { topBannerText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: العروض معك تفرق" />
                         </div>
                     )}
+
+                    <div className="space-y-1 pt-2 border-t border-gray-100 mt-2">
+                        <label className="text-[9px] font-black text-blue-600 uppercase">صورة رمز العملة المخصصة لهذا العرض</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            updateTag(activeTag.id, { customCurrencyImage: reader.result as string });
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                                className="hidden"
+                                id={`currency-upload-${activeTag.id}`}
+                            />
+                            <label
+                                htmlFor={`currency-upload-${activeTag.id}`}
+                                className="cursor-pointer bg-blue-50 text-blue-600 px-3 py-1.5 rounded text-xs font-bold border border-blue-200 hover:bg-blue-100 flex-1 text-center"
+                            >
+                                {activeTag.customCurrencyImage ? 'تغيير الصورة' : 'رفع صورة'}
+                            </label>
+                            {activeTag.customCurrencyImage && (
+                                <button
+                                    onClick={() => updateTag(activeTag.id, { customCurrencyImage: null })}
+                                    className="p-1.5 bg-red-50 text-red-600 rounded border border-red-200 hover:bg-red-100"
+                                    title="حذف الصورة"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             ) : openSections.data && <div className="p-4 text-center text-gray-400 italic">حدد ملصقاً لتعديله</div>}
 
@@ -687,13 +740,22 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     </div>
 
                     {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner') && (
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center text-[9px] font-black text-gray-600 uppercase">
-                                <span>حجم نص الضريبة</span>
-                                <span className="text-gray-600 font-mono">{(activeTag.customColors as any)?.taxFontSize || 12}px</span>
+                        <>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-[9px] font-black text-gray-600 uppercase">
+                                    <span>حجم نص الضريبة</span>
+                                    <span className="text-gray-600 font-mono">{(activeTag.customColors as any)?.taxFontSize || 12}px</span>
+                                </div>
+                                <input type="range" min="8" max="50" value={(activeTag.customColors as any)?.taxFontSize || 12} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, taxFontSize: Number(e.target.value) } })} className="w-full accent-gray-600" />
                             </div>
-                            <input type="range" min="8" max="50" value={(activeTag.customColors as any)?.taxFontSize || 12} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, taxFontSize: Number(e.target.value) } })} className="w-full accent-gray-600" />
-                        </div>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-[9px] font-black text-blue-600 uppercase">
+                                    <span>حجم رمز العملة</span>
+                                    <span className="text-blue-600 font-mono">{(activeTag.customColors as any)?.currencySize || 32}px</span>
+                                </div>
+                                <input type="range" min="10" max="150" value={(activeTag.customColors as any)?.currencySize || 32} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, currencySize: Number(e.target.value) } })} className="w-full accent-blue-600" />
+                            </div>
+                        </>
                     )}
                 </div>
             )}
@@ -747,7 +809,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     <div className="space-y-1">
                         <label className="text-[10px] font-black text-gray-500 uppercase">عدد الملصقات بالصفحة</label>
                         <select value={labelsPerPage} onChange={e => setLabelsPerPage(Number(e.target.value) as LabelsCount)} className="w-full p-2 border text-xs font-bold rounded">
-                            {[2,4,6,8,12,16,20,24].map(n => <option key={n} value={n}>{n} ملصق بالصفحة</option>)}
+                            {[1,2,4,6,8,12,16,20,24].map(n => <option key={n} value={n}>{n} ملصق بالصفحة</option>)}
                         </select>
                     </div>
 

@@ -251,6 +251,7 @@ export interface OfferTag {
   hideOriginalPrice: boolean;
   offerQuantity?: string;
   unitName?: string;
+  customCurrencyImage?: string | null;
   customColors?: {
     primary?: string;
     background?: string;
@@ -264,6 +265,7 @@ export interface OfferTag {
     discountFontSize?: number;
     originalPriceFontSize?: number;
     taxFontSize?: number;
+    currencySize?: number;
   };
 }
 
