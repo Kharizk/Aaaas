@@ -235,8 +235,8 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                 }}
             >
                 {/* Yellow Header for Discount Text */}
-                <div className="bg-[#FFD700] text-black w-full py-2 flex items-center justify-center border-b-[3px] border-black relative z-10 shrink-0" style={{ minHeight: isPrint ? '18%' : '65px' }}>
-                    <span className="font-black uppercase tracking-widest text-center leading-none" style={{ fontSize: isPrint ? `${discFontSize * 0.75}pt` : `${discFontSize}px` }}>
+                <div className="bg-[#FFD700] text-black w-full py-2 flex items-center justify-center border-b-[3px] border-black relative z-10 shrink-0" style={{ minHeight: '65px' }}>
+                    <span className="font-black uppercase tracking-widest text-center leading-none" style={{ fontSize: `${discFontSize}px` }}>
                         {formatNum(tag.discountText)}
                     </span>
                 </div>
@@ -244,7 +244,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                 {/* Body */}
                 <div className="flex-1 flex flex-col p-4 relative z-10">
                     <div className="flex-1 flex flex-col items-center justify-center text-center">
-                        <h2 className="font-black leading-tight text-black w-full" style={{ fontSize: isPrint ? `${nFontSize * 0.75}pt` : `${nFontSize}px` }}>
+                        <h2 className="font-black leading-tight text-black w-full" style={{ fontSize: `${nFontSize}px` }}>
                             {tag.name}
                         </h2>
                         <div className="flex items-center gap-2 mt-2">
@@ -260,17 +260,17 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                              {tag.originalPrice && tag.originalPrice !== '0.00' && !tag.hideOriginalPrice && (
                                 <span 
                                     className="font-black line-through decoration-red-600 decoration-[3px] font-mono text-gray-400" 
-                                    style={{ fontSize: isPrint ? `${origFontSize * 0.75}pt` : `${origFontSize}px` }}
+                                    style={{ fontSize: `${origFontSize}px` }}
                                 >
                                     {displayOriginalPrice}
                                 </span>
                              )}
                         </div>
                         <div className="flex items-baseline flex-nowrap shrink-0" dir="ltr">
-                            <span className="font-black tracking-tighter text-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 0.85}pt` : `${pFontSize}px` }}>{priceMain}</span>
+                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="shrink-0 mr-1" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
+                            <span className="font-black tracking-tighter text-black shrink-0" style={{ fontSize: `${pFontSize}px` }}>{priceMain}</span>
                             <div className="flex flex-col items-start ml-1 leading-none shrink-0">
-                                <span className="font-black text-black" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>.{priceDec}</span>
-                                <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="w-4 h-4 mt-1" />
+                                <span className="font-black text-black" style={{ fontSize: `${dFontSize}px` }}>.{priceDec}</span>
                             </div>
                         </div>
                     </div>
@@ -298,11 +298,11 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                 }}
             >
                 {/* Top Banner */}
-                <div className="bg-[#B22222] text-white w-full py-1 flex flex-col items-center justify-center border-b-[3px] border-[#B22222] relative z-10 shrink-0" style={{ minHeight: isPrint ? '25%' : '85px' }}>
-                    <span className="font-black tracking-widest text-center leading-none" style={{ fontSize: isPrint ? `${discFontSize * 0.9}pt` : `${discFontSize * 1.2}px`, color: '#FFEA00' }}>
+                <div className="bg-[#B22222] text-white w-full py-1 flex flex-col items-center justify-center border-b-[3px] border-[#B22222] relative z-10 shrink-0" style={{ minHeight: '85px' }}>
+                    <span className="font-black tracking-widest text-center leading-none" style={{ fontSize: `${discFontSize * 1.2}px`, color: '#FFEA00' }}>
                         {tag.topBannerText || 'العروض معك تفرق'}
                     </span>
-                    <span className="font-bold tracking-widest text-center leading-none mt-1" style={{ fontSize: isPrint ? `${discFontSize * 0.5}pt` : `${discFontSize * 0.6}px`, color: '#FFEA00' }}>
+                    <span className="font-bold tracking-widest text-center leading-none mt-1" style={{ fontSize: `${discFontSize * 0.6}px`, color: '#FFEA00' }}>
                         {tag.discountText || 'عرض خاص PROMOTION'}
                     </span>
                 </div>
@@ -314,7 +314,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         {/* Right: Unit & Quantity */}
                         <div className="flex flex-col items-start">
                             {unitText && (
-                                <div className="bg-[#B22222] text-white px-4 py-2 rounded-lg font-black shadow-sm" style={{ fontSize: isPrint ? `${dFontSize * 0.4}pt` : `${dFontSize * 0.5}px` }}>
+                                <div className="bg-[#B22222] text-white px-4 py-2 rounded-lg font-black shadow-sm" style={{ fontSize: `${dFontSize * 0.5}px` }}>
                                     {unitText}
                                 </div>
                             )}
@@ -326,7 +326,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                 <div className="border-2 border-[#B22222] rounded-lg px-3 py-1 flex flex-col items-center">
                                     <span className="text-[#5C2C16] font-bold text-[10px] leading-none mb-1">السعر العادي Regular Price</span>
                                     <div className="relative inline-block">
-                                        <span className="font-black text-[#5C2C16] line-through decoration-2 decoration-[#B22222]" style={{ fontSize: isPrint ? `${origFontSize * 0.75}pt` : `${origFontSize}px` }}>
+                                        <span className="font-black text-[#5C2C16] line-through decoration-2 decoration-[#B22222]" style={{ fontSize: `${origFontSize}px` }}>
                                             {formatNum(tag.originalPrice)}
                                         </span>
                                     </div>
@@ -338,26 +338,26 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     {/* Center: Large Price */}
                     <div className="flex-1 flex flex-col items-center justify-center">
                         <div className="flex items-center gap-2 flex-nowrap shrink-0 text-[#5C2C16]" dir="ltr">
-                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#5C2C16" className="shrink-0" style={{ width: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px`, height: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px` }} />
+                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#5C2C16" className="shrink-0" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
                             <div className="flex items-baseline gap-1">
-                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                <span className="font-black shrink-0" style={{ fontSize: `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
                                     {formatNum(priceMain)}
                                 </span>
                                 <div className="flex flex-col items-start justify-end h-full">
-                                    <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                    <span className="font-black shrink-0" style={{ fontSize: `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
                                         {formatNum(priceDec)}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <span className="font-bold shrink-0 mt-2 opacity-80 text-[#5C2C16]" style={{ fontSize: isPrint ? `${taxFontSize * 0.75}pt` : `${taxFontSize}px` }}>
+                        <span className="font-bold shrink-0 mt-2 opacity-80 text-[#5C2C16]" style={{ fontSize: `${taxFontSize}px` }}>
                             السعر شامل الضريبة
                         </span>
                     </div>
 
                     {/* Bottom: Product Name */}
                     <div className="w-full text-center mt-2">
-                        <h2 className="font-black leading-tight text-[#5C2C16] w-full line-clamp-2" style={{ fontSize: isPrint ? `${nFontSize * 0.75}pt` : `${nFontSize}px` }}>
+                        <h2 className="font-black leading-tight text-[#5C2C16] w-full line-clamp-2" style={{ fontSize: `${nFontSize}px` }}>
                             {tag.name}
                         </h2>
                         {tag.productId && (
@@ -384,11 +384,11 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                 }}
             >
                 {/* Top Banner */}
-                <div className="bg-black text-white w-full py-1 flex flex-col items-center justify-center border-b-[3px] border-black relative z-10 shrink-0" style={{ minHeight: isPrint ? '25%' : '85px' }}>
-                    <span className="font-black tracking-widest text-center leading-none" style={{ fontSize: isPrint ? `${discFontSize * 0.9}pt` : `${discFontSize * 1.2}px`, color: '#FFFFFF' }}>
+                <div className="bg-black text-white w-full py-1 flex flex-col items-center justify-center border-b-[3px] border-black relative z-10 shrink-0" style={{ minHeight: '85px' }}>
+                    <span className="font-black tracking-widest text-center leading-none" style={{ fontSize: `${discFontSize * 1.2}px`, color: '#FFFFFF' }}>
                         {tag.topBannerText || 'العروض معك تفرق'}
                     </span>
-                    <span className="font-bold tracking-widest text-center leading-none mt-1" style={{ fontSize: isPrint ? `${discFontSize * 0.5}pt` : `${discFontSize * 0.6}px`, color: '#FFFFFF' }}>
+                    <span className="font-bold tracking-widest text-center leading-none mt-1" style={{ fontSize: `${discFontSize * 0.6}px`, color: '#FFFFFF' }}>
                         {tag.discountText || 'عرض خاص PROMOTION'}
                     </span>
                 </div>
@@ -400,7 +400,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         {/* Right: Unit & Quantity */}
                         <div className="flex flex-col items-start">
                             {unitText && (
-                                <div className="bg-black text-white px-4 py-2 rounded-lg font-black shadow-sm" style={{ fontSize: isPrint ? `${dFontSize * 0.4}pt` : `${dFontSize * 0.5}px` }}>
+                                <div className="bg-black text-white px-4 py-2 rounded-lg font-black shadow-sm" style={{ fontSize: `${dFontSize * 0.5}px` }}>
                                     {unitText}
                                 </div>
                             )}
@@ -412,7 +412,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                 <div className="border-2 border-black rounded-lg px-3 py-1 flex flex-col items-center">
                                     <span className="text-black font-bold text-[10px] leading-none mb-1">السعر العادي Regular Price</span>
                                     <div className="relative inline-block">
-                                        <span className="font-black text-black line-through decoration-2 decoration-black" style={{ fontSize: isPrint ? `${origFontSize * 0.75}pt` : `${origFontSize}px` }}>
+                                        <span className="font-black text-black line-through decoration-2 decoration-black" style={{ fontSize: `${origFontSize}px` }}>
                                             {formatNum(tag.originalPrice)}
                                         </span>
                                     </div>
@@ -424,26 +424,26 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     {/* Center: Large Price */}
                     <div className="flex-1 flex flex-col items-center justify-center">
                         <div className="flex items-center gap-2 flex-nowrap shrink-0 text-black" dir="ltr">
-                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="shrink-0" style={{ width: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px`, height: isPrint ? `${currencySize * 0.75}pt` : `${currencySize}px` }} />
+                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="shrink-0" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
                             <div className="flex items-baseline gap-1">
-                                <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 1.2}pt` : `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                <span className="font-black shrink-0" style={{ fontSize: `${pFontSize * 1.5}px`, lineHeight: 0.8 }}>
                                     {formatNum(priceMain)}
                                 </span>
                                 <div className="flex flex-col items-start justify-end h-full">
-                                    <span className="font-black shrink-0" style={{ fontSize: isPrint ? `${dFontSize * 1.2}pt` : `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                    <span className="font-black shrink-0" style={{ fontSize: `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
                                         {formatNum(priceDec)}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <span className="font-bold shrink-0 mt-2 opacity-80 text-black" style={{ fontSize: isPrint ? `${taxFontSize * 0.75}pt` : `${taxFontSize}px` }}>
+                        <span className="font-bold shrink-0 mt-2 opacity-80 text-black" style={{ fontSize: `${taxFontSize}px` }}>
                             السعر شامل الضريبة
                         </span>
                     </div>
 
                     {/* Bottom: Product Name */}
                     <div className="w-full text-center mt-2">
-                        <h2 className="font-black leading-tight text-black w-full line-clamp-2" style={{ fontSize: isPrint ? `${nFontSize * 0.75}pt` : `${nFontSize}px` }}>
+                        <h2 className="font-black leading-tight text-black w-full line-clamp-2" style={{ fontSize: `${nFontSize}px` }}>
                             {tag.name}
                         </h2>
                         {tag.productId && (
@@ -473,16 +473,16 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
             <div className="pt-4 flex justify-center relative z-10 shrink-0">
                 <div 
                     className="bg-red-600 text-white px-6 py-2 rounded-[1.5rem] shadow-xl border-[3px] border-white flex flex-col items-center justify-center leading-none transform -rotate-1"
-                    style={{ minWidth: isPrint ? `${discFontSize * 2}pt` : `${discFontSize * 2.5}px` }}
+                    style={{ minWidth: `${discFontSize * 2.5}px` }}
                 >
-                    <span className="font-black uppercase italic" style={{ fontSize: isPrint ? `${discFontSize * 0.75}pt` : `${discFontSize}px` }}>
+                    <span className="font-black uppercase italic" style={{ fontSize: `${discFontSize}px` }}>
                         {formatNum(tag.discountText)}
                     </span>
                 </div>
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center p-3 relative z-10 text-center">
-                <h2 className="font-black leading-tight text-slate-900 w-full" style={{ fontSize: isPrint ? `${nFontSize * 0.75}pt` : `${nFontSize}px`, wordBreak: 'break-word' }}>
+                <h2 className="font-black leading-tight text-slate-900 w-full" style={{ fontSize: `${nFontSize}px`, wordBreak: 'break-word' }}>
                     {tag.name}
                 </h2>
                 <div className="flex items-center gap-3 mt-2">
@@ -500,7 +500,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <span 
                                 className="font-black line-through decoration-red-600 decoration-[2.5px] font-mono leading-none" 
                                 style={{ 
-                                    fontSize: isPrint ? `${origFontSize * 0.75}pt` : `${origFontSize}px`,
+                                    fontSize: `${origFontSize}px`,
                                     color: '#CCFF00' 
                                 }}
                             >
@@ -510,8 +510,9 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     )}
 
                     <div className="flex-1 flex items-center justify-center gap-1.5 flex-nowrap" dir="ltr">
+                        <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#94a3b8" className="shrink-0" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
                         <div className="flex items-baseline leading-none flex-nowrap shrink-0">
-                            <span className="font-black tracking-tighter shrink-0" style={{ fontSize: isPrint ? `${pFontSize * 0.75}pt` : `${pFontSize}px` }}>
+                            <span className="font-black tracking-tighter shrink-0" style={{ fontSize: `${pFontSize}px` }}>
                                 {priceMain}
                             </span>
                         </div>
@@ -521,10 +522,9 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         </div>
 
                         <div className="flex flex-col items-start leading-none pt-1 shrink-0">
-                            <span className="font-black text-red-500" style={{ fontSize: isPrint ? `${dFontSize * 0.75}pt` : `${dFontSize}px` }}>
+                            <span className="font-black text-red-500" style={{ fontSize: `${dFontSize}px` }}>
                                 {priceDec}
                             </span>
-                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#94a3b8" className="w-3 h-3 mt-1" />
                         </div>
                     </div>
                 </div>
@@ -550,8 +550,8 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     return createPortal(
       <div 
         style={{ 
-          width: '100%', 
-          height: '100%', 
+          width: `${layoutConfig.pageWidth}mm`, 
+          height: `${layoutConfig.pageHeight}mm`, 
           display: 'grid', 
           gridTemplateColumns: `repeat(${layoutConfig.columns}, ${layoutConfig.widthPerLabel}mm)`,
           gridTemplateRows: `repeat(${layoutConfig.rows}, ${layoutConfig.heightPerLabel}mm)`,
@@ -809,7 +809,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     <div className="space-y-1">
                         <label className="text-[10px] font-black text-gray-500 uppercase">عدد الملصقات بالصفحة</label>
                         <select value={labelsPerPage} onChange={e => setLabelsPerPage(Number(e.target.value) as LabelsCount)} className="w-full p-2 border text-xs font-bold rounded">
-                            {[1,2,4,6,8,12,16,20,24].map(n => <option key={n} value={n}>{n} ملصق بالصفحة</option>)}
+                            {[1,2,4,6,8,12,16,20,24].map(n => <option key={n} value={n}>{n === 1 ? '1 ملصق (صفحة كاملة)' : `${n} ملصق بالصفحة`}</option>)}
                         </select>
                     </div>
 

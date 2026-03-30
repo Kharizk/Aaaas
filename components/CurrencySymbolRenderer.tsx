@@ -27,5 +27,14 @@ export const CurrencySymbolRenderer: React.FC<CurrencySymbolRendererProps> = ({ 
     return <SaudiRiyalIcon className={className} style={{ ...style, color }} />;
   }
 
-  return <span className={className} style={{ ...style, color }}>ر.س</span>;
+  // For text, we should use the width/height from style as fontSize if provided,
+  // or just let it inherit if not. But since we pass width/height, let's extract it.
+  const textStyle = { ...style, color };
+  if (style?.width && typeof style.width === 'string' && style.width.endsWith('px')) {
+      textStyle.fontSize = style.width;
+      delete textStyle.width;
+      delete textStyle.height;
+  }
+
+  return <span className={`font-bold ${className}`} style={textStyle}>ر.س</span>;
 };
