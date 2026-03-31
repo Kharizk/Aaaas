@@ -745,8 +745,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             boxSizing: 'border-box'
         } as any}>
             <style>{`
+                @page { size: A4 portrait; margin: 0 !important; }
                 @media print {
-                    @page { size: A4 portrait; margin: 0 !important; }
                     * {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;

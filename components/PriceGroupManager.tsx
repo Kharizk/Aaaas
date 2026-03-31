@@ -5,8 +5,9 @@ import { PriceGroup, PriceGroupBoard, PriceGroupItem, Product, Unit, PriceGroupS
 import { db } from '../services/supabase';
 import { useSystemSettings } from './SystemSettingsContext';
 import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
+import { toPng } from 'html-to-image';
 import { 
-  Plus, Trash2, Save, Printer, FolderOpen, Loader2, 
+  Plus, Trash2, Save, Printer, FolderOpen, Loader2, Download,
   X, ZoomIn, ZoomOut, Search, Copy, 
   LayoutGrid, Star, FilePlus, Layers, 
   Smartphone, Monitor, Layout, Zap, Flame, Crown, Boxes, Type, 
@@ -129,6 +130,38 @@ export const PriceGroupManager: React.FC = () => {
     newBoards[targetIdx].items = source.items.map(i => ({ ...i, id: crypto.randomUUID() }));
     newBoards[targetIdx].title = source.title;
     setBoards(newBoards);
+  };
+
+  const handleSaveAsImage = async () => {
+    const element = document.getElementById('board-preview-container');
+    if (!element) return;
+    try {
+      const dataUrl = await toPng(element, { quality: 1, pixelRatio: 2 });
+      const link = document.createElement('a');
+      link.download = `${projectName}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Error saving image:', err);
+      alert('حدث خطأ أثناء حفظ الصورة');
+    }
+  };
+
+  const handleDuplicateProject = async (e: React.MouseEvent, pj: PriceGroup) => {
+    e.stopPropagation();
+    const newProject: PriceGroup = {
+      ...pj,
+      id: crypto.randomUUID(),
+      name: `${pj.name} (نسخة)`,
+      date: new Date().toISOString()
+    };
+    try {
+      await db.priceGroups.upsert(newProject);
+      setProjects([newProject, ...projects]);
+      loadProject(newProject);
+    } catch (err) {
+      alert("حدث خطأ أثناء النسخ");
+    }
   };
 
   const loadProject = (pj: PriceGroup) => {
@@ -350,8 +383,8 @@ export const PriceGroupManager: React.FC = () => {
         }}
       >
         <style>{`
+          @page { size: A4 landscape; margin: 0 !important; } 
           @media print { 
-            @page { size: A4 landscape; margin: 0 !important; } 
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -408,25 +441,31 @@ export const PriceGroupManager: React.FC = () => {
                 <button onClick={() => setPreviewZoom(z => Math.min(200, z + 5))} className="p-2 text-slate-400 hover:text-sap-primary transition-all"><ZoomIn size={16}/></button>
             </div>
 
-            <button onClick={() => window.print()} className="bg-sap-primary text-white px-10 py-3 rounded-2xl font-black text-xs flex items-center gap-3 shadow-xl hover:bg-sap-primary-hover active:scale-95 transition-all">
-                <Printer size={18}/> طباعة اللوحة النهائية
-            </button>
+            <div className="flex items-center gap-3">
+                <button onClick={handleSaveAsImage} className="bg-white text-sap-primary border-2 border-sap-primary/20 px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-3 shadow-sm hover:bg-sap-highlight active:scale-95 transition-all">
+                    <Download size={18}/> حفظ كصورة
+                </button>
+                <button onClick={() => window.print()} className="bg-sap-primary text-white px-10 py-3 rounded-2xl font-black text-xs flex items-center gap-3 shadow-xl hover:bg-sap-primary-hover active:scale-95 transition-all">
+                    <Printer size={18}/> طباعة اللوحة النهائية
+                </button>
+            </div>
         </div>
 
         {/* WORKSTATION CANVAS - STRICT LANDSCAPE A4 */}
         <div className="flex-1 overflow-auto p-20 bg-slate-300/40 flex justify-center items-start custom-scrollbar">
-            <div 
-              className="bg-white shadow-[0_40px_100px_rgba(0,0,0,0.15)] origin-top transition-all duration-300 relative border border-slate-200" 
-              style={{ 
-                width: '297mm', // A4 Landscape
-                height: '210mm', // A4 Landscape
-                transform: `scale(${previewZoom / 100})`, 
-                display: 'grid', 
-                gridTemplateColumns: boardsPerPage === 2 ? '1fr 1fr' : '1fr', // Side by Side
-                gridTemplateRows: '1fr',
-                boxSizing: 'border-box' 
-              } as any}
-            >
+            <div style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: 'top center' }}>
+                <div 
+                  id="board-preview-container"
+                  className="bg-white shadow-[0_40px_100px_rgba(0,0,0,0.15)] origin-top transition-all duration-300 relative border border-slate-200" 
+                  style={{ 
+                    width: '297mm', // A4 Landscape
+                    height: '210mm', // A4 Landscape
+                    display: 'grid', 
+                    gridTemplateColumns: boardsPerPage === 2 ? '1fr 1fr' : '1fr', // Side by Side
+                    gridTemplateRows: '1fr',
+                    boxSizing: 'border-box' 
+                  } as any}
+                >
                 <div className={`w-full h-full relative group cursor-pointer transition-all ${activeBoardIdx === 0 ? 'ring-8 ring-sap-primary ring-inset' : 'hover:opacity-95'}`} onClick={() => setActiveBoardIdx(0)}>
                     <BoardRenderer board={boards[0]} s={styles} isSmall={boardsPerPage === 2} />
                     <div className="absolute top-6 left-6 bg-sap-primary text-white px-5 py-2 rounded-full text-[11px] font-black z-20 shadow-xl">اللوحة الأولى (أ)</div>
@@ -439,6 +478,7 @@ export const PriceGroupManager: React.FC = () => {
                         <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 bg-slate-900 text-white px-2 py-6 rounded-full text-[12px] font-black z-30 shadow-2xl opacity-40 writing-vertical-lr" style={{ writingMode: 'vertical-rl' }}>خط القص</div>
                     </div>
                 )}
+            </div>
             </div>
         </div>
 
@@ -559,6 +599,13 @@ export const PriceGroupManager: React.FC = () => {
                                                     n[activeBoardIdx].items[idx].isOffer = !n[activeBoardIdx].items[idx].isOffer;
                                                     setBoards(n);
                                                 }} className={`p-1.5 rounded-lg transition-all ${item.isOffer ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:bg-white hover:text-amber-500'}`} title="تحديد كعرض خاص"><Zap size={14}/></button>
+                                                <button onClick={() => {
+                                                    const n = [...boards];
+                                                    const itemToCopy = n[activeBoardIdx].items[idx];
+                                                    const newItem = { ...itemToCopy, id: crypto.randomUUID() };
+                                                    n[activeBoardIdx].items.splice(idx + 1, 0, newItem);
+                                                    setBoards(n);
+                                                }} className="p-1.5 text-slate-400 hover:text-sap-primary hover:bg-white rounded-lg transition-all" title="نسخ"><Copy size={14}/></button>
                                                 <button onClick={() => {
                                                     const n = [...boards];
                                                     n[activeBoardIdx].items = n[activeBoardIdx].items.filter(i => i.id !== item.id);
@@ -782,18 +829,29 @@ export const PriceGroupManager: React.FC = () => {
                                      <div className="font-black text-slate-800 text-lg">{pj.name}</div>
                                      <div className="text-[10px] text-gray-400 font-bold mt-1">{new Date(pj.date).toLocaleDateString('ar-SA')}</div>
                                  </div>
-                                 <button onClick={(e) => { 
-                                     e.stopPropagation(); 
-                                     setConfirmDialog({
-                                         isOpen: true,
-                                         message: 'هل أنت متأكد من حذف هذا المشروع نهائياً؟',
-                                         onConfirm: () => {
-                                             db.priceGroups.delete(pj.id); 
-                                             fetchData();
-                                             setConfirmDialog(null);
-                                         }
-                                     });
-                                 }} className="p-3 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20}/></button>
+                                 <div className="flex gap-2">
+                                     <button onClick={(e) => handleDuplicateProject(e, pj)} className="p-3 text-slate-300 hover:text-sap-primary hover:bg-sap-highlight rounded-xl transition-all" title="نسخ المشروع"><Copy size={20}/></button>
+                                     <button onClick={(e) => { 
+                                         e.stopPropagation(); 
+                                         setConfirmDialog({
+                                             isOpen: true,
+                                             message: 'هل أنت متأكد من حذف هذا المشروع نهائياً؟',
+                                             onConfirm: () => {
+                                                 db.priceGroups.delete(pj.id); 
+                                                 fetchData();
+                                                 if (activeProjectId === pj.id) {
+                                                     setActiveProjectId(null);
+                                                     setProjectName('مشروع جديد');
+                                                     setBoards([
+                                                         { id: 'board_a', title: 'قائمة الأصناف المختارة', items: [], isActive: true },
+                                                         { id: 'board_b', title: 'لوحة إضافية فارغة', items: [], isActive: true }
+                                                     ]);
+                                                 }
+                                                 setConfirmDialog(null);
+                                             }
+                                         });
+                                     }} className="p-3 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="حذف المشروع"><Trash2 size={20}/></button>
+                                 </div>
                             </div>
                         ))
                     )}

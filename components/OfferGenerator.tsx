@@ -669,11 +669,11 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         }}
       >
         <style>{`
+            @page {
+                size: A4 ${orientation};
+                margin: 0 !important;
+            }
             @media print {
-                @page {
-                    size: A4 ${orientation};
-                    margin: 0 !important;
-                }
                 * {
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
