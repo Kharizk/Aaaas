@@ -5,11 +5,13 @@ import { Product, Unit, OfferTag, OfferTemplate, SavedOfferList } from '../types
 import { db } from '../services/supabase';
 import { useSystemSettings } from './SystemSettingsContext';
 import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
+import { toPng } from 'html-to-image';
 import { 
   Printer, Plus, Trash2, Search, ZoomIn, ZoomOut, X, Save, FolderOpen, 
   Layout, Tag as TagIcon, Settings2, Monitor, Sliders, Zap, Bomb, 
   Type as TypeIcon, ChevronDown, ChevronUp, Loader2, Scissors, 
-  Paintbrush, Maximize, Smartphone, MoveHorizontal, Boxes, Palette, Clock, ArrowRight, Languages
+  Paintbrush, Maximize, Smartphone, MoveHorizontal, Boxes, Palette, Clock, ArrowRight, Languages,
+  Download, Copy, RefreshCw
 } from 'lucide-react';
 
 interface OfferGeneratorProps {
@@ -23,6 +25,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
   const { settings } = useSystemSettings();
   const [selectedTags, setSelectedTags] = useState<OfferTag[]>([]);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
+  const [changingTagId, setChangingTagId] = useState<string | null>(null);
   const [labelsPerPage, setLabelsPerPage] = useState<LabelsCount>(12);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('landscape');
   const [listName, setListName] = useState('عرض ترويجي جديد');
@@ -92,6 +95,64 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     finally { setIsSaving(false); }
   };
 
+  const handleSaveAsCopy = async () => {
+    if (!listName.trim()) { alert("يرجى تسمية المشروع"); return; }
+    setIsSaving(true);
+    try {
+      const newId = crypto.randomUUID();
+      const listData: SavedOfferList = { 
+        id: newId, 
+        name: `${listName.trim()} - نسخة`, 
+        date: new Date().toISOString(), 
+        tags: selectedTags, 
+        styles: { labelsPerPage, logoUrl: null, logoSize: 50, orientation, showUnit, numberFormat } as any
+      };
+      await db.offerLists.upsert(listData);
+      setActiveListId(newId);
+      setListName(listData.name);
+      fetchSavedLists();
+      alert("تم حفظ نسخة جديدة بنجاح");
+    } catch (e) { alert("فشل الحفظ"); }
+    finally { setIsSaving(false); }
+  };
+
+  const handleDuplicateProject = async (list: SavedOfferList, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSaving(true);
+    try {
+      const duplicatedList: SavedOfferList = {
+        ...list,
+        id: crypto.randomUUID(),
+        name: `${list.name} - نسخة`,
+        date: new Date().toISOString()
+      };
+      await db.offerLists.upsert(duplicatedList);
+      fetchSavedLists();
+      alert("تم نسخ المشروع بنجاح");
+    } catch (err) {
+      alert("فشل نسخ المشروع");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('هل أنت متأكد من حذف هذا المشروع؟')) return;
+    try {
+      await db.offerLists.delete(id);
+      if (activeListId === id) {
+        setActiveListId(null);
+        setListName('عرض ترويجي جديد');
+        setSelectedTags([]);
+        setActiveTagId(null);
+      }
+      fetchSavedLists();
+    } catch (err) {
+      alert("فشل حذف المشروع");
+    }
+  };
+
   const loadProject = (list: SavedOfferList) => {
     setListName(list.name);
     setSelectedTags(list.tags || []);
@@ -140,15 +201,32 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     return { columns, rows, widthPerLabel, heightPerLabel, pageWidth, pageHeight };
   }, [labelsPerPage, orientation]);
 
-  const addTag = (product?: Product) => {
-    if (selectedTags.length >= labelsPerPage) { 
-      alert(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`); 
-      return; 
-    }
+  const handleProductSelect = (product?: Product) => {
     let unitName = '';
     if (product && product.unitId) {
         const u = units.find(unit => unit.id === product.unitId);
         if (u) unitName = u.name;
+    }
+
+    if (changingTagId) {
+      updateTag(changingTagId, {
+        productId: product?.code || '',
+        name: product?.name || 'صنف جديد',
+        originalPrice: product?.price || '0.00',
+        offerPrice: product?.price || '0.00',
+        offerQuantity: '1',
+        // @ts-ignore
+        unitName: unitName || 'حبة'
+      });
+      setChangingTagId(null);
+      setShowProductPicker(false);
+      setSearchTerm('');
+      return;
+    }
+
+    if (selectedTags.length >= labelsPerPage) { 
+      alert(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`); 
+      return; 
     }
 
     const newTag: OfferTag = {
@@ -190,6 +268,37 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     setSearchTerm('');
   };
 
+  const handleRemove = (id: string) => {
+    setSelectedTags(prev => prev.filter(tag => tag.id !== id));
+    if (activeTagId === id) setActiveTagId(null);
+  };
+
+  const handleDuplicate = (tag: OfferTag) => {
+    if (selectedTags.length >= labelsPerPage) {
+      alert(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`);
+      return;
+    }
+    const newTag = { ...tag, id: crypto.randomUUID() };
+    setSelectedTags([...selectedTags, newTag]);
+    setActiveTagId(newTag.id);
+  };
+
+  const handleSaveImage = async (id: string) => {
+    const node = document.getElementById(`offer-preview-${id}`);
+    if (node) {
+      try {
+        const dataUrl = await toPng(node, { quality: 1, pixelRatio: 3 });
+        const link = document.createElement('a');
+        link.download = `offer-${id}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error('Failed to save image', err);
+        alert('حدث خطأ أثناء حفظ الصورة');
+      }
+    }
+  };
+
   const updateTag = (id: string, updates: Partial<OfferTag>) => {
     setSelectedTags(prev => prev.map(tag => tag.id === id ? { ...tag, ...updates } : tag));
   };
@@ -226,12 +335,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     if (tag.template === 'modern_clean') {
         return (
             <div 
-                className={`w-full h-full flex flex-col relative overflow-hidden ${!isPrint && showCuttingBorders ? 'border-dashed' : ''}`} 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${showCuttingBorders ? 'border-dashed' : ''}`} 
                 dir="rtl"
                 style={{ 
                     backgroundColor: bgColor,
                     border: `${globalBorderWidth}px solid ${globalBorderColor}`,
-                    borderStyle: isPrint ? 'solid' : (showCuttingBorders ? 'dashed' : 'solid')
+                    borderStyle: showCuttingBorders ? 'dashed' : 'solid'
                 }}
             >
                 {/* Yellow Header for Discount Text */}
@@ -289,12 +398,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     if (tag.template === 'yellow_red_banner') {
         return (
             <div 
-                className={`w-full h-full flex flex-col relative overflow-hidden ${!isPrint && showCuttingBorders ? 'border-dashed' : ''}`} 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${showCuttingBorders ? 'border-dashed' : ''}`} 
                 dir="rtl"
                 style={{ 
                     backgroundColor: '#FFEA00', // Yellow background
                     border: `${globalBorderWidth}px solid ${globalBorderColor}`,
-                    borderStyle: isPrint ? 'solid' : (showCuttingBorders ? 'dashed' : 'solid')
+                    borderStyle: showCuttingBorders ? 'dashed' : 'solid'
                 }}
             >
                 {/* Top Banner */}
@@ -375,12 +484,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     if (tag.template === 'bw_banner') {
         return (
             <div 
-                className={`w-full h-full flex flex-col relative overflow-hidden ${!isPrint && showCuttingBorders ? 'border-dashed' : ''}`} 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${showCuttingBorders ? 'border-dashed' : ''}`} 
                 dir="rtl"
                 style={{ 
                     backgroundColor: '#FFFFFF', // White background
                     border: `${globalBorderWidth}px solid ${globalBorderColor}`,
-                    borderStyle: isPrint ? 'solid' : (showCuttingBorders ? 'dashed' : 'solid')
+                    borderStyle: showCuttingBorders ? 'dashed' : 'solid'
                 }}
             >
                 {/* Top Banner */}
@@ -460,12 +569,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     // --- DESIGN 1: CLASSIC (DEFAULT) ---
     return (
         <div 
-            className={`w-full h-full flex flex-col relative overflow-hidden ${!isPrint && showCuttingBorders ? 'border-dashed' : ''}`} 
+            className={`w-full h-full flex flex-col relative overflow-hidden ${showCuttingBorders ? 'border-dashed' : ''}`} 
             dir="rtl"
             style={{ 
                 backgroundColor: bgColor,
                 border: `${globalBorderWidth}px solid ${globalBorderColor}`,
-                borderStyle: isPrint ? 'solid' : (showCuttingBorders ? 'dashed' : 'solid')
+                borderStyle: showCuttingBorders ? 'dashed' : 'solid'
             }}
         >
             <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 2px, transparent 0)', backgroundSize: '15px 15px' }}></div>
@@ -844,6 +953,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
             <div className="flex items-center gap-3">
                 <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="h-8 text-xs border w-48 px-2 font-bold focus:border-sap-primary rounded-lg" />
                 <button onClick={handleSaveProject} disabled={isSaving} className="p-2 hover:bg-sap-highlight rounded-lg text-sap-primary transition-all" title="حفظ المشروع"><Save size={18}/></button>
+                <button onClick={handleSaveAsCopy} disabled={isSaving} className="p-2 hover:bg-sap-highlight rounded-lg text-sap-primary transition-all" title="حفظ كنسخة جديدة"><Copy size={18}/></button>
                 
                 <button onClick={() => { fetchSavedLists(); setShowSavedModal(true); }} className="p-2 hover:bg-sap-highlight rounded-lg text-sap-secondary transition-all" title="المشاريع المحفوظة"><FolderOpen size={18}/></button>
                 
@@ -877,9 +987,23 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                           onClick={() => tag ? setActiveTagId(tag.id) : null}
                           className={`relative group ${tag ? 'cursor-pointer' : 'bg-gray-50/50'} ${isActive ? 'outline outline-[6px] outline-sap-primary z-10 shadow-2xl scale-[1.01]' : ''}`}
                         >
-                            {tag ? <OfferPreview tag={tag} /> : (
+                            {tag ? (
+                                <>
+                                    <div id={`offer-preview-${tag.id}`} className="w-full h-full">
+                                        <OfferPreview tag={tag} />
+                                    </div>
+                                    {isActive && (
+                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white shadow-xl rounded-lg flex items-center gap-1 p-1.5 border border-gray-200 z-50">
+                                            <button onClick={(e) => { e.stopPropagation(); handleSaveImage(tag.id); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="حفظ كصورة"><Download size={16}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicate(tag); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="نسخ"><Copy size={16}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); setChangingTagId(tag.id); setShowProductPicker(true); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="تغيير المنتج"><RefreshCw size={16}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleRemove(tag.id); }} className="p-2 hover:bg-red-50 text-red-600 rounded" title="حذف"><Trash2 size={16}/></button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
                                 <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ border: `1px dashed #ccc` }}>
-                                    <button onClick={() => setShowProductPicker(true)} className="p-2 bg-white border-2 border-sap-primary text-sap-primary text-[10px] font-black rounded-lg shadow-lg hover:bg-sap-primary hover:text-white transition-all">+ إضافة</button>
+                                    <button onClick={() => { setChangingTagId(null); setShowProductPicker(true); }} className="p-2 bg-white border-2 border-sap-primary text-sap-primary text-[10px] font-black rounded-lg shadow-lg hover:bg-sap-primary hover:text-white transition-all">+ إضافة</button>
                                 </div>
                             )}
                         </div>
@@ -903,7 +1027,23 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     <div className="text-sm font-black uppercase group-hover:text-sap-primary">{list.name}</div>
                     <div className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-widest flex items-center gap-2"><Clock size={12}/> {new Date(list.date).toLocaleDateString('ar-SA')} • {list.tags?.length || 0} ملصق</div>
                   </div>
-                  <ArrowRight size={20} className="text-gray-200 group-hover:text-sap-primary transition-all" />
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={(e) => handleDuplicateProject(list, e)} 
+                      className="p-2 text-gray-400 hover:text-sap-primary hover:bg-sap-highlight rounded-lg transition-all"
+                      title="نسخ المشروع"
+                    >
+                      <Copy size={18} />
+                    </button>
+                    <button 
+                      onClick={(e) => handleDeleteProject(list.id, e)} 
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      title="حذف المشروع"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                    <ArrowRight size={20} className="text-gray-200 group-hover:text-sap-primary transition-all" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -915,8 +1055,8 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in">
              <div className="bg-white w-full max-w-2xl shadow-2xl rounded-sap-m overflow-hidden">
                 <div className="px-6 py-4 bg-sap-shell text-white flex justify-between items-center font-black">
-                   <span className="flex items-center gap-2"><Boxes size={20} className="text-sap-secondary"/> قاعدة بيانات المنتجات</span>
-                   <button onClick={() => setShowProductPicker(false)} className="hover:bg-white/10 p-1 rounded-full"><X size={20}/></button>
+                   <span className="flex items-center gap-2"><Boxes size={20} className="text-sap-secondary"/> {changingTagId ? 'تغيير المنتج' : 'قاعدة بيانات المنتجات'}</span>
+                   <button onClick={() => { setChangingTagId(null); setShowProductPicker(false); }} className="hover:bg-white/10 p-1 rounded-full"><X size={20}/></button>
                 </div>
                 <div className="p-6 bg-gray-50 border-b">
                     <div className="relative">
@@ -925,9 +1065,11 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     </div>
                 </div>
                 <div className="max-h-[400px] overflow-y-auto bg-white custom-scrollbar">
-                    <button onClick={() => addTag()} className="w-full text-right p-5 border-b-4 border-dashed border-gray-100 text-sm font-black text-sap-primary hover:bg-sap-highlight transition-all">إضافة صنف مخصص جديد +</button>
+                    <button onClick={() => handleProductSelect()} className="w-full text-right p-5 border-b-4 border-dashed border-gray-100 text-sm font-black text-sap-primary hover:bg-sap-highlight transition-all">
+                        {changingTagId ? 'تغيير إلى صنف مخصص جديد +' : 'إضافة صنف مخصص جديد +'}
+                    </button>
                     {filteredProducts.map((p) => (
-                        <div key={p.id} onClick={() => addTag(p)} className="p-5 border-b hover:bg-sap-highlight cursor-pointer flex justify-between items-center transition-all group">
+                        <div key={p.id} onClick={() => handleProductSelect(p)} className="p-5 border-b hover:bg-sap-highlight cursor-pointer flex justify-between items-center transition-all group">
                             <div className="flex items-center gap-4">
                                 {p.color && p.color !== '#ffffff' && <div className="w-4 h-4 rounded-full border border-black/10" style={{ backgroundColor: p.color }}></div>}
                                 <div>

@@ -236,7 +236,7 @@ export interface User {
   lastLogin?: string;
 }
 
-export type OfferTemplate = 'modern_clean' | 'industrial' | 'vibrant_red' | 'discount' | '1plus1' | 'luxury' | 'mega_sale_50' | 'yellow_red_banner';
+export type OfferTemplate = 'modern_clean' | 'industrial' | 'vibrant_red' | 'discount' | '1plus1' | 'luxury' | 'mega_sale_50' | 'yellow_red_banner' | 'bw_banner';
 
 export interface OfferTag {
   id: string;

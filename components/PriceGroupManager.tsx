@@ -613,7 +613,8 @@ export const PriceGroupManager: React.FC = () => {
                         <div className="flex justify-between items-center px-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الألوان والتنسيق</label>
                             <button 
-                                onClick={() => setStyles({
+                                onClick={() => setStyles(prev => ({
+                                    ...prev,
                                     primaryColor: '#006C35',
                                     secondaryColor: '#C5A059',
                                     backgroundColor: '#ffffff',
@@ -625,7 +626,7 @@ export const PriceGroupManager: React.FC = () => {
                                     priceFontSize: 48,
                                     currencyFontSize: 24,
                                     currencySymbolType: 'icon'
-                                })}
+                                }))}
                                 className="text-[9px] font-bold text-sap-primary hover:text-sap-primary/80 transition-colors"
                             >
                                 استعادة الافتراضي
