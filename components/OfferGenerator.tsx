@@ -466,7 +466,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
                     {/* Bottom: Product Name */}
                     <div className="w-full text-center mt-2">
-                        <h2 className="font-black leading-tight text-[#5C2C16] w-full line-clamp-2" style={{ fontSize: `${nFontSize}px` }}>
+                        <h2 className="font-black leading-tight text-[#5C2C16] w-full" style={{ fontSize: `${nFontSize}px`, wordBreak: 'break-word' }}>
                             {tag.name}
                         </h2>
                         {tag.productId && (
@@ -552,7 +552,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
                     {/* Bottom: Product Name */}
                     <div className="w-full text-center mt-2">
-                        <h2 className="font-black leading-tight text-black w-full line-clamp-2" style={{ fontSize: `${nFontSize}px` }}>
+                        <h2 className="font-black leading-tight text-black w-full" style={{ fontSize: `${nFontSize}px`, wordBreak: 'break-word' }}>
                             {tag.name}
                         </h2>
                         {tag.productId && (

@@ -45,6 +45,8 @@ export const PriceGroupManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'content' | 'styling' | 'projects'>('content');
   const [boardsPerPage, setBoardsPerPage] = useState<1 | 2>(2);
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
+  const [downloadDialog, setDownloadDialog] = useState<{isOpen: boolean, fileName: string, targetId?: string} | null>(null);
+  const [saveProjectDialog, setSaveProjectDialog] = useState<{isOpen: boolean, projectName: string} | null>(null);
   const [showAdvancedColors, setShowAdvancedColors] = useState(false);
 
   const [styles, setStyles] = useState<PriceGroupStyles>({
@@ -87,13 +89,13 @@ export const PriceGroupManager: React.FC = () => {
     finally { setIsLoading(false); }
   };
 
-  const handleSave = async () => {
+  const executeSave = async (finalName: string) => {
     setIsSaving(true);
     setSaveSuccess(false);
     try {
       const projectData: PriceGroup = {
         id: activeProjectId || crypto.randomUUID(),
-        name: projectName,
+        name: finalName,
         date: new Date().toISOString(),
         boards,
         showLogo,
@@ -103,11 +105,20 @@ export const PriceGroupManager: React.FC = () => {
       };
       await db.priceGroups.upsert(projectData);
       setActiveProjectId(projectData.id);
+      setProjectName(finalName);
       fetchData();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) { alert("حدث خطأ أثناء الحفظ"); }
     finally { setIsSaving(false); }
+  };
+
+  const handleSave = () => {
+    if (!activeProjectId) {
+      setSaveProjectDialog({ isOpen: true, projectName: projectName });
+    } else {
+      executeSave(projectName);
+    }
   };
 
   const addProductToBoard = (product?: Product) => {
@@ -132,19 +143,23 @@ export const PriceGroupManager: React.FC = () => {
     setBoards(newBoards);
   };
 
-  const handleSaveAsImage = async () => {
-    const element = document.getElementById('board-preview-container');
+  const executeSaveAsImage = async (fileName: string, targetId: string = 'board-preview-container') => {
+    const element = document.getElementById(targetId);
     if (!element) return;
     try {
       const dataUrl = await toPng(element, { quality: 1, pixelRatio: 2 });
       const link = document.createElement('a');
-      link.download = `${projectName}.png`;
+      link.download = `${fileName}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error('Error saving image:', err);
       alert('حدث خطأ أثناء حفظ الصورة');
     }
+  };
+
+  const handleSaveAsImage = () => {
+    setDownloadDialog({ isOpen: true, fileName: projectName });
   };
 
   const handleDuplicateProject = async (e: React.MouseEvent, pj: PriceGroup) => {
@@ -236,7 +251,7 @@ export const PriceGroupManager: React.FC = () => {
                     {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
                         <div key={item.id} className="flex items-center justify-between py-3 group hover:bg-gray-50/50 transition-colors px-4 rounded-xl flex-nowrap">
                             <div className="flex items-center gap-5 flex-1 min-w-0">
-                                <div className="font-bold truncate" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
+                                <div className="font-bold break-words whitespace-normal" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, lineHeight: '1.4' }}>{item.label}</div>
                             </div>
                             <div className="flex items-baseline gap-1.5 shrink-0 mr-4 flex-nowrap">
                                 <span className="font-black shrink-0" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
@@ -267,7 +282,7 @@ export const PriceGroupManager: React.FC = () => {
                                 <div></div>
                                 {item.isOffer && <div className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 animate-pulse rounded shrink-0">عرض خاص</div>}
                             </div>
-                            <div className="font-bold leading-tight mb-5" style={{ fontSize: `${s.itemFontSize * scale * 0.9}px`, color: s.textColor }}>{item.label}</div>
+                            <div className="font-bold leading-tight mb-5 break-words whitespace-normal" style={{ fontSize: `${s.itemFontSize * scale * 0.9}px`, color: s.textColor, lineHeight: '1.4' }}>{item.label}</div>
                             <div className="flex items-baseline gap-1.5 justify-end mt-auto pt-4 border-t border-dashed flex-nowrap shrink-0" style={{ borderColor: `${s.secondaryColor}30` }}>
                                 <span className="font-black font-mono shrink-0" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
                                 <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
@@ -296,7 +311,7 @@ export const PriceGroupManager: React.FC = () => {
                 <div className="flex-1 space-y-8 px-10 relative z-10">
                     {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
                         <div key={item.id} className="flex items-baseline w-full group flex-nowrap">
-                            <div className="font-bold truncate shrink-0 max-w-[50%]" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
+                            <div className="font-bold break-words whitespace-normal shrink-0 max-w-[50%]" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, lineHeight: '1.4' }}>{item.label}</div>
                             <div className="flex-1 border-b-2 border-dotted mx-6 relative top-[-8px] opacity-40 group-hover:opacity-70 transition-opacity min-w-[20px]" style={{ borderColor: s.secondaryColor }}></div>
                             <div className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
                                 <span className="font-black" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
@@ -321,7 +336,7 @@ export const PriceGroupManager: React.FC = () => {
                     {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
                         <div key={item.id} className="flex items-stretch border-4 rounded-2xl overflow-hidden shadow-md bg-white transform transition-transform hover:scale-[1.01] flex-nowrap" style={{ borderColor: item.isOffer ? '#ef4444' : s.secondaryColor }}>
                             <div className="flex-1 flex items-center justify-between p-5 min-w-0 flex-nowrap">
-                                <div className="font-black leading-tight truncate flex-1 min-w-0" style={{ fontSize: `${s.itemFontSize * scale * 1.1}px`, color: s.textColor }}>{item.label}</div>
+                                <div className="font-black break-words whitespace-normal flex-1 min-w-0" style={{ fontSize: `${s.itemFontSize * scale * 1.1}px`, color: s.textColor, lineHeight: '1.4' }}>{item.label}</div>
                                 <div className="flex items-baseline gap-1.5 bg-gray-100 px-6 py-3 rounded-xl shadow-inner border border-gray-200 shrink-0 mr-4 flex-nowrap">
                                     <span className="font-black shrink-0" style={{ fontSize: `${s.priceFontSize * scale * 1.3}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
                                     <CurrencySymbolRenderer type={s.currencySymbolType || 'icon'} imageUrl={s.currencySymbolImage} color={s.textColor} style={{ width: `${s.currencyFontSize * scale}px`, height: `${s.currencyFontSize * scale}px` }} />
@@ -352,7 +367,7 @@ export const PriceGroupManager: React.FC = () => {
                 {board.items.length === 0 ? <EmptyState /> : board.items.map((item, idx) => (
                     <div key={item.id} className="flex items-center justify-between bg-white/70 backdrop-blur-md p-3 rounded-full shadow-sm border border-white/60 hover:bg-white/90 transition-colors flex-nowrap">
                         <div className="flex items-center gap-4 pl-4 flex-1 min-w-0">
-                            <div className="font-bold truncate" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor }}>{item.label}</div>
+                            <div className="font-bold break-words whitespace-normal" style={{ fontSize: `${s.itemFontSize * scale}px`, color: s.textColor, lineHeight: '1.4' }}>{item.label}</div>
                         </div>
                         <div className="flex items-baseline gap-1.5 bg-white px-6 py-3 rounded-full shadow-sm border border-gray-100 shrink-0 mr-4 flex-nowrap">
                             <span className="font-black shrink-0" style={{ fontSize: `${s.priceFontSize * scale}px`, color: item.isOffer ? '#ef4444' : s.priceColor }}>{item.price}</span>
@@ -467,15 +482,29 @@ export const PriceGroupManager: React.FC = () => {
                   } as any}
                 >
                 <div className={`w-full h-full relative group cursor-pointer transition-all ${activeBoardIdx === 0 ? 'ring-8 ring-sap-primary ring-inset' : 'hover:opacity-95'}`} onClick={() => setActiveBoardIdx(0)}>
-                    <BoardRenderer board={boards[0]} s={styles} isSmall={boardsPerPage === 2} />
-                    <div className="absolute top-6 left-6 bg-sap-primary text-white px-5 py-2 rounded-full text-[11px] font-black z-20 shadow-xl">اللوحة الأولى (أ)</div>
+                    <div id={`board-preview-${boards[0].id}`} className="w-full h-full bg-white">
+                        <BoardRenderer board={boards[0]} s={styles} isSmall={boardsPerPage === 2} />
+                    </div>
+                    <div className="absolute top-6 left-6 bg-sap-primary text-white px-5 py-2 rounded-full text-[11px] font-black z-20 shadow-xl no-print">اللوحة الأولى (أ)</div>
+                    {activeBoardIdx === 0 && (
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white shadow-xl rounded-lg flex items-center gap-1 p-1.5 border border-gray-200 z-50 no-print">
+                            <button onClick={(e) => { e.stopPropagation(); setDownloadDialog({ isOpen: true, fileName: `${projectName} - اللوحة الأولى`, targetId: `board-preview-${boards[0].id}` }); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="حفظ كصورة"><Download size={16}/></button>
+                        </div>
+                    )}
                 </div>
 
                 {boardsPerPage === 2 && (
                     <div className={`w-full h-full relative group cursor-pointer border-r-4 border-dashed border-slate-200 transition-all ${activeBoardIdx === 1 ? 'ring-8 ring-sap-primary ring-inset' : 'hover:opacity-95'}`} onClick={() => setActiveBoardIdx(1)}>
-                        <BoardRenderer board={boards[1]} s={styles} isSmall={true} />
-                        <div className="absolute top-6 right-6 bg-sap-secondary text-white px-5 py-2 rounded-full text-[11px] font-black z-20 shadow-xl">اللوحة الثانية (ب)</div>
-                        <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 bg-slate-900 text-white px-2 py-6 rounded-full text-[12px] font-black z-30 shadow-2xl opacity-40 writing-vertical-lr" style={{ writingMode: 'vertical-rl' }}>خط القص</div>
+                        <div id={`board-preview-${boards[1].id}`} className="w-full h-full bg-white">
+                            <BoardRenderer board={boards[1]} s={styles} isSmall={true} />
+                        </div>
+                        <div className="absolute top-6 right-6 bg-sap-secondary text-white px-5 py-2 rounded-full text-[11px] font-black z-20 shadow-xl no-print">اللوحة الثانية (ب)</div>
+                        <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 bg-slate-900 text-white px-2 py-6 rounded-full text-[12px] font-black z-30 shadow-2xl opacity-40 writing-vertical-lr no-print" style={{ writingMode: 'vertical-rl' }}>خط القص</div>
+                        {activeBoardIdx === 1 && (
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white shadow-xl rounded-lg flex items-center gap-1 p-1.5 border border-gray-200 z-50 no-print">
+                                <button onClick={(e) => { e.stopPropagation(); setDownloadDialog({ isOpen: true, fileName: `${projectName} - اللوحة الثانية`, targetId: `board-preview-${boards[1].id}` }); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="حفظ كصورة"><Download size={16}/></button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -915,6 +944,72 @@ export const PriceGroupManager: React.FC = () => {
                       </button>
                       <button onClick={confirmDialog.onConfirm} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black text-sm hover:bg-red-600 transition-all shadow-md shadow-red-500/20">
                           نعم، احذف
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* DOWNLOAD IMAGE DIALOG */}
+      {downloadDialog?.isOpen && (
+          <div className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-200">
+              <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                  <div className="p-8 text-center space-y-4">
+                      <div className="w-16 h-16 bg-sap-primary/10 text-sap-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                          <Download size={32} />
+                      </div>
+                      <h3 className="font-black text-xl text-slate-800">حفظ اللوحة كصورة</h3>
+                      <p className="text-slate-500 font-bold text-sm">أدخل اسماً للصورة قبل حفظها</p>
+                      <input 
+                          type="text" 
+                          value={downloadDialog.fileName} 
+                          onChange={e => setDownloadDialog({...downloadDialog, fileName: e.target.value})}
+                          className="w-full p-4 text-center font-black bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-sap-primary outline-none"
+                          autoFocus
+                      />
+                  </div>
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                      <button onClick={() => setDownloadDialog(null)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black text-sm hover:bg-slate-50 transition-all">
+                          إلغاء
+                      </button>
+                      <button onClick={() => {
+                          executeSaveAsImage(downloadDialog.fileName, downloadDialog.targetId);
+                          setDownloadDialog(null);
+                      }} className="flex-1 py-3 bg-sap-primary text-white rounded-xl font-black text-sm hover:bg-sap-primary-hover transition-all shadow-md">
+                          حفظ وتنزيل
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* SAVE PROJECT DIALOG */}
+      {saveProjectDialog?.isOpen && (
+          <div className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-200">
+              <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                  <div className="p-8 text-center space-y-4">
+                      <div className="w-16 h-16 bg-sap-primary/10 text-sap-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                          <Save size={32} />
+                      </div>
+                      <h3 className="font-black text-xl text-slate-800">حفظ المشروع</h3>
+                      <p className="text-slate-500 font-bold text-sm">أدخل اسماً للمشروع الجديد</p>
+                      <input 
+                          type="text" 
+                          value={saveProjectDialog.projectName} 
+                          onChange={e => setSaveProjectDialog({...saveProjectDialog, projectName: e.target.value})}
+                          className="w-full p-4 text-center font-black bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-sap-primary outline-none"
+                          autoFocus
+                      />
+                  </div>
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                      <button onClick={() => setSaveProjectDialog(null)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black text-sm hover:bg-slate-50 transition-all">
+                          إلغاء
+                      </button>
+                      <button onClick={() => {
+                          executeSave(saveProjectDialog.projectName);
+                          setSaveProjectDialog(null);
+                      }} className="flex-1 py-3 bg-sap-primary text-white rounded-xl font-black text-sm hover:bg-sap-primary-hover transition-all shadow-md">
+                          حفظ المشروع
                       </button>
                   </div>
               </div>
