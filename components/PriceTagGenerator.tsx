@@ -108,6 +108,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     nameFontSize: 14,
     priceFontSize: 28,
     unitFontSize: 12,
+    cartonPriceFontSize: 10,
     nameColor: '#000000',
     priceColor: '#DC2626', 
     unitColor: '#6B7280',
@@ -257,6 +258,17 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
   const updateTag = (id: string, updates: Partial<SelectedTag>) => {
     setSelectedTags(prev => prev.map(tag => tag.id === id ? { ...tag, ...updates } : tag));
+  };
+
+  const handleRemove = (id: string) => {
+    setSelectedTags(prev => prev.filter(tag => tag.id !== id));
+    setActiveTagIds(prev => prev.filter(tagId => tagId !== id));
+  };
+
+  const handleDuplicate = (tag: SelectedTag) => {
+    const newTag = { ...tag, id: crypto.randomUUID() };
+    setSelectedTags(prev => [...prev, newTag]);
+    setActiveTagIds([newTag.id]);
   };
 
   const handleStyleChange = (key: keyof TagStyleOverrides | keyof TagStyles, value: any) => {
@@ -445,11 +457,20 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         </div>
                     )}
 
+                    {/* Carton Price */}
+                    {tag.showCartonPrice !== false && tag.cartonPrice && (
+                        <div className="absolute -top-4 left-3 bg-blue-100 text-blue-800 px-2 py-0.5 rounded-sm shadow-sm border border-blue-200 z-20 flex flex-col items-center">
+                            <span className="text-[6px] font-bold opacity-80 leading-none mb-0.5">الكرتون</span>
+                            <span className="font-black leading-none" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-center gap-2 relative z-10 w-full">
                         <PriceWithCurrency />
                         
                         <div className="flex flex-col items-start justify-center gap-0.5">
                             <span className="text-[7px] text-gray-500 font-bold leading-none">السعر شامل الضريبة</span>
+                            {tag.showCartonPrice !== false && tag.cartonPrice && <span className="text-[7px] text-blue-600 font-bold leading-none">للحبة</span>}
                             {s.showUnit && tag.unitName && (
                                 <span 
                                     style={{ color: s.unitColor, borderColor: s.unitColor, fontSize: `${s.unitFontSize || 8}px` }} 
@@ -503,7 +524,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             }
                         />
                     </div>
-                    <span className="text-[6px] text-gray-400 font-bold mt-1 text-center w-full">شامل الضريبة</span>
+                    <span className="text-[6px] text-gray-400 font-bold mt-1 text-center w-full">شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
+                    
+                    {tag.showCartonPrice !== false && tag.cartonPrice && (
+                        <div className="mt-1 bg-blue-50 border border-blue-100 rounded px-2 py-0.5 w-full flex justify-between items-center">
+                            <span className="text-[6px] font-bold text-blue-800">الكرتون</span>
+                            <span className="font-black text-blue-900" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Side (Information Section) */}
@@ -564,16 +592,24 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     </div>
                 </div>
                 <div className="flex items-center justify-between px-3 py-2 border-t-4 border-black" style={{ backgroundColor: s.backgroundColor }}>
-                    {s.showOriginalPrice && tag.originalPrice && (
-                        <div className="flex flex-col">
-                            <span className="text-[7px] font-bold text-gray-500">WAS</span>
-                            <span className="text-xs font-bold line-through text-gray-400">{tag.originalPrice}</span>
-                        </div>
-                    )}
+                    <div className="flex flex-col gap-1">
+                        {s.showOriginalPrice && tag.originalPrice && (
+                            <div className="flex flex-col">
+                                <span className="text-[7px] font-bold text-gray-500">WAS</span>
+                                <span className="text-xs font-bold line-through text-gray-400">{tag.originalPrice}</span>
+                            </div>
+                        )}
+                        {tag.showCartonPrice !== false && tag.cartonPrice && (
+                            <div className="flex flex-col bg-black text-white px-1 py-0.5 rounded-sm">
+                                <span className="text-[6px] font-bold">CARTON</span>
+                                <span className="font-bold" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex items-baseline gap-1 ml-auto">
                         <div className="flex flex-col items-end">
                             <PriceWithCurrency />
-                            <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة</span>
+                            <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
                         </div>
                     </div>
                 </div>
@@ -604,7 +640,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <div className="flex items-start leading-none drop-shadow-sm">
                             <PriceWithCurrency scale={1.8} />
                         </div>
-                        <span className="text-[10px] font-bold mt-1 opacity-70" style={{ color: s.priceColor }}>السعر شامل الضريبة</span>
+                        <span className="text-[10px] font-bold mt-1 opacity-70" style={{ color: s.priceColor }}>السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
+                        
+                        {tag.showCartonPrice !== false && tag.cartonPrice && (
+                            <div className="mt-1 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-0.5 shadow-sm flex items-center gap-1">
+                                <span className="text-[8px] font-bold text-gray-500">الكرتون:</span>
+                                <span className="font-black text-gray-800" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                            </div>
+                        )}
                      </div>
                 </div>
 
@@ -646,11 +689,17 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     <span className="text-xs font-bold line-through">{tag.originalPrice}</span>
                                 </div>
                             )}
+                            {tag.showCartonPrice !== false && tag.cartonPrice && (
+                                <div className="bg-blue-50 text-blue-800 px-1 rounded mb-1 w-fit border border-blue-100">
+                                    <span className="text-[8px] font-bold">الكرتون: </span>
+                                    <span className="font-black" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                                </div>
+                            )}
                             {s.showUnit && tag.unitName && <span className="font-bold" style={{ color: s.unitColor, fontSize: `${s.unitFontSize || 9}px` }}>{tag.unitName}</span>}
                         </div>
                         <div className="flex flex-col items-end">
                             <PriceWithCurrency />
-                            <span className="text-[7px] text-gray-400 font-bold">شامل الضريبة</span>
+                            <span className="text-[7px] text-gray-400 font-bold">شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
                         </div>
                     </div>
                 </div>
@@ -691,12 +740,18 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
                 {/* Left Section (Price) */}
                 <div className="w-[35%] shrink-0 flex flex-col items-center justify-between p-1" style={{ backgroundColor: s.backgroundColor }}>
-                    <div className="flex-1 flex flex-col items-center justify-center">
+                    <div className="flex-1 flex flex-col items-center justify-center relative w-full">
                         <PriceWithCurrency />
+                        {tag.showCartonPrice !== false && tag.cartonPrice && (
+                            <div className="absolute top-0 right-0 bg-white border border-black px-1 rounded-sm flex flex-col items-center leading-none">
+                                <span className="text-[5px] font-bold">الكرتون</span>
+                                <span className="font-black" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                            </div>
+                        )}
                     </div>
                     
                     <div className="w-full text-center border-t border-black/20 pt-1">
-                        <div className="text-[10px] font-black">السعر شامل الضريبة</div>
+                        <div className="text-[10px] font-black">السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</div>
                         <div className="text-[8px] font-mono opacity-70" dir="ltr">{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'})}</div>
                     </div>
                 </div>
@@ -1006,6 +1061,18 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     <div className="relative">
                                         <input type="text" value={activeTag.originalPrice || ''} onChange={e => updateTag(activeTag.id, { originalPrice: e.target.value })} className="w-full p-2 border border-red-200 rounded-lg font-mono font-bold text-red-500 text-center bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all" placeholder="0.00" />
                                     </div>
+                                </div>
+                            </div>
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-[10px] font-bold text-blue-800 uppercase tracking-wider">سعر الكرتون (اختياري)</label>
+                                    <label className="flex items-center gap-1 cursor-pointer">
+                                        <input type="checkbox" checked={activeTag.showCartonPrice !== false} onChange={e => updateTag(activeTag.id, { showCartonPrice: e.target.checked })} className="w-3 h-3 accent-blue-600" />
+                                        <span className="text-[9px] font-bold text-blue-800">إظهار في الملصق</span>
+                                    </label>
+                                </div>
+                                <div className="relative">
+                                    <input type="text" value={activeTag.cartonPrice || ''} onChange={e => updateTag(activeTag.id, { cartonPrice: e.target.value })} className="w-full p-2 border border-blue-200 rounded-lg font-mono font-bold text-blue-800 text-center bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" placeholder="أدخل سعر الكرتون هنا..." />
                                 </div>
                             </div>
                             <div>
@@ -1381,7 +1448,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                               setActiveTagIds([tag.id]);
                               setShowProductPicker(true);
                           }}
-                          className={`relative overflow-hidden transition-all ${tag ? 'cursor-pointer hover:shadow-md' : 'cursor-pointer hover:bg-gray-50 flex items-center justify-center'} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
+                          className={`relative transition-all ${tag ? 'cursor-pointer hover:shadow-md' : 'cursor-pointer hover:bg-gray-50 flex items-center justify-center'} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
                           style={{ 
                               width: `${labelWidth}mm`, 
                               height: `${globalStyles.tagHeight}mm`, 
@@ -1390,7 +1457,32 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                               backgroundColor: tag ? s.backgroundColor : 'transparent' 
                           }}
                         >
-                            {tag ? renderTagLayout(tag, s) : (
+                            {tag ? (
+                                <>
+                                    <div className="w-full h-full pointer-events-none overflow-hidden">
+                                        {renderTagLayout(tag, s)}
+                                    </div>
+                                    {isActive && activeTagIds.length === 1 && (
+                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-2xl rounded-full flex items-center gap-1 p-1.5 border border-gray-200 z-50">
+                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicate(tag); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full" title="تكرار"><Copy size={16}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); setActiveTagIds([tag.id]); setShowProductPicker(true); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full" title="تغيير المنتج"><RefreshCw size={16}/></button>
+                                            
+                                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                            
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...tag.styles, cartonPriceFontSize: (s.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تكبير سعر الكرتون">
+                                                <span className="text-[10px] font-bold">A+</span>
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...tag.styles, cartonPriceFontSize: Math.max(4, (s.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تصغير سعر الكرتون">
+                                                <span className="text-[10px] font-bold">A-</span>
+                                            </button>
+
+                                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+
+                                            <button onClick={(e) => { e.stopPropagation(); handleRemove(tag.id); }} className="p-1.5 hover:bg-red-50 text-red-600 rounded-full" title="حذف"><Trash2 size={16}/></button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
                                 <div className="opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-gray-400 transition-opacity">
                                     <Plus size={24} className="mb-1" />
                                     <span className="text-[10px] font-bold">إضافة ملصق</span>

@@ -263,6 +263,7 @@ export interface OfferTag {
     bgImage?: string | null;
     nameFontSize?: number;
     priceFontSize?: number;
+    cartonPriceFontSize?: number;
     decimalFontSize?: number;
     discountFontSize?: number;
     originalPriceFontSize?: number;
@@ -412,6 +413,7 @@ export interface TagStyleOverrides {
   nameFontSize?: number;
   priceFontSize?: number;
   unitFontSize?: number;
+  cartonPriceFontSize?: number;
   nameColor?: string;
   priceColor?: string;
   unitColor?: string;
@@ -440,6 +442,8 @@ export interface SelectedTag {
   name: string;
   price: string;
   originalPrice?: string;
+  cartonPrice?: string;
+  showCartonPrice?: boolean;
   unitName?: string;
   styles?: TagStyleOverrides;
 }
@@ -448,6 +452,7 @@ export interface TagStyles {
   nameFontSize: number;
   priceFontSize: number;
   unitFontSize: number;
+  cartonPriceFontSize?: number;
   nameColor: string;
   priceColor: string;
   unitColor: string;

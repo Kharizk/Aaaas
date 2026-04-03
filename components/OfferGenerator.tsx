@@ -381,7 +381,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                              {displayCartonPrice && (
                                  <div className="flex flex-col items-start">
                                      <span className="text-[9px] font-black text-black bg-gray-200 px-1 mb-0.5">سعر الكرتون</span>
-                                     <span className="font-black text-black" style={{ fontSize: `${origFontSize * 1.2}px` }}>{displayCartonPrice}</span>
+                                     <span className="font-black text-black" style={{ fontSize: `${tag.customColors?.cartonPriceFontSize || origFontSize * 1.2}px` }}>{displayCartonPrice}</span>
                                  </div>
                              )}
                         </div>
@@ -443,7 +443,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             {displayCartonPrice && (
                                 <div className="mt-2 border-2 border-[#B22222] rounded-lg px-3 py-1 flex flex-col items-center bg-white">
                                     <span className="text-[#5C2C16] font-bold text-[10px] leading-none mb-1">سعر الكرتون</span>
-                                    <span className="font-black text-[#5C2C16]" style={{ fontSize: `${origFontSize}px` }}>{displayCartonPrice}</span>
+                                    <span className="font-black text-[#5C2C16]" style={{ fontSize: `${tag.customColors?.cartonPriceFontSize || origFontSize}px` }}>{displayCartonPrice}</span>
                                 </div>
                             )}
                         </div>
@@ -536,7 +536,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             {displayCartonPrice && (
                                 <div className="mt-2 border-2 border-black rounded-lg px-3 py-1 flex flex-col items-center bg-white">
                                     <span className="text-black font-bold text-[10px] leading-none mb-1">سعر الكرتون</span>
-                                    <span className="font-black text-black" style={{ fontSize: `${origFontSize}px` }}>{displayCartonPrice}</span>
+                                    <span className="font-black text-black" style={{ fontSize: `${tag.customColors?.cartonPriceFontSize || origFontSize}px` }}>{displayCartonPrice}</span>
                                 </div>
                             )}
                         </div>
@@ -651,7 +651,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <span 
                                 className="font-black font-mono leading-none" 
                                 style={{ 
-                                    fontSize: `${origFontSize}px`,
+                                    fontSize: `${tag.customColors?.cartonPriceFontSize || origFontSize}px`,
                                     color: '#CCFF00' 
                                 }}
                             >
@@ -1048,11 +1048,23 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                         <OfferPreview tag={tag} />
                                     </div>
                                     {isActive && (
-                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white shadow-xl rounded-lg flex items-center gap-1 p-1.5 border border-gray-200 z-50">
-                                            <button onClick={(e) => { e.stopPropagation(); handleSaveImage(tag.id); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="حفظ كصورة"><Download size={16}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicate(tag); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="نسخ"><Copy size={16}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); setChangingTagId(tag.id); setShowProductPicker(true); }} className="p-2 hover:bg-gray-100 text-gray-600 rounded" title="تغيير المنتج"><RefreshCw size={16}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleRemove(tag.id); }} className="p-2 hover:bg-red-50 text-red-600 rounded" title="حذف"><Trash2 size={16}/></button>
+                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-2xl rounded-full flex items-center gap-1 p-1.5 border border-gray-200 z-50">
+                                            <button onClick={(e) => { e.stopPropagation(); handleSaveImage(tag.id); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full" title="حفظ كصورة"><Download size={16}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicate(tag); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full" title="تكرار"><Copy size={16}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); setChangingTagId(tag.id); setShowProductPicker(true); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full" title="تغيير المنتج"><RefreshCw size={16}/></button>
+                                            
+                                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                            
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { customColors: { ...tag.customColors, cartonPriceFontSize: (tag.customColors?.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تكبير سعر الكرتون">
+                                                <span className="text-[10px] font-bold">A+</span>
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { customColors: { ...tag.customColors, cartonPriceFontSize: Math.max(4, (tag.customColors?.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تصغير سعر الكرتون">
+                                                <span className="text-[10px] font-bold">A-</span>
+                                            </button>
+
+                                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+
+                                            <button onClick={(e) => { e.stopPropagation(); handleRemove(tag.id); }} className="p-1.5 hover:bg-red-50 text-red-600 rounded-full" title="حذف"><Trash2 size={16}/></button>
                                         </div>
                                     )}
                                 </>
