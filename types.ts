@@ -244,6 +244,8 @@ export interface OfferTag {
   name: string;
   originalPrice: string;
   offerPrice: string;
+  cartonPrice?: string;
+  showCartonPrice?: boolean;
   template: OfferTemplate;
   discountText: string;
   topBannerText?: string;

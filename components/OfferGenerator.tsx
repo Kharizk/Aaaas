@@ -235,6 +235,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       name: product?.name || 'صنف جديد',
       originalPrice: product?.price || '0.00',
       offerPrice: product?.price || '0.00',
+      showCartonPrice: true,
       template: 'mega_sale_50',
       discountText: 'خصم 10%', // Updated default to be specific
       topBannerText: 'العروض معك تفرق',
@@ -327,6 +328,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     
     const displayOfferPrice = formatNum(tag.offerPrice);
     const displayOriginalPrice = formatNum(tag.originalPrice);
+    const displayCartonPrice = tag.showCartonPrice !== false && tag.cartonPrice ? formatNum(tag.cartonPrice) : null;
     const defaultDec = numberFormat === 'ar' ? '٠٠' : '00';
 
     const [priceMain, priceDec] = displayOfferPrice.includes('.') ? displayOfferPrice.split('.') : [displayOfferPrice, defaultDec];
@@ -365,21 +367,32 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     {/* Price Section */}
                     <div className="flex items-end justify-between border-t-[3px] border-black pt-2 mt-2">
                         <div className="flex flex-col items-start pl-2">
-                             <span className="text-[9px] font-black text-black bg-[#FFD700] px-1 mb-1">كان سابقاً</span>
                              {tag.originalPrice && tag.originalPrice !== '0.00' && !tag.hideOriginalPrice && (
-                                <span 
-                                    className="font-black line-through decoration-red-600 decoration-[3px] font-mono text-gray-400" 
-                                    style={{ fontSize: `${origFontSize}px` }}
-                                >
-                                    {displayOriginalPrice}
-                                </span>
+                                 <div className="flex flex-col items-start mb-1">
+                                     <span className="text-[9px] font-black text-black bg-[#FFD700] px-1 mb-0.5">كان سابقاً</span>
+                                     <span 
+                                         className="font-black line-through decoration-red-600 decoration-[3px] font-mono text-gray-400" 
+                                         style={{ fontSize: `${origFontSize}px` }}
+                                     >
+                                         {displayOriginalPrice}
+                                     </span>
+                                 </div>
+                             )}
+                             {displayCartonPrice && (
+                                 <div className="flex flex-col items-start">
+                                     <span className="text-[9px] font-black text-black bg-gray-200 px-1 mb-0.5">سعر الكرتون</span>
+                                     <span className="font-black text-black" style={{ fontSize: `${origFontSize * 1.2}px` }}>{displayCartonPrice}</span>
+                                 </div>
                              )}
                         </div>
-                        <div className="flex items-baseline flex-nowrap shrink-0" dir="ltr">
-                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="shrink-0 mr-1" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
-                            <span className="font-black tracking-tighter text-black shrink-0" style={{ fontSize: `${pFontSize}px` }}>{priceMain}</span>
-                            <div className="flex flex-col items-start ml-1 leading-none shrink-0">
-                                <span className="font-black text-black" style={{ fontSize: `${dFontSize}px` }}>.{priceDec}</span>
+                        <div className="flex flex-col items-end">
+                            {displayCartonPrice && <span className="text-[10px] font-black text-black mb-1">سعر الحبة</span>}
+                            <div className="flex items-baseline flex-nowrap shrink-0" dir="ltr">
+                                <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="shrink-0 mr-1" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
+                                <span className="font-black tracking-tighter text-black shrink-0" style={{ fontSize: `${pFontSize}px` }}>{priceMain}</span>
+                                <div className="flex flex-col items-start ml-1 leading-none shrink-0">
+                                    <span className="font-black text-black" style={{ fontSize: `${dFontSize}px` }}>.{priceDec}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -427,6 +440,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                     {unitText}
                                 </div>
                             )}
+                            {displayCartonPrice && (
+                                <div className="mt-2 border-2 border-[#B22222] rounded-lg px-3 py-1 flex flex-col items-center bg-white">
+                                    <span className="text-[#5C2C16] font-bold text-[10px] leading-none mb-1">سعر الكرتون</span>
+                                    <span className="font-black text-[#5C2C16]" style={{ fontSize: `${origFontSize}px` }}>{displayCartonPrice}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Left: Regular Price */}
@@ -446,6 +465,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
                     {/* Center: Large Price */}
                     <div className="flex-1 flex flex-col items-center justify-center">
+                        {displayCartonPrice && <span className="font-bold text-[#5C2C16] text-[12px] mb-1">سعر الحبة</span>}
                         <div className="flex items-center gap-2 flex-nowrap shrink-0 text-[#5C2C16]" dir="ltr">
                             <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#5C2C16" className="shrink-0" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
                             <div className="flex items-baseline gap-1">
@@ -513,6 +533,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                     {unitText}
                                 </div>
                             )}
+                            {displayCartonPrice && (
+                                <div className="mt-2 border-2 border-black rounded-lg px-3 py-1 flex flex-col items-center bg-white">
+                                    <span className="text-black font-bold text-[10px] leading-none mb-1">سعر الكرتون</span>
+                                    <span className="font-black text-black" style={{ fontSize: `${origFontSize}px` }}>{displayCartonPrice}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Left: Regular Price */}
@@ -532,6 +558,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
                     {/* Center: Large Price */}
                     <div className="flex-1 flex flex-col items-center justify-center">
+                        {displayCartonPrice && <span className="font-bold text-black text-[12px] mb-1">سعر الحبة</span>}
                         <div className="flex items-center gap-2 flex-nowrap shrink-0 text-black" dir="ltr">
                             <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="black" className="shrink-0" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
                             <div className="flex items-baseline gap-1">
@@ -618,22 +645,40 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         </div>
                     )}
 
-                    <div className="flex-1 flex items-center justify-center gap-1.5 flex-nowrap" dir="ltr">
-                        <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#94a3b8" className="shrink-0" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
-                        <div className="flex items-baseline leading-none flex-nowrap shrink-0">
-                            <span className="font-black tracking-tighter shrink-0" style={{ fontSize: `${pFontSize}px` }}>
-                                {priceMain}
+                    {displayCartonPrice && (
+                        <div className="flex flex-col items-center pl-4 border-l border-white/10 shrink-0">
+                            <span className="text-[7px] font-black text-slate-400 uppercase mb-0.5">الكرتون</span>
+                            <span 
+                                className="font-black font-mono leading-none" 
+                                style={{ 
+                                    fontSize: `${origFontSize}px`,
+                                    color: '#CCFF00' 
+                                }}
+                            >
+                                {displayCartonPrice}
                             </span>
                         </div>
+                    )}
 
-                        <div className="flex items-center h-full shrink-0">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                        </div>
+                    <div className="flex-1 flex flex-col items-center justify-center gap-1.5 flex-nowrap" dir="ltr">
+                        {displayCartonPrice && <span className="text-[8px] font-black text-slate-400 uppercase mb-[-4px]">سعر الحبة</span>}
+                        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+                            <CurrencySymbolRenderer type={currencyType} imageUrl={currencyImage} color="#94a3b8" className="shrink-0" style={{ width: `${currencySize}px`, height: `${currencySize}px` }} />
+                            <div className="flex items-baseline leading-none flex-nowrap shrink-0">
+                                <span className="font-black tracking-tighter shrink-0" style={{ fontSize: `${pFontSize}px` }}>
+                                    {priceMain}
+                                </span>
+                            </div>
 
-                        <div className="flex flex-col items-start leading-none pt-1 shrink-0">
-                            <span className="font-black text-red-500" style={{ fontSize: `${dFontSize}px` }}>
-                                {priceDec}
-                            </span>
+                            <div className="flex items-center h-full shrink-0">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                            </div>
+
+                            <div className="flex flex-col items-start leading-none pt-1 shrink-0">
+                                <span className="font-black text-red-500" style={{ fontSize: `${dFontSize}px` }}>
+                                    {priceDec}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -742,8 +787,18 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             <input type="text" value={activeTag.originalPrice} onChange={e => updateTag(activeTag.id, { originalPrice: e.target.value })} className="w-full p-2 border text-xs rounded" />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[9px] font-black text-sap-primary uppercase tracking-tighter">سعر العرض</label>
+                            <label className="text-[9px] font-black text-sap-primary uppercase tracking-tighter">سعر العرض (الحبة)</label>
                             <input type="text" value={activeTag.offerPrice} onChange={e => updateTag(activeTag.id, { offerPrice: e.target.value })} className="w-full p-2 border font-black text-sap-primary text-xs rounded" />
+                        </div>
+                        <div className="space-y-1 col-span-2 bg-blue-50 p-2 rounded-lg border border-blue-100">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-black text-blue-800 uppercase tracking-tighter">سعر الكرتون (اختياري)</label>
+                                <label className="flex items-center gap-1 cursor-pointer">
+                                    <input type="checkbox" checked={activeTag.showCartonPrice !== false} onChange={e => updateTag(activeTag.id, { showCartonPrice: e.target.checked })} className="w-3 h-3 accent-blue-600" />
+                                    <span className="text-[8px] font-bold text-blue-800">إظهار في الملصق</span>
+                                </label>
+                            </div>
+                            <input type="text" value={activeTag.cartonPrice || ''} onChange={e => updateTag(activeTag.id, { cartonPrice: e.target.value })} className="w-full p-2 border border-blue-200 text-xs rounded" placeholder="أدخل سعر الكرتون هنا..." />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
