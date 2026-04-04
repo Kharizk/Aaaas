@@ -60,6 +60,7 @@ export interface ListRow {
   name: string;
   unitId: string;
   qty: number | '';
+  cartonQty?: number | '';
   expiryDate: string;
   note: string;
   isDismissed?: boolean;
@@ -414,6 +415,7 @@ export interface TagStyleOverrides {
   priceFontSize?: number;
   unitFontSize?: number;
   cartonPriceFontSize?: number;
+  pieceFontSize?: number;
   nameColor?: string;
   priceColor?: string;
   unitColor?: string;
@@ -434,6 +436,14 @@ export interface TagStyleOverrides {
   currencySymbolPosition?: 'before' | 'after' | 'superscript_before' | 'superscript_after';
   currencySymbolMargin?: number;
   nameBackgroundColor?: string;
+  nameOffsetX?: number;
+  nameOffsetY?: number;
+  priceOffsetX?: number;
+  priceOffsetY?: number;
+  cartonPriceOffsetX?: number;
+  cartonPriceOffsetY?: number;
+  logoOffsetX?: number;
+  logoOffsetY?: number;
 }
 
 export interface SelectedTag {
@@ -453,6 +463,7 @@ export interface TagStyles {
   priceFontSize: number;
   unitFontSize: number;
   cartonPriceFontSize?: number;
+  pieceFontSize?: number;
   nameColor: string;
   priceColor: string;
   unitColor: string;
@@ -478,6 +489,14 @@ export interface TagStyles {
   currencySymbolSize: number;
   currencySymbolPosition: 'before' | 'after' | 'superscript_before' | 'superscript_after';
   currencySymbolMargin: number;
+  nameOffsetX?: number;
+  nameOffsetY?: number;
+  priceOffsetX?: number;
+  priceOffsetY?: number;
+  cartonPriceOffsetX?: number;
+  cartonPriceOffsetY?: number;
+  logoOffsetX?: number;
+  logoOffsetY?: number;
 }
 
 export interface SavedTagList {

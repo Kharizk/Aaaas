@@ -23,7 +23,7 @@ interface ProductListBuilderProps {
 export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products, units, onNewProductsAdded, initialListParams, clearInitialParams }) => {
   const generateId = () => crypto.randomUUID();
   const createEmptyRow = (): ListRow => ({
-    id: generateId(), code: '', name: '', unitId: '', qty: '', expiryDate: '', note: '', isDismissed: false
+    id: generateId(), code: '', name: '', unitId: '', qty: '', cartonQty: '', expiryDate: '', note: '', isDismissed: false
   });
 
   const [rows, setRows] = useState<ListRow[]>([createEmptyRow()]);
@@ -32,6 +32,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   const [listType, setListType] = useState<ListType>('inventory');
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [printWithHeader, setPrintWithHeader] = useState(true);
+  const [showCartonQty, setShowCartonQty] = useState(false);
   const [showSavedLists, setShowSavedLists] = useState(false);
   const [savedLists, setSavedLists] = useState<any[]>([]);
   const [savedListSearch, setSavedListSearch] = useState(''); 
@@ -64,6 +66,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
 
   const totalQty = rows.reduce((acc, row) => acc + (Number(row.qty) || 0), 0);
+  const totalCartonQty = rows.reduce((acc, row) => acc + (Number(row.cartonQty) || 0), 0);
   const validRowsCount = rows.filter(r => r.name.trim()).length;
 
   useEffect(() => {
@@ -483,7 +486,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           let nextId = '';
           if (currentField === 'code') nextId = `name-${currentRowId}`;
           else if (currentField === 'name') nextId = `qty-${currentRowId}`;
-          else if (currentField === 'qty') nextId = `unit-${currentRowId}`;
+          else if (currentField === 'qty') nextId = showCartonQty ? `cartonQty-${currentRowId}` : `unit-${currentRowId}`;
+          else if (currentField === 'cartonQty') nextId = `unit-${currentRowId}`;
           else if (currentField === 'unit') nextId = `expiry-${currentRowId}`;
           const nextEl = document.getElementById(nextId);
           if (nextEl) nextEl.focus();
@@ -522,7 +526,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     const portalNode = document.getElementById('print-container');
     if (!portalNode) return null;
     return createPortal(
-      <ReportLayout printOnly={true} title={listType === 'inventory' ? "قائمة جرد المخزون" : "سند استلام بضاعة"} subtitle={listName || "مستند مستودعي"}>
+      <ReportLayout printOnly={true} showHeader={printWithHeader} title={listType === 'inventory' ? "قائمة جرد المخزون" : "سند استلام بضاعة"} subtitle={listName || "مستند مستودعي"}>
           <div className="grid grid-cols-2 gap-4 mb-4 text-[10px] font-bold bg-gray-50 p-2 border border-sap-border font-mono">
               <div className="space-y-1">
                   <div className="flex justify-between"><span>التاريخ:</span> <span>{listDate}</span></div>
@@ -531,6 +535,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               <div className="space-y-1">
                   <div className="flex justify-between"><span>عدد الأصناف:</span> <span>{validRowsCount}</span></div>
                   <div className="flex justify-between"><span>إجمالي الكمية:</span> <span className="text-sap-primary">{totalQty}</span></div>
+                  {showCartonQty && <div className="flex justify-between"><span>إجمالي الكراتين:</span> <span className="text-sap-primary">{totalCartonQty}</span></div>}
               </div>
           </div>
           <table className="w-full text-right border-collapse">
@@ -540,6 +545,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كود الصنف</th>
                       <th className="p-1 border border-sap-border" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>اسم المنتج</th>
                       <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الكمية</th>
+                      {showCartonQty && <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كمية الكرتون</th>}
                       <th className="p-1 border border-sap-border w-16" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الوحدة</th>
                       <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الصلاحية</th>
                   </tr>
@@ -559,6 +565,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                               <td className="p-1 border-l border-sap-border/50">{row.code}</td>
                               <td className="p-1 border-l border-sap-border/50">{row.name}</td>
                               <td className="p-1 text-center border-l border-sap-border/50">{row.qty}</td>
+                              {showCartonQty && <td className="p-1 text-center border-l border-sap-border/50">{row.cartonQty}</td>}
                               <td className="p-1 border-l border-sap-border/50">{getUnitName(row.unitId)}</td>
                               <td className="p-1 border-l border-sap-border/50">
                                   <div className="flex items-center justify-between"><span>{row.expiryDate || '-'}</span>{statusText && <span className="text-[8px] border px-1">{statusText}</span>}</div>
@@ -658,7 +665,15 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 </div>
 
                 {/* 3. Main Actions */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                    <label className="flex items-center gap-1 text-xs font-bold text-gray-600 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors ml-2">
+                        <input type="checkbox" checked={showCartonQty} onChange={e => setShowCartonQty(e.target.checked)} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary" />
+                        <span>كمية الكرتون</span>
+                    </label>
+                    <label className="flex items-center gap-1 text-xs font-bold text-gray-600 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors ml-2">
+                        <input type="checkbox" checked={printWithHeader} onChange={e => setPrintWithHeader(e.target.checked)} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary" />
+                        <span>طباعة الترويسة</span>
+                    </label>
                     <button onClick={() => window.print()} className="px-4 py-2 bg-gray-800 text-white rounded-xl text-xs font-black hover:bg-black transition-all shadow-sm flex items-center gap-2">
                         <Printer size={16}/> <span className="hidden sm:inline">طباعة</span>
                     </button>
@@ -679,6 +694,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 <th className="p-4 w-40">كود الصنف</th>
                 <th className="p-4">اسم المنتج / الوصف</th>
                 <th className="p-4 w-28 text-center">الكمية</th>
+                {showCartonQty && <th className="p-4 w-28 text-center">كمية الكرتون</th>}
                 <th className="p-4 w-32">الوحدة</th>
                 <th className="p-4 w-32">الصلاحية</th>
                 <th className="p-4 w-14"></th>
@@ -751,6 +767,13 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                     <input id={`qty-${row.id}`} type="number" value={row.qty} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
                   </td>
 
+                  {/* Carton Qty */}
+                  {showCartonQty && (
+                    <td className="p-3">
+                      <input id={`cartonQty-${row.id}`} type="number" value={row.cartonQty || ''} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'cartonQty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, cartonQty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
+                    </td>
+                  )}
+
                   {/* Unit */}
                   <td className="p-3">
                     <select id={`unit-${row.id}`} value={row.unitId} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'unit') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, unitId: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-bold text-gray-600 cursor-pointer">
@@ -773,7 +796,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               
               {/* Add Row Button at bottom of table */}
               <tr>
-                  <td colSpan={7} className="p-3">
+                  <td colSpan={showCartonQty ? 8 : 7} className="p-3">
                       <button onClick={() => setRows(prev => [...prev, createEmptyRow()])} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 font-bold hover:border-sap-primary hover:text-sap-primary hover:bg-sap-highlight/10 transition-all flex items-center justify-center gap-2">
                           <Plus size={18}/> إضافة سطر جديد (أو اضغط Enter)
                       </button>
@@ -786,7 +809,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
         {/* Footer Summary */}
         <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center text-xs font-black text-gray-500 uppercase tracking-wide">
             <div>عدد السجلات: <span className="text-gray-900 text-sm ml-1">{validRowsCount}</span></div>
-            <div>إجمالي الكميات: <span className="text-sap-primary text-xl font-mono ml-2">{totalQty}</span></div>
+            <div className="flex gap-4">
+                {showCartonQty && <div>إجمالي الكراتين: <span className="text-sap-primary text-xl font-mono ml-2">{totalCartonQty}</span></div>}
+                <div>إجمالي الكميات: <span className="text-sap-primary text-xl font-mono ml-2">{totalQty}</span></div>
+            </div>
         </div>
       </div>
 

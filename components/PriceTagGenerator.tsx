@@ -62,13 +62,19 @@ interface PriceTagGeneratorProps {
   units: Unit[];
 }
 
+const generateId = () => {
+  return typeof crypto !== 'undefined' && crypto.randomUUID 
+    ? crypto.randomUUID() 
+    : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
 export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, units }) => {
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
   const [activeTagIds, setActiveTagIds] = useState<string[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const addToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     setToasts(prev => [...prev, { id, message, type }]);
   };
   const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
@@ -92,6 +98,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       pageSetup: true,
       itemProps: true,
       typography: false,
+      offsets: false,
       visibility: false,
       actions: true
   });
@@ -109,6 +116,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     priceFontSize: 28,
     unitFontSize: 12,
     cartonPriceFontSize: 10,
+    pieceFontSize: 6,
     nameColor: '#000000',
     priceColor: '#DC2626', 
     unitColor: '#6B7280',
@@ -133,7 +141,15 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     currencySymbolImage: null,
     currencySymbolSize: 14,
     currencySymbolPosition: 'after',
-    currencySymbolMargin: 4
+    currencySymbolMargin: 4,
+    nameOffsetX: 0,
+    nameOffsetY: 0,
+    priceOffsetX: 0,
+    priceOffsetY: 0,
+    cartonPriceOffsetX: 0,
+    cartonPriceOffsetY: 0,
+    logoOffsetX: 0,
+    logoOffsetY: 0,
   });
 
   const templatesList = [
@@ -164,11 +180,11 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     setIsSaving(true);
     try {
       const listData = { 
-        id: activeListId || crypto.randomUUID(), 
+        id: activeListId || generateId(), 
         name: listName.trim(), 
         date: new Date().toISOString(), 
         tags: selectedTags, 
-        styles: { ...globalStyles }
+        styles: { ...globalStyles, logoUrl: null }
       };
       await db.tagLists.upsert(listData);
       setActiveListId(listData.id);
@@ -238,7 +254,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     if (selectedTags.length >= 16) { addToast("الصفحة ممتلئة (16 ملصق كحد أقصى)", "warning"); return; }
     
     const newTag: SelectedTag = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       productId: product?.id || '',
       name: product?.name || 'صنف جديد',
       price: price,
@@ -266,7 +282,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   };
 
   const handleDuplicate = (tag: SelectedTag) => {
-    const newTag = { ...tag, id: crypto.randomUUID() };
+    const newTag = { ...tag, id: generateId() };
     setSelectedTags(prev => [...prev, newTag]);
     setActiveTagIds([newTag.id]);
   };
@@ -292,6 +308,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       nameFontSize: tag.styles?.nameFontSize ?? globalStyles.nameFontSize,
       priceFontSize: tag.styles?.priceFontSize ?? globalStyles.priceFontSize,
       unitFontSize: tag.styles?.unitFontSize ?? globalStyles.unitFontSize,
+      cartonPriceFontSize: tag.styles?.cartonPriceFontSize ?? globalStyles.cartonPriceFontSize,
+      pieceFontSize: tag.styles?.pieceFontSize ?? globalStyles.pieceFontSize,
       nameColor: tag.styles?.nameColor ?? globalStyles.nameColor,
       priceColor: tag.styles?.priceColor ?? globalStyles.priceColor,
       unitColor: tag.styles?.unitColor ?? globalStyles.unitColor,
@@ -311,7 +329,15 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       currencySymbolImage: tag.styles?.currencySymbolImage ?? globalStyles.currencySymbolImage,
       currencySymbolSize: tag.styles?.currencySymbolSize ?? globalStyles.currencySymbolSize,
       currencySymbolPosition: tag.styles?.currencySymbolPosition ?? globalStyles.currencySymbolPosition,
-      currencySymbolMargin: tag.styles?.currencySymbolMargin ?? globalStyles.currencySymbolMargin
+      currencySymbolMargin: tag.styles?.currencySymbolMargin ?? globalStyles.currencySymbolMargin,
+      nameOffsetX: tag.styles?.nameOffsetX ?? globalStyles.nameOffsetX ?? 0,
+      nameOffsetY: tag.styles?.nameOffsetY ?? globalStyles.nameOffsetY ?? 0,
+      priceOffsetX: tag.styles?.priceOffsetX ?? globalStyles.priceOffsetX ?? 0,
+      priceOffsetY: tag.styles?.priceOffsetY ?? globalStyles.priceOffsetY ?? 0,
+      cartonPriceOffsetX: tag.styles?.cartonPriceOffsetX ?? globalStyles.cartonPriceOffsetX ?? 0,
+      cartonPriceOffsetY: tag.styles?.cartonPriceOffsetY ?? globalStyles.cartonPriceOffsetY ?? 0,
+      logoOffsetX: tag.styles?.logoOffsetX ?? globalStyles.logoOffsetX ?? 0,
+      logoOffsetY: tag.styles?.logoOffsetY ?? globalStyles.logoOffsetY ?? 0,
     };
   };
 
@@ -416,27 +442,27 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
           const itemCode = product?.code || tag.productId.slice(0,8).toUpperCase();
           
           return (
-            <div className="flex flex-col h-full w-full relative overflow-hidden font-sans" style={{ backgroundColor: s.backgroundColor }}>
+            <div className="flex flex-col h-full w-full relative overflow-hidden font-sans bg-white" style={{ backgroundColor: s.backgroundColor }}>
                 {/* Top: Logo - Only render if enabled and URL exists */}
                 {s.showLogo && globalStyles.logoUrl ? (
-                    <div className="h-[22%] flex items-center justify-center pt-3 pb-1 px-4">
+                    <div className="h-[20%] flex items-center justify-center pt-1 pb-0.5 px-4" style={{ transform: `translate(${s.logoOffsetX || 0}px, ${s.logoOffsetY || 0}px)` }}>
                         <img src={globalStyles.logoUrl} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                     </div>
                 ) : (
-                    // Spacer if no logo to keep balance, or remove to let name expand
-                    <div className="h-2"></div> 
+                    <div className="h-1"></div> 
                 )}
 
                 {/* Middle: Name - Expands to fill space */}
                 <div 
-                    className="flex-1 px-4 py-2 flex flex-col justify-center"
+                    className="flex-1 px-2 py-0.5 flex flex-col justify-center"
                     style={{ 
                         textAlign: s.textAlign,
-                        alignItems: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start'
+                        alignItems: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                        transform: `translate(${s.nameOffsetX || 0}px, ${s.nameOffsetY || 0}px)`
                     }}
                 >
                     <span 
-                        className="leading-snug break-words w-full line-clamp-3"
+                        className="leading-tight break-words w-full line-clamp-2"
                         style={{ 
                             fontSize: `${s.nameFontSize}pt`, 
                             color: s.nameColor, 
@@ -447,43 +473,47 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     </span>
                 </div>
 
-                {/* Bottom: Price & Info - Distinct Footer */}
-                <div className="mt-auto p-2 flex flex-col items-center justify-center min-h-[35%] relative">
+                {/* Bottom: Price Section */}
+                <div className="mt-auto flex flex-col w-full border-t border-gray-100 bg-gray-50/50 relative shrink-0">
                     
                     {/* Original Price Sticker */}
                     {s.showOriginalPrice && tag.originalPrice && (
-                        <div className="absolute -top-3 right-3 bg-red-500 text-white px-2 py-0.5 rounded-sm shadow-sm transform rotate-[-3deg] z-20">
-                            <span className="text-[8px] font-bold line-through opacity-90">{tag.originalPrice}</span>
+                        <div className="absolute -top-3 right-2 bg-red-500 text-white px-1.5 py-0.5 rounded shadow-sm transform rotate-[-3deg] z-20 border border-red-600">
+                            <span className="text-[7px] font-bold line-through opacity-90">{tag.originalPrice}</span>
                         </div>
                     )}
 
-                    {/* Carton Price */}
-                    {tag.showCartonPrice !== false && tag.cartonPrice && (
-                        <div className="absolute -top-4 left-3 bg-blue-100 text-blue-800 px-2 py-0.5 rounded-sm shadow-sm border border-blue-200 z-20 flex flex-col items-center">
-                            <span className="text-[6px] font-bold opacity-80 leading-none mb-0.5">الكرتون</span>
-                            <span className="font-black leading-none" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                    <div className="flex items-center justify-between w-full px-2 py-1">
+                        <div className="flex items-center gap-1.5" style={{ transform: `translate(${s.priceOffsetX || 0}px, ${s.priceOffsetY || 0}px)` }}>
+                            <PriceWithCurrency />
+                            
+                            <div className="flex flex-col items-start justify-center gap-0 border-r border-gray-200 pr-1.5">
+                                <span className="text-[5px] text-gray-500 font-bold leading-none">السعر شامل الضريبة</span>
+                                {tag.showCartonPrice !== false && tag.cartonPrice && <span className="text-blue-600 font-bold leading-none mt-0.5" style={{ fontSize: `${s.pieceFontSize || 6}px` }}>للحبة</span>}
+                                {s.showUnit && tag.unitName && (
+                                    <span 
+                                        style={{ color: s.unitColor, borderColor: s.unitColor, fontSize: `${s.unitFontSize || 8}px` }} 
+                                        className="font-bold px-1 py-0 rounded border border-opacity-30 leading-none mt-0.5 bg-white"
+                                    >
+                                        {tag.unitName}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    <div className="flex items-center justify-center gap-2 relative z-10 w-full">
-                        <PriceWithCurrency />
-                        
-                        <div className="flex flex-col items-start justify-center gap-0.5">
-                            <span className="text-[7px] text-gray-500 font-bold leading-none">السعر شامل الضريبة</span>
-                            {tag.showCartonPrice !== false && tag.cartonPrice && <span className="text-[7px] text-blue-600 font-bold leading-none">للحبة</span>}
-                            {s.showUnit && tag.unitName && (
-                                <span 
-                                    style={{ color: s.unitColor, borderColor: s.unitColor, fontSize: `${s.unitFontSize || 8}px` }} 
-                                    className="font-bold px-1.5 py-0.5 rounded border border-opacity-30 leading-none"
-                                >
-                                    {tag.unitName}
-                                </span>
-                            )}
-                        </div>
+                        {/* Carton Price on the Side */}
+                        {tag.showCartonPrice !== false && tag.cartonPrice && (
+                            <div className="flex flex-col items-center justify-center bg-blue-50/80 border border-blue-100 rounded px-1.5 py-0.5 shrink-0" style={{ transform: `translate(${s.cartonPriceOffsetX || 0}px, ${s.cartonPriceOffsetY || 0}px)` }}>
+                                <span className="text-[5px] font-bold text-blue-800 leading-none mb-0.5">سعر الكرتون</span>
+                                <span className="font-black text-blue-900 leading-none" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                            </div>
+                        )}
                     </div>
                     
-                    <div className="w-full flex items-center justify-center mt-1">
-                         <span className="text-[8px] font-mono text-gray-400 tracking-wider">{itemCode}</span>
+                    {/* Footer Info */}
+                    <div className="w-full flex items-center justify-between px-2 py-0 bg-white border-t border-gray-100">
+                         <span className="text-[5px] font-mono text-gray-400 tracking-wider">{itemCode}</span>
+                         <span className="text-[4px] font-mono text-gray-400">{new Date().toLocaleDateString('en-GB')}</span>
                     </div>
                 </div>
             </div>
@@ -524,7 +554,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             }
                         />
                     </div>
-                    <span className="text-[6px] text-gray-400 font-bold mt-1 text-center w-full">شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
+                    <span className="text-[6px] text-gray-400 font-bold mt-1 text-center w-full">شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? <span style={{ fontSize: `${s.pieceFontSize || 6}px` }}>(للحبة)</span> : ''}</span>
                     
                     {tag.showCartonPrice !== false && tag.cartonPrice && (
                         <div className="mt-1 bg-blue-50 border border-blue-100 rounded px-2 py-0.5 w-full flex justify-between items-center">
@@ -609,7 +639,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     <div className="flex items-baseline gap-1 ml-auto">
                         <div className="flex flex-col items-end">
                             <PriceWithCurrency />
-                            <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
+                            <span className="text-[7px] text-gray-400 font-bold">السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? <span style={{ fontSize: `${s.pieceFontSize || 6}px` }}>(للحبة)</span> : ''}</span>
                         </div>
                     </div>
                 </div>
@@ -640,7 +670,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <div className="flex items-start leading-none drop-shadow-sm">
                             <PriceWithCurrency scale={1.8} />
                         </div>
-                        <span className="text-[10px] font-bold mt-1 opacity-70" style={{ color: s.priceColor }}>السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
+                        <span className="text-[10px] font-bold mt-1 opacity-70" style={{ color: s.priceColor }}>السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? <span style={{ fontSize: `${s.pieceFontSize || 6}px` }}>(للحبة)</span> : ''}</span>
                         
                         {tag.showCartonPrice !== false && tag.cartonPrice && (
                             <div className="mt-1 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-0.5 shadow-sm flex items-center gap-1">
@@ -699,7 +729,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         </div>
                         <div className="flex flex-col items-end">
                             <PriceWithCurrency />
-                            <span className="text-[7px] text-gray-400 font-bold">شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</span>
+                            <span className="text-[7px] text-gray-400 font-bold">شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? <span style={{ fontSize: `${s.pieceFontSize || 6}px` }}>(للحبة)</span> : ''}</span>
                         </div>
                     </div>
                 </div>
@@ -742,16 +772,17 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 <div className="w-[35%] shrink-0 flex flex-col items-center justify-between p-1" style={{ backgroundColor: s.backgroundColor }}>
                     <div className="flex-1 flex flex-col items-center justify-center relative w-full">
                         <PriceWithCurrency />
-                        {tag.showCartonPrice !== false && tag.cartonPrice && (
-                            <div className="absolute top-0 right-0 bg-white border border-black px-1 rounded-sm flex flex-col items-center leading-none">
-                                <span className="text-[5px] font-bold">الكرتون</span>
-                                <span className="font-black" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
-                            </div>
-                        )}
                     </div>
                     
+                    {tag.showCartonPrice !== false && tag.cartonPrice && (
+                        <div className="w-full flex justify-between items-center bg-white border border-black px-1 rounded-sm my-0.5">
+                            <span className="text-[6px] font-bold">الكرتون</span>
+                            <span className="font-black" style={{ fontSize: `${s.cartonPriceFontSize || 10}px` }}>{tag.cartonPrice}</span>
+                        </div>
+                    )}
+                    
                     <div className="w-full text-center border-t border-black/20 pt-1">
-                        <div className="text-[10px] font-black">السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? '(للحبة)' : ''}</div>
+                        <div className="text-[10px] font-black">السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? <span style={{ fontSize: `${s.pieceFontSize || 6}px` }}>(للحبة)</span> : ''}</div>
                         <div className="text-[8px] font-mono opacity-70" dir="ltr">{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'})}</div>
                     </div>
                 </div>
@@ -1114,6 +1145,18 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                              <input type="number" value={currentScopeStyles.unitFontSize || 12} onChange={e => handleStyleChange('unitFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                         </div>
                     </PropertyRow>
+                    <PropertyRow label="حجم سعر الكرتون">
+                        <div className="flex items-center gap-2">
+                             <input type="range" min="6" max="48" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                        </div>
+                    </PropertyRow>
+                    <PropertyRow label="حجم كلمة للحبة">
+                        <div className="flex items-center gap-2">
+                             <input type="range" min="4" max="24" value={currentScopeStyles.pieceFontSize || 6} onChange={e => handleStyleChange('pieceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.pieceFontSize || 6} onChange={e => handleStyleChange('pieceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                        </div>
+                    </PropertyRow>
                     
                     <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">خصائص العملة</div>
@@ -1211,7 +1254,57 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 </div>
             )}
 
-            {/* 5. Visibility */}
+            {/* 5. Offsets */}
+            <AccordionHeader title="التحكم اليدوي بالمواقع (الإزاحة)" isOpen={openSections.offsets} onClick={() => toggleSection('offsets')} icon={MousePointer2} />
+            {openSections.offsets && (
+                <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
+                    <div className="text-[10px] text-gray-500 mb-2 bg-blue-50 p-2 rounded border border-blue-100">
+                        استخدم هذه الأشرطة لتحريك العناصر يميناً/يساراً أو أعلى/أسفل بدقة.
+                    </div>
+                    
+                    <div className="border-t border-dashed border-gray-200 pt-3">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة الشعار</div>
+                        <PropertyRow label="أفقي (X)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.logoOffsetX || 0} onChange={e => handleStyleChange('logoOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                        <PropertyRow label="عمودي (Y)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.logoOffsetY || 0} onChange={e => handleStyleChange('logoOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                    </div>
+
+                    <div className="border-t border-dashed border-gray-200 pt-3">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة الاسم</div>
+                        <PropertyRow label="أفقي (X)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.nameOffsetX || 0} onChange={e => handleStyleChange('nameOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                        <PropertyRow label="عمودي (Y)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.nameOffsetY || 0} onChange={e => handleStyleChange('nameOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                    </div>
+
+                    <div className="border-t border-dashed border-gray-200 pt-3">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة السعر الرئيسي</div>
+                        <PropertyRow label="أفقي (X)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.priceOffsetX || 0} onChange={e => handleStyleChange('priceOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                        <PropertyRow label="عمودي (Y)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.priceOffsetY || 0} onChange={e => handleStyleChange('priceOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                    </div>
+
+                    <div className="border-t border-dashed border-gray-200 pt-3">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة سعر الكرتون</div>
+                        <PropertyRow label="أفقي (X)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.cartonPriceOffsetX || 0} onChange={e => handleStyleChange('cartonPriceOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                        <PropertyRow label="عمودي (Y)">
+                            <input type="range" min="-50" max="50" value={currentScopeStyles.cartonPriceOffsetY || 0} onChange={e => handleStyleChange('cartonPriceOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                        </PropertyRow>
+                    </div>
+                </div>
+            )}
+
+            {/* 6. Visibility */}
             <AccordionHeader title="إظهار / إخفاء" isOpen={openSections.visibility} onClick={() => toggleSection('visibility')} icon={Eye} />
             {openSections.visibility && (
                 <div className="p-4 space-y-2 border-b border-gray-100 bg-white">
@@ -1337,7 +1430,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             onClick={() => {
                                 const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
                                 if (currentTag && selectedTags.length < 16) {
-                                    const newTag = { ...currentTag, id: crypto.randomUUID() };
+                                    const newTag = { ...currentTag, id: generateId() };
                                     setSelectedTags(prev => [...prev, newTag]);
                                     addToast("تم تكرار الملصق", "success");
                                 } else if (selectedTags.length >= 16) {
@@ -1355,7 +1448,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                 if (currentTag) {
                                     const remainingSlots = 16 - selectedTags.length;
                                     if (remainingSlots > 0) {
-                                        const newTags = Array.from({ length: remainingSlots }).map(() => ({ ...currentTag, id: crypto.randomUUID() }));
+                                        const newTags = Array.from({ length: remainingSlots }).map(() => ({ ...currentTag, id: generateId() }));
                                         setSelectedTags(prev => [...prev, ...newTags]);
                                         addToast(`تم تعبئة الصفحة بـ ${remainingSlots} ملصق`, "success");
                                     } else {
@@ -1469,10 +1562,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                             
                                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                                             
-                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...tag.styles, cartonPriceFontSize: (s.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تكبير سعر الكرتون">
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...(tag.styles || {}), cartonPriceFontSize: (s.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تكبير سعر الكرتون">
                                                 <span className="text-[10px] font-bold">A+</span>
                                             </button>
-                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...tag.styles, cartonPriceFontSize: Math.max(4, (s.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تصغير سعر الكرتون">
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...(tag.styles || {}), cartonPriceFontSize: Math.max(4, (s.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تصغير سعر الكرتون">
                                                 <span className="text-[10px] font-bold">A-</span>
                                             </button>
 

@@ -21,6 +21,12 @@ interface OfferGeneratorProps {
 
 type LabelsCount = 1 | 2 | 4 | 6 | 8 | 12 | 14 | 16 | 20 | 24;
 
+const generateId = () => {
+  return typeof crypto !== 'undefined' && crypto.randomUUID 
+    ? crypto.randomUUID() 
+    : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
 export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units }) => {
   const { settings } = useSystemSettings();
   const [selectedTags, setSelectedTags] = useState<OfferTag[]>([]);
@@ -81,7 +87,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     setIsSaving(true);
     try {
       const listData: SavedOfferList = { 
-        id: activeListId || crypto.randomUUID(), 
+        id: activeListId || generateId(), 
         name: listName.trim(), 
         date: new Date().toISOString(), 
         tags: selectedTags, 
@@ -99,7 +105,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     if (!listName.trim()) { alert("يرجى تسمية المشروع"); return; }
     setIsSaving(true);
     try {
-      const newId = crypto.randomUUID();
+      const newId = generateId();
       const listData: SavedOfferList = { 
         id: newId, 
         name: `${listName.trim()} - نسخة`, 
@@ -122,7 +128,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     try {
       const duplicatedList: SavedOfferList = {
         ...list,
-        id: crypto.randomUUID(),
+        id: generateId(),
         name: `${list.name} - نسخة`,
         date: new Date().toISOString()
       };
@@ -230,7 +236,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     }
 
     const newTag: OfferTag = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       productId: product?.code || '',
       name: product?.name || 'صنف جديد',
       originalPrice: product?.price || '0.00',
@@ -279,7 +285,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       alert(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`);
       return;
     }
-    const newTag = { ...tag, id: crypto.randomUUID() };
+    const newTag = { ...tag, id: generateId() };
     setSelectedTags([...selectedTags, newTag]);
     setActiveTagId(newTag.id);
   };
@@ -1055,10 +1061,10 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                             
                                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                                             
-                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { customColors: { ...tag.customColors, cartonPriceFontSize: (tag.customColors?.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تكبير سعر الكرتون">
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { customColors: { ...(tag.customColors || {}), cartonPriceFontSize: (tag.customColors?.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تكبير سعر الكرتون">
                                                 <span className="text-[10px] font-bold">A+</span>
                                             </button>
-                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { customColors: { ...tag.customColors, cartonPriceFontSize: Math.max(4, (tag.customColors?.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تصغير سعر الكرتون">
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { customColors: { ...(tag.customColors || {}), cartonPriceFontSize: Math.max(4, (tag.customColors?.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تصغير سعر الكرتون">
                                                 <span className="text-[10px] font-bold">A-</span>
                                             </button>
 
