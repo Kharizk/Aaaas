@@ -33,8 +33,15 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [printWithHeader, setPrintWithHeader] = useState(true);
-  const [showCartonQty, setShowCartonQty] = useState(false);
+  const [printWithFooter, setPrintWithFooter] = useState(true);
+  const [printFontSize, setPrintFontSize] = useState(12);
+  const [visibleColumns, setVisibleColumns] = useState({
+    code: true, name: true, qty: true, cartonQty: false, unit: true, expiry: true, note: true
+  });
+  const [customColumns, setCustomColumns] = useState<{id: string, name: string}[]>([]);
+  const [showCartonQty, setShowCartonQty] = useState(false); // Kept for backward compatibility but visibleColumns.cartonQty is better
   const [showSavedLists, setShowSavedLists] = useState(false);
+  const [showPrintSettings, setShowPrintSettings] = useState(false);
   const [savedLists, setSavedLists] = useState<any[]>([]);
   const [savedListSearch, setSavedListSearch] = useState(''); 
   const [isLoadingLists, setIsLoadingLists] = useState(false);
@@ -486,7 +493,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           let nextId = '';
           if (currentField === 'code') nextId = `name-${currentRowId}`;
           else if (currentField === 'name') nextId = `qty-${currentRowId}`;
-          else if (currentField === 'qty') nextId = showCartonQty ? `cartonQty-${currentRowId}` : `unit-${currentRowId}`;
+          else if (currentField === 'qty') nextId = (visibleColumns.cartonQty || showCartonQty) ? `cartonQty-${currentRowId}` : `unit-${currentRowId}`;
           else if (currentField === 'cartonQty') nextId = `unit-${currentRowId}`;
           else if (currentField === 'unit') nextId = `expiry-${currentRowId}`;
           const nextEl = document.getElementById(nextId);
@@ -526,8 +533,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     const portalNode = document.getElementById('print-container');
     if (!portalNode) return null;
     return createPortal(
-      <ReportLayout printOnly={true} showHeader={printWithHeader} title={listType === 'inventory' ? "قائمة جرد المخزون" : "سند استلام بضاعة"} subtitle={listName || "مستند مستودعي"}>
-          <div className="grid grid-cols-2 gap-4 mb-4 text-[10px] font-bold bg-gray-50 p-2 border border-sap-border font-mono">
+      <ReportLayout printOnly={true} showHeader={printWithHeader} showSignatures={printWithFooter} title={listType === 'inventory' ? "قائمة جرد المخزون" : "سند استلام بضاعة"} subtitle={listName || "مستند مستودعي"}>
+          <div className="grid grid-cols-2 gap-4 mb-4 font-bold bg-gray-50 p-2 border border-sap-border font-mono" style={{ fontSize: `${printFontSize}px` }}>
               <div className="space-y-1">
                   <div className="flex justify-between"><span>التاريخ:</span> <span>{listDate}</span></div>
                   <div className="flex justify-between"><span>النوع:</span> <span className="text-sap-primary">{listType === 'inventory' ? 'جرد' : 'استلام'}</span></div>
@@ -535,22 +542,26 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               <div className="space-y-1">
                   <div className="flex justify-between"><span>عدد الأصناف:</span> <span>{validRowsCount}</span></div>
                   <div className="flex justify-between"><span>إجمالي الكمية:</span> <span className="text-sap-primary">{totalQty}</span></div>
-                  {showCartonQty && <div className="flex justify-between"><span>إجمالي الكراتين:</span> <span className="text-sap-primary">{totalCartonQty}</span></div>}
+                  {(visibleColumns.cartonQty || showCartonQty) && <div className="flex justify-between"><span>إجمالي الكراتين:</span> <span className="text-sap-primary">{totalCartonQty}</span></div>}
               </div>
           </div>
           <table className="w-full text-right border-collapse">
               <thead>
-                  <tr className="bg-sap-shell text-white text-[9px] font-black uppercase">
+                  <tr className="bg-sap-shell text-white font-black uppercase" style={{ fontSize: `${printFontSize}px` }}>
                       <th className="p-1 border border-sap-border w-8 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>#</th>
-                      <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كود الصنف</th>
-                      <th className="p-1 border border-sap-border" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>اسم المنتج</th>
-                      <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الكمية</th>
-                      {showCartonQty && <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كمية الكرتون</th>}
-                      <th className="p-1 border border-sap-border w-16" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الوحدة</th>
-                      <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الصلاحية</th>
+                      {visibleColumns.code && <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كود الصنف</th>}
+                      {visibleColumns.name && <th className="p-1 border border-sap-border" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>اسم المنتج</th>}
+                      {visibleColumns.qty && <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الكمية</th>}
+                      {(visibleColumns.cartonQty || showCartonQty) && <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كمية الكرتون</th>}
+                      {visibleColumns.unit && <th className="p-1 border border-sap-border w-16" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الوحدة</th>}
+                      {visibleColumns.expiry && <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الصلاحية</th>}
+                      {visibleColumns.note && <th className="p-1 border border-sap-border w-32" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>ملاحظات</th>}
+                      {customColumns.map(col => (
+                          <th key={col.id} className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>{col.name}</th>
+                      ))}
                   </tr>
               </thead>
-              <tbody className="text-[9px] font-bold font-mono">
+              <tbody className="font-bold font-mono" style={{ fontSize: `${printFontSize}px` }}>
                   {rows.filter(r => r.name.trim()).map((row, idx) => {
                       const { status } = getExpiryStatus(row.expiryDate);
                       let rowStyle: React.CSSProperties = { borderBottom: '1px solid #E2E8F0' };
@@ -562,14 +573,18 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       return (
                           <tr key={row.id} style={rowStyle}>
                               <td className="p-1 text-center border-l border-sap-border/50">{idx + 1}</td>
-                              <td className="p-1 border-l border-sap-border/50">{row.code}</td>
-                              <td className="p-1 border-l border-sap-border/50">{row.name}</td>
-                              <td className="p-1 text-center border-l border-sap-border/50">{row.qty}</td>
-                              {showCartonQty && <td className="p-1 text-center border-l border-sap-border/50">{row.cartonQty}</td>}
-                              <td className="p-1 border-l border-sap-border/50">{getUnitName(row.unitId)}</td>
-                              <td className="p-1 border-l border-sap-border/50">
+                              {visibleColumns.code && <td className="p-1 border-l border-sap-border/50">{row.code}</td>}
+                              {visibleColumns.name && <td className="p-1 border-l border-sap-border/50">{row.name}</td>}
+                              {visibleColumns.qty && <td className="p-1 text-center border-l border-sap-border/50">{row.qty}</td>}
+                              {(visibleColumns.cartonQty || showCartonQty) && <td className="p-1 text-center border-l border-sap-border/50">{row.cartonQty}</td>}
+                              {visibleColumns.unit && <td className="p-1 border-l border-sap-border/50">{getUnitName(row.unitId)}</td>}
+                              {visibleColumns.expiry && <td className="p-1 border-l border-sap-border/50">
                                   <div className="flex items-center justify-between"><span>{row.expiryDate || '-'}</span>{statusText && <span className="text-[8px] border px-1">{statusText}</span>}</div>
-                              </td>
+                              </td>}
+                              {visibleColumns.note && <td className="p-1 border-l border-sap-border/50">{row.note}</td>}
+                              {customColumns.map(col => (
+                                  <td key={col.id} className="p-1 border-l border-sap-border/50">{row.customFields?.[col.id] || ''}</td>
+                              ))}
                           </tr>
                       );
                   })}
@@ -665,15 +680,72 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 </div>
 
                 {/* 3. Main Actions */}
-                <div className="flex gap-2 items-center">
-                    <label className="flex items-center gap-1 text-xs font-bold text-gray-600 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors ml-2">
-                        <input type="checkbox" checked={showCartonQty} onChange={e => setShowCartonQty(e.target.checked)} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary" />
-                        <span>كمية الكرتون</span>
-                    </label>
-                    <label className="flex items-center gap-1 text-xs font-bold text-gray-600 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors ml-2">
-                        <input type="checkbox" checked={printWithHeader} onChange={e => setPrintWithHeader(e.target.checked)} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary" />
-                        <span>طباعة الترويسة</span>
-                    </label>
+                <div className="flex gap-2 items-center relative">
+                    <button onClick={() => setShowPrintSettings(!showPrintSettings)} className="px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2">
+                        <SlidersHorizontal size={16}/> <span className="hidden sm:inline">إعدادات الطباعة</span>
+                    </button>
+                    
+                    {showPrintSettings && (
+                        <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in slide-in-from-top-2">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-gray-800 text-sm">إعدادات الطباعة والأعمدة</h3>
+                                <button onClick={() => setShowPrintSettings(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">حجم الخط (للطباعة)</label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="range" min="8" max="24" value={printFontSize} onChange={e => setPrintFontSize(Number(e.target.value))} className="flex-1 accent-sap-primary" />
+                                        <span className="text-xs font-bold w-6 text-center">{printFontSize}</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-2 border-t pt-3">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                                        <input type="checkbox" checked={printWithHeader} onChange={e => setPrintWithHeader(e.target.checked)} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary" />
+                                        <span>إظهار الترويسة العلوية</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                                        <input type="checkbox" checked={printWithFooter} onChange={e => setPrintWithFooter(e.target.checked)} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary" />
+                                        <span>إظهار الترويسة السفلية (التوقيعات)</span>
+                                    </label>
+                                </div>
+
+                                <div className="border-t pt-3">
+                                    <h4 className="text-xs font-bold text-gray-800 mb-2">الأعمدة المرئية</h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {Object.entries({
+                                            code: 'كود الصنف', name: 'اسم المنتج', qty: 'الكمية', cartonQty: 'كمية الكرتون', unit: 'الوحدة', expiry: 'الصلاحية', note: 'ملاحظات'
+                                        }).map(([key, label]) => (
+                                            <label key={key} className="flex items-center gap-2 text-[10px] font-bold text-gray-600 cursor-pointer">
+                                                <input type="checkbox" checked={visibleColumns[key as keyof typeof visibleColumns]} onChange={e => setVisibleColumns(prev => ({...prev, [key]: e.target.checked}))} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary w-3 h-3" />
+                                                <span>{label}</span>
+                                            </label>
+                                        ))}
+                                        {customColumns.map(col => (
+                                            <div key={col.id} className="flex items-center justify-between col-span-2 bg-gray-50 p-1 rounded">
+                                                <span className="text-[10px] font-bold text-gray-600">{col.name}</span>
+                                                <button onClick={() => setCustomColumns(prev => prev.filter(c => c.id !== col.id))} className="text-red-500 hover:text-red-700"><Trash2 size={12}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const name = prompt('أدخل اسم العمود الجديد:');
+                                            if (name && name.trim()) {
+                                                setCustomColumns(prev => [...prev, { id: `custom_${Date.now()}`, name: name.trim() }]);
+                                            }
+                                        }}
+                                        className="mt-2 w-full py-1.5 border border-dashed border-gray-300 text-gray-500 rounded-lg text-[10px] font-bold hover:bg-gray-50 hover:text-sap-primary transition-colors flex items-center justify-center gap-1"
+                                    >
+                                        <Plus size={12}/> إضافة عمود مخصص
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <button onClick={() => window.print()} className="px-4 py-2 bg-gray-800 text-white rounded-xl text-xs font-black hover:bg-black transition-all shadow-sm flex items-center gap-2">
                         <Printer size={16}/> <span className="hidden sm:inline">طباعة</span>
                     </button>
@@ -691,12 +763,16 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
             <thead className="bg-white sticky top-0 z-10 shadow-sm">
               <tr className="text-gray-500 font-black border-b border-gray-200 text-[11px] uppercase">
                 <th className="p-4 w-12 text-center">#</th>
-                <th className="p-4 w-40">كود الصنف</th>
-                <th className="p-4">اسم المنتج / الوصف</th>
-                <th className="p-4 w-28 text-center">الكمية</th>
-                {showCartonQty && <th className="p-4 w-28 text-center">كمية الكرتون</th>}
-                <th className="p-4 w-32">الوحدة</th>
-                <th className="p-4 w-32">الصلاحية</th>
+                {visibleColumns.code && <th className="p-4 w-40">كود الصنف</th>}
+                {visibleColumns.name && <th className="p-4">اسم المنتج / الوصف</th>}
+                {visibleColumns.qty && <th className="p-4 w-28 text-center">الكمية</th>}
+                {(visibleColumns.cartonQty || showCartonQty) && <th className="p-4 w-28 text-center">كمية الكرتون</th>}
+                {visibleColumns.unit && <th className="p-4 w-32">الوحدة</th>}
+                {visibleColumns.expiry && <th className="p-4 w-32">الصلاحية</th>}
+                {visibleColumns.note && <th className="p-4 w-40">ملاحظات</th>}
+                {customColumns.map(col => (
+                    <th key={col.id} className="p-4 w-32">{col.name}</th>
+                ))}
                 <th className="p-4 w-14"></th>
               </tr>
             </thead>
@@ -710,7 +786,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                   <td className="p-4 text-center text-gray-400 font-mono font-bold">{idx + 1}</td>
                   
                   {/* Code */}
-                  <td className="p-3 relative">
+                  {visibleColumns.code && <td className="p-3 relative">
                     <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg focus-within:border-sap-primary focus-within:ring-2 focus-within:ring-sap-primary/10 transition-all">
                         <div className="pl-2 pr-3 text-gray-400"><Barcode size={14}/></div>
                         <input 
@@ -735,10 +811,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                           ))}
                       </div>
                     )}
-                  </td>
+                  </td>}
 
                   {/* Name */}
-                  <td className="p-3 relative">
+                  {visibleColumns.name && <td className="p-3 relative">
                     <input 
                       id={`name-${row.id}`} type="text" value={row.name} 
                       onKeyDown={(e) => handleSearchKeyDown(e, row.id, 'name')}
@@ -760,33 +836,56 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                           ))}
                       </div>
                     )}
-                  </td>
+                  </td>}
 
                   {/* Qty */}
-                  <td className="p-3">
+                  {visibleColumns.qty && <td className="p-3">
                     <input id={`qty-${row.id}`} type="number" value={row.qty} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
-                  </td>
+                  </td>}
 
                   {/* Carton Qty */}
-                  {showCartonQty && (
+                  {(visibleColumns.cartonQty || showCartonQty) && (
                     <td className="p-3">
                       <input id={`cartonQty-${row.id}`} type="number" value={row.cartonQty || ''} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'cartonQty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, cartonQty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
                     </td>
                   )}
 
                   {/* Unit */}
-                  <td className="p-3">
+                  {visibleColumns.unit && <td className="p-3">
                     <select id={`unit-${row.id}`} value={row.unitId} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'unit') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, unitId: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-bold text-gray-600 cursor-pointer">
                       <option value="">- اختر -</option>
                       {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
-                  </td>
+                  </td>}
 
                   {/* Expiry */}
-                  <td className="p-3 relative">
+                  {visibleColumns.expiry && <td className="p-3 relative">
                     <input id={`expiry-${row.id}`} type="date" value={row.expiryDate} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'expiryDate') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, expiryDate: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-mono text-gray-600" />
                     {getExpiryStatus(row.expiryDate).status !== 'normal' && <div className="absolute left-0 top-1/2 -translate-y-1/2 text-red-500"><AlertTriangle size={14} /></div>}
-                  </td>
+                  </td>}
+
+                  {/* Note */}
+                  {visibleColumns.note && <td className="p-3">
+                    <input id={`note-${row.id}`} type="text" value={row.note || ''} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'note') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, note: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-bold text-gray-600" />
+                  </td>}
+
+                  {/* Custom Columns */}
+                  {customColumns.map(col => (
+                      <td key={col.id} className="p-3">
+                          <input 
+                              type="text" 
+                              value={row.customFields?.[col.id] || ''} 
+                              onChange={e => {
+                                  const val = e.target.value;
+                                  setRows(prev => prev.map(r => r.id === row.id ? { 
+                                      ...r, 
+                                      customFields: { ...(r.customFields || {}), [col.id]: val } 
+                                  } : r));
+                              }}
+                              className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-sm font-bold text-gray-800"
+                          />
+                      </td>
+                  ))}
 
                   <td className="p-3 text-center">
                     <button onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))} className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={16}/></button>
@@ -796,7 +895,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               
               {/* Add Row Button at bottom of table */}
               <tr>
-                  <td colSpan={showCartonQty ? 8 : 7} className="p-3">
+                  <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length + customColumns.length + (showCartonQty && !visibleColumns.cartonQty ? 1 : 0)} className="p-3">
                       <button onClick={() => setRows(prev => [...prev, createEmptyRow()])} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 font-bold hover:border-sap-primary hover:text-sap-primary hover:bg-sap-highlight/10 transition-all flex items-center justify-center gap-2">
                           <Plus size={18}/> إضافة سطر جديد (أو اضغط Enter)
                       </button>

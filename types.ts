@@ -64,6 +64,7 @@ export interface ListRow {
   expiryDate: string;
   note: string;
   isDismissed?: boolean;
+  customFields?: Record<string, string>;
 }
 
 export interface SavedList {
