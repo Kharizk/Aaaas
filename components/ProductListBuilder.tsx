@@ -7,7 +7,7 @@ import { ReportLayout } from './ReportLayout';
 import { GoogleGenAI, Type } from "@google/genai";
 import { parseExcelFile, generateInventoryTemplate } from '../services/excelService';
 import { 
-  Printer, Plus, Trash2, Save, FolderOpen, Loader2, 
+  Printer, Plus, Trash2, Save, FolderOpen, Loader2, SlidersHorizontal,
   Calendar, X, FileText, CheckCircle2, FileCheck2, ClipboardList, Truck, AlertTriangle, ScanLine, Image as ImageIcon, Sparkles, FileSpreadsheet, FileIcon,
   Tag, CheckSquare, Square, ArrowRight, Download, UploadCloud, Search, Barcode, ChevronDown, Eraser, FileInput, MoreHorizontal, Target, Keyboard
 } from 'lucide-react';
