@@ -310,6 +310,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       unitFontSize: tag.styles?.unitFontSize ?? globalStyles.unitFontSize,
       cartonPriceFontSize: tag.styles?.cartonPriceFontSize ?? globalStyles.cartonPriceFontSize,
       pieceFontSize: tag.styles?.pieceFontSize ?? globalStyles.pieceFontSize,
+      codeFontSize: tag.styles?.codeFontSize ?? globalStyles.codeFontSize,
+      dateFontSize: tag.styles?.dateFontSize ?? globalStyles.dateFontSize,
       nameColor: tag.styles?.nameColor ?? globalStyles.nameColor,
       priceColor: tag.styles?.priceColor ?? globalStyles.priceColor,
       unitColor: tag.styles?.unitColor ?? globalStyles.unitColor,
@@ -512,8 +514,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     
                     {/* Footer Info */}
                     <div className="w-full flex items-center justify-between px-2 py-0 bg-white border-t border-gray-100">
-                         <span className="text-[5px] font-mono text-gray-400 tracking-wider">{itemCode}</span>
-                         <span className="text-[4px] font-mono text-gray-400">{new Date().toLocaleDateString('en-GB')}</span>
+                         <span className="text-[5px] font-mono text-gray-400 tracking-wider" style={{ fontSize: s.codeFontSize ? `${s.codeFontSize}px` : undefined }}>{itemCode}</span>
+                         <span className="text-[4px] font-mono text-gray-400" style={{ fontSize: s.dateFontSize ? `${s.dateFontSize}px` : undefined }}>{new Date().toLocaleDateString('en-GB')}</span>
                     </div>
                 </div>
             </div>
@@ -588,7 +590,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     <div key={i} className="bg-black" style={{ width: h%2 === 0 ? '1px' : '2px', height: `${h * 20}%` }}></div>
                                 ))}
                             </div>
-                            <span className="text-[6px] font-mono opacity-40">ITEM: {itemCode}</span>
+                            <span className="text-[6px] font-mono opacity-40" style={{ fontSize: s.codeFontSize ? `${s.codeFontSize}px` : undefined }}>ITEM: {itemCode}</span>
                         </div>
                         
                         {s.showUnit && tag.unitName && (
@@ -613,7 +615,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
           return (
             <div className="flex flex-col h-full border-4 border-black">
                 <div className="bg-black text-white px-2 py-1 flex justify-between items-center h-8 shrink-0">
-                    <span className="text-[8px] font-mono tracking-widest">{itemCode}</span>
+                    <span className="text-[8px] font-mono tracking-widest" style={{ fontSize: s.codeFontSize ? `${s.codeFontSize}px` : undefined }}>{itemCode}</span>
                     {s.showUnit && tag.unitName && <span className="font-bold bg-white text-black px-1 rounded-sm" style={{ color: s.unitColor, fontSize: `${s.unitFontSize || 10}px` }}>{tag.unitName}</span>}
                 </div>
                 <div className="flex-1 flex items-center justify-center p-2 text-center" style={{ backgroundColor: s.backgroundColor }}>
@@ -763,7 +765,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             <span className="shrink-0">الوحدة: {unitDisplay}</span>
                         </div>
                         <div className="flex justify-between items-center flex-nowrap">
-                            <span className="font-mono tracking-tighter shrink-0">Barcode: {barcode}</span>
+                            <span className="font-mono tracking-tighter shrink-0" style={{ fontSize: s.codeFontSize ? `${s.codeFontSize}px` : undefined }}>Barcode: {barcode}</span>
                         </div>
                     </div>
                 </div>
@@ -783,7 +785,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     
                     <div className="w-full text-center border-t border-black/20 pt-1">
                         <div className="text-[10px] font-black">السعر شامل الضريبة {tag.showCartonPrice !== false && tag.cartonPrice ? <span style={{ fontSize: `${s.pieceFontSize || 6}px` }}>(للحبة)</span> : ''}</div>
-                        <div className="text-[8px] font-mono opacity-70" dir="ltr">{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'})}</div>
+                        <div className="text-[8px] font-mono opacity-70" dir="ltr" style={{ fontSize: s.dateFontSize ? `${s.dateFontSize}px` : undefined }}>{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'})}</div>
                     </div>
                 </div>
             </div>
@@ -1149,6 +1151,18 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         <div className="flex items-center gap-2">
                              <input type="range" min="6" max="48" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
                              <input type="number" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                        </div>
+                    </PropertyRow>
+                    <PropertyRow label="حجم كود المنتج">
+                        <div className="flex items-center gap-2">
+                             <input type="range" min="4" max="24" value={currentScopeStyles.codeFontSize || 8} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.codeFontSize || 8} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                        </div>
+                    </PropertyRow>
+                    <PropertyRow label="حجم التاريخ">
+                        <div className="flex items-center gap-2">
+                             <input type="range" min="4" max="24" value={currentScopeStyles.dateFontSize || 8} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.dateFontSize || 8} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                         </div>
                     </PropertyRow>
                     <PropertyRow label="حجم كلمة للحبة">

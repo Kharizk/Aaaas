@@ -313,6 +313,9 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     const [lists, setLists] = useState<SavedList[]>([]);
     const [loading, setLoading] = useState(true);
     const [daysThreshold, setDaysThreshold] = useState(90);
+    const [targetMonth, setTargetMonth] = useState<string>('all');
+    const [targetYear, setTargetYear] = useState<string>('all');
+    const [hideZeroStock, setHideZeroStock] = useState(false);
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -328,6 +331,26 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         fetchLists();
     }, []);
 
+    const handleDismiss = async (listId: string, rowId: string) => {
+        try {
+            const listToUpdate = lists.find(l => l.id === listId);
+            if (!listToUpdate) return;
+
+            const updatedRows = listToUpdate.rows.map(r => 
+                r.id === rowId ? { ...r, isDismissed: true } : r
+            );
+
+            const updatedList = { ...listToUpdate, rows: updatedRows };
+            await db.lists.update(listId, updatedList);
+            
+            // Update local state
+            setLists(prev => prev.map(l => l.id === listId ? updatedList : l));
+        } catch (e) {
+            console.error("Error dismissing item:", e);
+            alert("حدث خطأ أثناء إخفاء العنصر");
+        }
+    };
+
     const expiryData = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -335,12 +358,39 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         const thresholdDate = new Date(today);
         thresholdDate.setDate(today.getDate() + daysThreshold);
 
+        // Calculate current stock for each product
+        const stockMap = new Map<string, number>();
+        products.forEach(p => stockMap.set(p.id, 0));
+        lists.forEach(list => {
+            if (list.rows && Array.isArray(list.rows)) {
+                list.rows.forEach(row => {
+                    const product = products.find(p => p.code === row.code);
+                    if (product) {
+                        const current = stockMap.get(product.id) || 0;
+                        stockMap.set(product.id, current + (Number(row.qty) || 0));
+                    }
+                });
+            }
+        });
+        sales.forEach(sale => {
+            if (sale.cart && Array.isArray(sale.cart)) {
+                sale.cart.forEach(item => {
+                    const current = stockMap.get(item.productId) || 0;
+                    stockMap.set(item.productId, current - (item.quantity || 0));
+                });
+            }
+        });
+
         let alerts: {
+            listId: string;
+            rowId: string;
             productName: string;
             code: string;
             expiryDate: string;
             daysRemaining: number;
             qty: number;
+            cartonQty: number;
+            currentStock: number;
             listName: string;
             listDate: string;
             unitName: string;
@@ -349,22 +399,46 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         lists.forEach(list => {
             if (list.rows && Array.isArray(list.rows)) {
                 list.rows.forEach(row => {
-                    if (row.expiryDate) {
+                    if (row.expiryDate && !row.isDismissed) {
                         const exp = new Date(row.expiryDate);
                         exp.setHours(0, 0, 0, 0);
                         
+                        // Filter by target month if selected
+                        if (targetMonth !== 'all') {
+                            const expMonth = String(exp.getMonth() + 1).padStart(2, '0');
+                            if (expMonth !== targetMonth) return; // Skip if doesn't match month
+                        }
+
+                        // Filter by target year if selected
+                        if (targetYear !== 'all') {
+                            const expYear = String(exp.getFullYear());
+                            if (expYear !== targetYear) return; // Skip if doesn't match year
+                        }
+
                         // Calculate difference in days
                         const diffTime = exp.getTime() - today.getTime();
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                        // Check if within threshold (or expired)
-                        if (diffDays <= daysThreshold) {
+                        // Get current stock
+                        const product = products.find(p => p.code === row.code);
+                        const currentStock = product ? (stockMap.get(product.id) || 0) : 0;
+
+                        // Filter out zero stock if requested
+                        if (hideZeroStock && currentStock <= 0) return;
+
+                        // Check if within threshold (or expired) - only if not filtering by specific month/year
+                        // If filtering by month/year, show all in that period regardless of threshold
+                        if ((targetMonth !== 'all' || targetYear !== 'all') || diffDays <= daysThreshold) {
                             alerts.push({
+                                listId: list.id,
+                                rowId: row.id,
                                 productName: row.name,
                                 code: row.code,
                                 expiryDate: row.expiryDate,
                                 daysRemaining: diffDays,
                                 qty: Number(row.qty) || 0,
+                                cartonQty: Number(row.cartonQty) || 0,
+                                currentStock: currentStock,
                                 listName: list.name,
                                 listDate: list.date.split('T')[0],
                                 unitName: units.find(u => u.id === row.unitId)?.name || '-'
@@ -377,7 +451,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
 
         // Sort: Expired first, then soonest to expire
         return alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
-    }, [lists, daysThreshold, units]);
+    }, [lists, daysThreshold, units, targetMonth, targetYear, hideZeroStock, products, sales]);
 
     return (
         <div className="space-y-6 print:space-y-0 animate-in fade-in slide-in-from-bottom-4 duration-500 print:animate-none printable">
@@ -393,14 +467,17 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                    <div className="flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-2xl border border-gray-100">
                         <div className="flex items-center gap-2 px-2">
                             <Filter size={16} className="text-sap-primary"/>
                             <span className="text-[10px] font-bold text-gray-500">نطاق التنبيه:</span>
                         </div>
                         <select 
                             value={daysThreshold} 
-                            onChange={e => setDaysThreshold(Number(e.target.value))} 
+                            onChange={e => {
+                                setDaysThreshold(Number(e.target.value));
+                                setTargetMonth('all'); // Reset month filter when changing days
+                            }} 
                             className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[120px]"
                         >
                             <option value={30}>أقل من 30 يوم</option>
@@ -409,8 +486,59 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                             <option value={180}>أقل من 6 أشهر</option>
                             <option value={365}>أقل من سنة</option>
                         </select>
+
+                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
+                        <div className="flex items-center gap-2 px-2">
+                            <span className="text-[10px] font-bold text-gray-500">أو حسب الشهر والسنة:</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select 
+                                value={targetMonth} 
+                                onChange={e => setTargetMonth(e.target.value)} 
+                                className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[100px]"
+                            >
+                                <option value="all">كل الأشهر</option>
+                                <option value="01">يناير (1)</option>
+                                <option value="02">فبراير (2)</option>
+                                <option value="03">مارس (3)</option>
+                                <option value="04">أبريل (4)</option>
+                                <option value="05">مايو (5)</option>
+                                <option value="06">يونيو (6)</option>
+                                <option value="07">يوليو (7)</option>
+                                <option value="08">أغسطس (8)</option>
+                                <option value="09">سبتمبر (9)</option>
+                                <option value="10">أكتوبر (10)</option>
+                                <option value="11">نوفمبر (11)</option>
+                                <option value="12">ديسمبر (12)</option>
+                            </select>
+                            
+                            <select 
+                                value={targetYear} 
+                                onChange={e => setTargetYear(e.target.value)} 
+                                className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[100px]"
+                            >
+                                <option value="all">كل السنوات</option>
+                                {[...Array(10)].map((_, i) => {
+                                    const year = new Date().getFullYear() - 2 + i;
+                                    return <option key={year} value={year}>{year}</option>
+                                })}
+                            </select>
+                        </div>
+
+                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={hideZeroStock} 
+                                onChange={e => setHideZeroStock(e.target.checked)}
+                                className="rounded text-sap-primary focus:ring-sap-primary"
+                            />
+                            <span className="text-[10px] font-bold text-gray-600">إخفاء المنتجات المباعة (رصيد 0)</span>
+                        </label>
                         
-                        <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg">
+                        <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg mr-auto">
                             <Printer size={16}/> طباعة التقرير
                         </button>
                     </div>
@@ -420,7 +548,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             <ReportLayout 
                 printOnly={true}
                 title="تقرير صلاحية المنتجات" 
-                subtitle={`المنتجات التي تنتهي صلاحيتها خلال ${daysThreshold} يوم`}
+                subtitle={targetMonth !== 'all' ? `المنتجات التي تنتهي صلاحيتها في شهر ${targetMonth}` : `المنتجات التي تنتهي صلاحيتها خلال ${daysThreshold} يوم`}
                 showHeader={showHeader}
             >
                  <div className="mb-6 print:mb-4 grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-4 text-center">
@@ -449,19 +577,22 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                     <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">المتبقي (يوم)</th>
                                     <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">اسم المنتج</th>
                                     <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">كود الصنف</th>
-                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الكمية</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الرصيد الحالي</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">كمية الجرد</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الكرتون</th>
                                     <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24">الوحدة</th>
-                                    <th className="px-6 py-4 print:px-2 print:py-2">المصدر</th>
+                                    <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">المصدر</th>
+                                    <th className="px-6 py-4 print:hidden w-16">إجراء</th>
                                 </tr>
                             </thead>
                             <tbody className="text-xs font-bold divide-y divide-gray-50 print:divide-gray-200">
                                 {expiryData.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="py-16 text-center">
+                                        <td colSpan={10} className="py-16 text-center">
                                             <div className="flex flex-col items-center justify-center text-gray-400">
                                                 <AlertTriangle size={48} className="mb-4 opacity-20" />
-                                                <p className="text-lg font-bold text-gray-600">لا توجد منتجات قاربت على الانتهاء</p>
-                                                <p className="text-sm mt-1">جميع المنتجات صالحة لفترة أطول من النطاق المحدد</p>
+                                                <p className="text-lg font-bold text-gray-600">لا توجد منتجات مطابقة</p>
+                                                <p className="text-sm mt-1">جميع المنتجات صالحة أو لا توجد منتجات تطابق الفلاتر المحددة</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -479,9 +610,24 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                                 </td>
                                                 <td className="px-6 py-3 print:px-2 print:py-1 text-gray-800 print:text-black print:border print:border-gray-200">{item.productName}</td>
                                                 <td className="px-6 py-3 print:px-2 print:py-1 font-mono text-gray-500 print:text-black print:border print:border-gray-200">{item.code || '-'}</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-blue-600 bg-blue-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.currentStock}</td>
                                                 <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.qty}</td>
+                                                <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.cartonQty || '-'}</td>
                                                 <td className="px-6 py-3 print:px-2 print:py-1 text-gray-500 print:text-black print:border print:border-gray-200">{item.unitName}</td>
                                                 <td className="px-6 py-3 print:px-2 print:py-1 text-gray-400 text-[10px] print:text-black print:border print:border-gray-200">{item.listName} ({item.listDate})</td>
+                                                <td className="px-6 py-3 print:hidden text-center">
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (window.confirm('هل أنت متأكد من إخفاء هذا السجل من التقرير؟')) {
+                                                                handleDismiss(item.listId, item.rowId);
+                                                            }
+                                                        }}
+                                                        className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50"
+                                                        title="إخفاء من التقرير"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
                                             </tr>
                                         );
                                     })

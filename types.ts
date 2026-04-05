@@ -417,6 +417,8 @@ export interface TagStyleOverrides {
   unitFontSize?: number;
   cartonPriceFontSize?: number;
   pieceFontSize?: number;
+  codeFontSize?: number;
+  dateFontSize?: number;
   nameColor?: string;
   priceColor?: string;
   unitColor?: string;
