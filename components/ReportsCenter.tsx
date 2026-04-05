@@ -325,8 +325,8 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
         productName: true,
         code: true,
         currentStock: true,
-        qty: true,
         cartonQty: true,
+        qty: true,
         unitName: true,
         listName: true,
         actions: true
@@ -376,12 +376,31 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             );
 
             const updatedList = { ...listToUpdate, rows: updatedRows };
-            await db.lists.update(listId, updatedList);
+            await db.lists.upsert(updatedList);
             
             setLists(prev => prev.map(l => l.id === listId ? updatedList : l));
         } catch (e) {
             console.error("Error updating qty:", e);
             alert("حدث خطأ أثناء تحديث الكمية");
+        }
+    };
+
+    const handleUpdateCartonQty = async (listId: string, rowId: string, newCartonQty: number) => {
+        try {
+            const listToUpdate = lists.find(l => l.id === listId);
+            if (!listToUpdate) return;
+
+            const updatedRows = listToUpdate.rows.map(r => 
+                r.id === rowId ? { ...r, cartonQty: newCartonQty } : r
+            );
+
+            const updatedList = { ...listToUpdate, rows: updatedRows };
+            await db.lists.upsert(updatedList);
+            
+            setLists(prev => prev.map(l => l.id === listId ? updatedList : l));
+        } catch (e) {
+            console.error("Error updating carton qty:", e);
+            alert("حدث خطأ أثناء تحديث كمية الكرتون");
         }
     };
 
@@ -602,8 +621,8 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                             productName: 'اسم المنتج',
                                             code: 'كود الصنف',
                                             currentStock: 'الرصيد الحالي',
-                                            qty: 'كمية الجرد',
                                             cartonQty: 'الكرتون',
+                                            qty: 'كمية الجرد',
                                             unitName: 'الوحدة',
                                             listName: 'المصدر',
                                             actions: 'إجراء'
@@ -663,8 +682,8 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                     {visibleColumns.productName && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">اسم المنتج</th>}
                                     {visibleColumns.code && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">كود الصنف</th>}
                                     {visibleColumns.currentStock && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الرصيد الحالي</th>}
-                                    {visibleColumns.qty && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">كمية الجرد</th>}
                                     {visibleColumns.cartonQty && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الكرتون</th>}
+                                    {visibleColumns.qty && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">كمية الجرد</th>}
                                     {visibleColumns.unitName && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24">الوحدة</th>}
                                     {visibleColumns.listName && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">المصدر</th>}
                                     {visibleColumns.actions && <th className="px-6 py-4 print:hidden w-16">إجراء</th>}
@@ -696,6 +715,14 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                                 {visibleColumns.productName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-800 print:text-black print:border print:border-gray-200">{item.productName}</td>}
                                                 {visibleColumns.code && <td className="px-6 py-3 print:px-2 print:py-1 font-mono text-gray-500 print:text-black print:border print:border-gray-200">{item.code || '-'}</td>}
                                                 {visibleColumns.currentStock && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-blue-600 bg-blue-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.currentStock}</td>}
+                                                {visibleColumns.cartonQty && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">
+                                                    <input 
+                                                        type="number" 
+                                                        value={item.cartonQty || ''} 
+                                                        onChange={(e) => handleUpdateCartonQty(item.listId, item.rowId, Number(e.target.value))}
+                                                        className="w-16 text-center bg-transparent border-b border-dashed border-gray-300 focus:border-sap-primary focus:outline-none print:border-none"
+                                                    />
+                                                </td>}
                                                 {visibleColumns.qty && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">
                                                     <input 
                                                         type="number" 
@@ -704,7 +731,6 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                                         className="w-16 text-center bg-transparent border-b border-dashed border-gray-300 focus:border-sap-primary focus:outline-none print:border-none"
                                                     />
                                                 </td>}
-                                                {visibleColumns.cartonQty && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.cartonQty || '-'}</td>}
                                                 {visibleColumns.unitName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-500 print:text-black print:border print:border-gray-200">{item.unitName}</td>}
                                                 {visibleColumns.listName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-400 text-[10px] print:text-black print:border print:border-gray-200">{item.listName} ({item.listDate})</td>}
                                                 {visibleColumns.actions && <td className="px-6 py-3 print:hidden text-center">
