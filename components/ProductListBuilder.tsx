@@ -36,7 +36,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   const [printWithFooter, setPrintWithFooter] = useState(true);
   const [printFontSize, setPrintFontSize] = useState(12);
   const [visibleColumns, setVisibleColumns] = useState({
-    code: true, name: true, qty: true, cartonQty: false, unit: true, expiry: true, note: true
+    code: true, name: true, cartonQty: true, qty: true, unit: true, expiry: true, note: true
   });
   const [customColumns, setCustomColumns] = useState<{id: string, name: string}[]>([]);
   const [showCartonQty, setShowCartonQty] = useState(false); // Kept for backward compatibility but visibleColumns.cartonQty is better
@@ -492,9 +492,9 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
       } else {
           let nextId = '';
           if (currentField === 'code') nextId = `name-${currentRowId}`;
-          else if (currentField === 'name') nextId = `qty-${currentRowId}`;
-          else if (currentField === 'qty') nextId = (visibleColumns.cartonQty || showCartonQty) ? `cartonQty-${currentRowId}` : `unit-${currentRowId}`;
-          else if (currentField === 'cartonQty') nextId = `unit-${currentRowId}`;
+          else if (currentField === 'name') nextId = visibleColumns.cartonQty ? `cartonQty-${currentRowId}` : (visibleColumns.qty ? `qty-${currentRowId}` : `unit-${currentRowId}`);
+          else if (currentField === 'cartonQty') nextId = visibleColumns.qty ? `qty-${currentRowId}` : `unit-${currentRowId}`;
+          else if (currentField === 'qty') nextId = `unit-${currentRowId}`;
           else if (currentField === 'unit') nextId = `expiry-${currentRowId}`;
           const nextEl = document.getElementById(nextId);
           if (nextEl) nextEl.focus();
@@ -551,8 +551,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       <th className="p-1 border border-sap-border w-8 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>#</th>
                       {visibleColumns.code && <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كود الصنف</th>}
                       {visibleColumns.name && <th className="p-1 border border-sap-border" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>اسم المنتج</th>}
+                      {visibleColumns.cartonQty && <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كمية الكرتون</th>}
                       {visibleColumns.qty && <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الكمية</th>}
-                      {(visibleColumns.cartonQty || showCartonQty) && <th className="p-1 border border-sap-border w-16 text-center" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>كمية الكرتون</th>}
                       {visibleColumns.unit && <th className="p-1 border border-sap-border w-16" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الوحدة</th>}
                       {visibleColumns.expiry && <th className="p-1 border border-sap-border w-24" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>الصلاحية</th>}
                       {visibleColumns.note && <th className="p-1 border border-sap-border w-32" style={{ backgroundColor: '#1F2937', color: 'white', WebkitPrintColorAdjust: 'exact' }}>ملاحظات</th>}
@@ -575,8 +575,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                               <td className="p-1 text-center border-l border-sap-border/50">{idx + 1}</td>
                               {visibleColumns.code && <td className="p-1 border-l border-sap-border/50">{row.code}</td>}
                               {visibleColumns.name && <td className="p-1 border-l border-sap-border/50">{row.name}</td>}
+                              {visibleColumns.cartonQty && <td className="p-1 text-center border-l border-sap-border/50">{row.cartonQty}</td>}
                               {visibleColumns.qty && <td className="p-1 text-center border-l border-sap-border/50">{row.qty}</td>}
-                              {(visibleColumns.cartonQty || showCartonQty) && <td className="p-1 text-center border-l border-sap-border/50">{row.cartonQty}</td>}
                               {visibleColumns.unit && <td className="p-1 border-l border-sap-border/50">{getUnitName(row.unitId)}</td>}
                               {visibleColumns.expiry && <td className="p-1 border-l border-sap-border/50">
                                   <div className="flex items-center justify-between"><span>{row.expiryDate || '-'}</span>{statusText && <span className="text-[8px] border px-1">{statusText}</span>}</div>
@@ -716,7 +716,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                                     <h4 className="text-xs font-bold text-gray-800 mb-2">الأعمدة المرئية</h4>
                                     <div className="grid grid-cols-2 gap-2">
                                         {Object.entries({
-                                            code: 'كود الصنف', name: 'اسم المنتج', qty: 'الكمية', cartonQty: 'كمية الكرتون', unit: 'الوحدة', expiry: 'الصلاحية', note: 'ملاحظات'
+                                            code: 'كود الصنف', name: 'اسم المنتج', cartonQty: 'كمية الكرتون', qty: 'الكمية', unit: 'الوحدة', expiry: 'الصلاحية', note: 'ملاحظات'
                                         }).map(([key, label]) => (
                                             <label key={key} className="flex items-center gap-2 text-[10px] font-bold text-gray-600 cursor-pointer">
                                                 <input type="checkbox" checked={visibleColumns[key as keyof typeof visibleColumns]} onChange={e => setVisibleColumns(prev => ({...prev, [key]: e.target.checked}))} className="rounded border-gray-300 text-sap-primary focus:ring-sap-primary w-3 h-3" />
@@ -765,8 +765,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 <th className="p-4 w-12 text-center">#</th>
                 {visibleColumns.code && <th className="p-4 w-40">كود الصنف</th>}
                 {visibleColumns.name && <th className="p-4">اسم المنتج / الوصف</th>}
+                {visibleColumns.cartonQty && <th className="p-4 w-28 text-center">كمية الكرتون</th>}
                 {visibleColumns.qty && <th className="p-4 w-28 text-center">الكمية</th>}
-                {(visibleColumns.cartonQty || showCartonQty) && <th className="p-4 w-28 text-center">كمية الكرتون</th>}
                 {visibleColumns.unit && <th className="p-4 w-32">الوحدة</th>}
                 {visibleColumns.expiry && <th className="p-4 w-32">الصلاحية</th>}
                 {visibleColumns.note && <th className="p-4 w-40">ملاحظات</th>}
@@ -838,17 +838,17 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                     )}
                   </td>}
 
-                  {/* Qty */}
-                  {visibleColumns.qty && <td className="p-3">
-                    <input id={`qty-${row.id}`} type="number" value={row.qty} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
-                  </td>}
-
                   {/* Carton Qty */}
-                  {(visibleColumns.cartonQty || showCartonQty) && (
+                  {visibleColumns.cartonQty && (
                     <td className="p-3">
                       <input id={`cartonQty-${row.id}`} type="number" value={row.cartonQty || ''} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'cartonQty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, cartonQty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
                     </td>
                   )}
+
+                  {/* Qty */}
+                  {visibleColumns.qty && <td className="p-3">
+                    <input id={`qty-${row.id}`} type="number" value={row.qty} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
+                  </td>}
 
                   {/* Unit */}
                   {visibleColumns.unit && <td className="p-3">

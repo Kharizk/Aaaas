@@ -7,7 +7,7 @@ import { ReportLayout } from './ReportLayout';
 import { db } from '../services/supabase';
 import { 
   FileLineChart, LayoutGrid, BarChart3, TrendingUp, TrendingDown, Package, Printer, 
-  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet, Download, PieChart, Trash2, Settings
+  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet, Download, PieChart, Trash2, Settings, Clock
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
@@ -489,145 +489,6 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
 
     return (
         <div className="space-y-6 print:space-y-0 animate-in fade-in slide-in-from-bottom-4 duration-500 print:animate-none printable">
-            <div className="bg-white border border-sap-border rounded-[2.5rem] p-6 shadow-sm print:hidden">
-                <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-[2rem] flex items-center justify-center shadow-lg">
-                            <AlertTriangle size={32} />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-black text-sap-text">تنبيهات الصلاحية</h2>
-                            <p className="text-xs text-sap-text-variant font-bold uppercase tracking-widest mt-1">المنتجات التي قاربت على الانتهاء</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-2xl border border-gray-100">
-                        <div className="flex items-center gap-2 px-2">
-                            <Filter size={16} className="text-sap-primary"/>
-                            <span className="text-[10px] font-bold text-gray-500">نطاق التنبيه:</span>
-                        </div>
-                        <select 
-                            value={daysThreshold} 
-                            onChange={e => {
-                                setDaysThreshold(Number(e.target.value));
-                                setTargetMonth('all'); // Reset month filter when changing days
-                            }} 
-                            className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[120px]"
-                        >
-                            <option value={30}>أقل من 30 يوم</option>
-                            <option value={60}>أقل من 60 يوم</option>
-                            <option value={90}>أقل من 90 يوم</option>
-                            <option value={180}>أقل من 6 أشهر</option>
-                            <option value={365}>أقل من سنة</option>
-                        </select>
-
-                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
-
-                        <div className="flex items-center gap-2 px-2">
-                            <span className="text-[10px] font-bold text-gray-500">أو حسب الشهر والسنة:</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <select 
-                                value={targetMonth} 
-                                onChange={e => setTargetMonth(e.target.value)} 
-                                className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[100px]"
-                            >
-                                <option value="all">كل الأشهر</option>
-                                <option value="01">يناير (1)</option>
-                                <option value="02">فبراير (2)</option>
-                                <option value="03">مارس (3)</option>
-                                <option value="04">أبريل (4)</option>
-                                <option value="05">مايو (5)</option>
-                                <option value="06">يونيو (6)</option>
-                                <option value="07">يوليو (7)</option>
-                                <option value="08">أغسطس (8)</option>
-                                <option value="09">سبتمبر (9)</option>
-                                <option value="10">أكتوبر (10)</option>
-                                <option value="11">نوفمبر (11)</option>
-                                <option value="12">ديسمبر (12)</option>
-                            </select>
-                            
-                            <select 
-                                value={targetYear} 
-                                onChange={e => setTargetYear(e.target.value)} 
-                                className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold min-w-[100px]"
-                            >
-                                <option value="all">كل السنوات</option>
-                                {[...Array(10)].map((_, i) => {
-                                    const year = new Date().getFullYear() - 2 + i;
-                                    return <option key={year} value={year}>{year}</option>
-                                })}
-                            </select>
-                        </div>
-
-                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
-
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                checked={hideZeroStock} 
-                                onChange={e => setHideZeroStock(e.target.checked)}
-                                className="rounded text-sap-primary focus:ring-sap-primary"
-                            />
-                            <span className="text-[10px] font-bold text-gray-600">إخفاء المنتجات المباعة (رصيد 0)</span>
-                        </label>
-                        
-                        <div className="relative mr-auto flex items-center gap-2">
-                            <button 
-                                onClick={() => setShowSettings(!showSettings)} 
-                                className="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-gray-50 transition-all shadow-sm"
-                            >
-                                <Settings size={16}/> إعدادات التقرير
-                            </button>
-                            {showSettings && (
-                                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50">
-                                    <h3 className="text-xs font-black text-gray-800 mb-3 border-b border-gray-100 pb-2">إعدادات العرض</h3>
-                                    
-                                    <div className="space-y-2 mb-4">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" checked={showHeader} onChange={e => setShowHeader(e.target.checked)} className="rounded text-sap-primary" />
-                                            <span className="text-xs font-bold text-gray-600">عرض الترويسة العلوية</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" checked={showFooter} onChange={e => setShowFooter(e.target.checked)} className="rounded text-sap-primary" />
-                                            <span className="text-xs font-bold text-gray-600">عرض الترويسة السفلية (التوقيعات)</span>
-                                        </label>
-                                    </div>
-
-                                    <h3 className="text-xs font-black text-gray-800 mb-3 border-b border-gray-100 pb-2">الأعمدة المرئية</h3>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                                        {Object.entries({
-                                            expiryDate: 'تاريخ الانتهاء',
-                                            daysRemaining: 'المتبقي (يوم)',
-                                            productName: 'اسم المنتج',
-                                            code: 'كود الصنف',
-                                            currentStock: 'الرصيد الحالي',
-                                            qty: 'كمية الجرد',
-                                            cartonQty: 'الكرتون',
-                                            unitName: 'الوحدة',
-                                            listName: 'المصدر',
-                                            actions: 'إجراء'
-                                        }).map(([key, label]) => (
-                                            <label key={key} className="flex items-center gap-2 cursor-pointer">
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={visibleColumns[key as keyof typeof visibleColumns]} 
-                                                    onChange={e => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))} 
-                                                    className="rounded text-sap-primary" 
-                                                />
-                                                <span className="text-xs font-bold text-gray-600">{label}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            <button onClick={() => window.print()} className="bg-sap-shell text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg">
-                                <Printer size={16}/> طباعة التقرير
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <ReportLayout 
                 printOnly={true}
@@ -636,22 +497,104 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                 showHeader={showHeader}
                 showSignatures={showFooter}
             >
-                 <div className="mb-6 print:mb-4 grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-4 text-center">
-                    <div className="p-4 print:p-2 bg-red-50 rounded-2xl border border-red-100 print:border-red-200">
-                        <div className="text-[10px] font-black text-red-400 uppercase">منتهية الصلاحية</div>
-                        <div className="text-2xl print:text-xl font-black text-red-600 mt-1">{expiryData.filter(i => i.daysRemaining < 0).length}</div>
+                <div className="mb-8 print:mb-4 grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-6 text-center">
+                    <div className="p-6 print:p-2 bg-gradient-to-br from-red-50 to-red-100/50 rounded-[2rem] border border-red-100 print:border-red-200 shadow-sm relative overflow-hidden group">
+                        <div className="absolute -left-4 -bottom-4 text-red-500/10 group-hover:scale-110 transition-transform duration-500">
+                            <AlertTriangle size={100} />
+                        </div>
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="w-10 h-10 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+                                <AlertTriangle size={20} />
+                            </div>
+                            <div className="text-[11px] font-black text-red-500 uppercase tracking-widest">منتهية الصلاحية</div>
+                            <div className="text-4xl print:text-xl font-black text-red-600 mt-2">{expiryData.filter(i => i.daysRemaining < 0).length}</div>
+                        </div>
                     </div>
-                    <div className="p-4 print:p-2 bg-orange-50 rounded-2xl border border-orange-100 print:border-orange-200">
-                        <div className="text-[10px] font-black text-orange-400 uppercase">تنتهي خلال 30 يوم</div>
-                        <div className="text-2xl print:text-xl font-black text-orange-600 mt-1">{expiryData.filter(i => i.daysRemaining >= 0 && i.daysRemaining <= 30).length}</div>
+                    <div className="p-6 print:p-2 bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-[2rem] border border-orange-100 print:border-orange-200 shadow-sm relative overflow-hidden group">
+                        <div className="absolute -left-4 -bottom-4 text-orange-500/10 group-hover:scale-110 transition-transform duration-500">
+                            <Clock size={100} />
+                        </div>
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="w-10 h-10 bg-orange-100 text-orange-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+                                <Clock size={20} />
+                            </div>
+                            <div className="text-[11px] font-black text-orange-500 uppercase tracking-widest">تنتهي خلال 30 يوم</div>
+                            <div className="text-4xl print:text-xl font-black text-orange-600 mt-2">{expiryData.filter(i => i.daysRemaining >= 0 && i.daysRemaining <= 30).length}</div>
+                        </div>
                     </div>
-                    <div className="p-4 print:p-2 bg-blue-50 rounded-2xl border border-blue-100 print:border-blue-200">
-                        <div className="text-[10px] font-black text-blue-400 uppercase">إجمالي التنبيهات</div>
-                        <div className="text-2xl print:text-xl font-black text-blue-600 mt-1">{expiryData.length}</div>
+                    <div className="p-6 print:p-2 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-[2rem] border border-blue-100 print:border-blue-200 shadow-sm relative overflow-hidden group">
+                        <div className="absolute -left-4 -bottom-4 text-blue-500/10 group-hover:scale-110 transition-transform duration-500">
+                            <Package size={100} />
+                        </div>
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+                                <Package size={20} />
+                            </div>
+                            <div className="text-[11px] font-black text-blue-500 uppercase tracking-widest">إجمالي التنبيهات</div>
+                            <div className="text-4xl print:text-xl font-black text-blue-600 mt-2">{expiryData.length}</div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="border-2 border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm print:border print:rounded-none print:shadow-none print:overflow-visible">
+                <div className="bg-white border border-gray-200 rounded-[2rem] p-5 mb-6 print:hidden shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="w-10 h-10 bg-sap-highlight rounded-xl flex items-center justify-center text-sap-primary">
+                            <Filter size={18} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-black text-sap-text">تصفية التقرير</h3>
+                            <p className="text-[10px] text-gray-500">تخصيص عرض البيانات</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-100">
+                            <select 
+                                value={daysThreshold} 
+                                onChange={e => setDaysThreshold(Number(e.target.value))}
+                                className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-sap-primary focus:border-sap-primary block p-2 font-bold shadow-sm"
+                            >
+                                <option value={30}>خلال 30 يوم</option>
+                                <option value={60}>خلال 60 يوم</option>
+                                <option value={90}>خلال 90 يوم</option>
+                                <option value={180}>خلال 6 شهور</option>
+                                <option value={365}>خلال سنة</option>
+                            </select>
+                            
+                            <select 
+                                value={targetMonth} 
+                                onChange={e => setTargetMonth(e.target.value)}
+                                className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-sap-primary focus:border-sap-primary block p-2 font-bold shadow-sm"
+                            >
+                                <option value="all">كل الشهور</option>
+                                {Array.from({length: 12}, (_, i) => i + 1).map(m => (
+                                    <option key={m} value={m.toString().padStart(2, '0')}>شهر {m}</option>
+                                ))}
+                            </select>
+
+                            <select 
+                                value={targetYear} 
+                                onChange={e => setTargetYear(e.target.value)}
+                                className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-sap-primary focus:border-sap-primary block p-2 font-bold shadow-sm"
+                            >
+                                <option value="all">كل السنوات</option>
+                                {Array.from({length: 5}, (_, i) => new Date().getFullYear() + i).map(y => (
+                                    <option key={y} value={y.toString()}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
+                            <div className="relative">
+                                <input type="checkbox" checked={hideZeroStock} onChange={e => setHideZeroStock(e.target.checked)} className="sr-only peer" />
+                                <div className="w-8 h-4 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:-translate-x-0 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-sap-primary"></div>
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-700">إخفاء المباع (رصيد 0)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div className="border-2 border-gray-100 rounded-[2rem] overflow-visible bg-white shadow-sm print:border print:rounded-none print:shadow-none print:overflow-visible">
                     {loading ? (
                         <div className="p-10 text-center text-gray-400">جاري تحميل البيانات...</div>
                     ) : (
@@ -697,12 +640,14 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                                 {visibleColumns.code && <td className="px-6 py-3 print:px-2 print:py-1 font-mono text-gray-500 print:text-black print:border print:border-gray-200">{item.code || '-'}</td>}
                                                 {visibleColumns.currentStock && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-blue-600 bg-blue-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.currentStock}</td>}
                                                 {visibleColumns.qty && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">
-                                                    <input 
-                                                        type="number" 
-                                                        value={item.qty} 
-                                                        onChange={(e) => handleUpdateQty(item.listId, item.rowId, Number(e.target.value))}
-                                                        className="w-16 text-center bg-transparent border-b border-dashed border-gray-300 focus:border-sap-primary focus:outline-none print:border-none"
-                                                    />
+                                                    <div className="relative inline-block w-20 group/input">
+                                                        <input 
+                                                            type="number" 
+                                                            value={item.qty} 
+                                                            onChange={(e) => handleUpdateQty(item.listId, item.rowId, Number(e.target.value))}
+                                                            className="w-full text-center bg-white border border-gray-200 rounded-lg py-1 px-2 focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/20 focus:outline-none transition-all print:border-none print:bg-transparent print:p-0 hover:border-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </div>
                                                 </td>}
                                                 {visibleColumns.cartonQty && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.cartonQty || '-'}</td>}
                                                 {visibleColumns.unitName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-500 print:text-black print:border print:border-gray-200">{item.unitName}</td>}
