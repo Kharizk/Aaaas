@@ -7,7 +7,7 @@ import { ReportLayout } from './ReportLayout';
 import { db } from '../services/supabase';
 import { 
   FileLineChart, LayoutGrid, BarChart3, TrendingUp, TrendingDown, Package, Printer, 
-  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet, Download, PieChart 
+  Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet, Download, PieChart, Trash2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
