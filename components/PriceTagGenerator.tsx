@@ -117,6 +117,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     unitFontSize: 12,
     cartonPriceFontSize: 10,
     pieceFontSize: 6,
+    codeFontSize: 12,
+    dateFontSize: 12,
     nameColor: '#000000',
     priceColor: '#DC2626', 
     unitColor: '#6B7280',
@@ -183,8 +185,11 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
         id: activeListId || generateId(), 
         name: listName.trim(), 
         date: new Date().toISOString(), 
-        tags: selectedTags, 
-        styles: { ...globalStyles, logoUrl: null }
+        tags: selectedTags.map(tag => ({
+            ...tag,
+            styles: tag.styles ? { ...tag.styles, currencySymbolImage: null, logoUrl: null } : undefined
+        })), 
+        styles: { ...globalStyles, logoUrl: null, currencySymbolImage: null }
       };
       await db.tagLists.upsert(listData);
       setActiveListId(listData.id);
@@ -1155,14 +1160,14 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                     </PropertyRow>
                     <PropertyRow label="حجم كود المنتج">
                         <div className="flex items-center gap-2">
-                             <input type="range" min="4" max="24" value={currentScopeStyles.codeFontSize || 8} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.codeFontSize || 8} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                             <input type="range" min="4" max="48" value={currentScopeStyles.codeFontSize || 12} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.codeFontSize || 12} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                         </div>
                     </PropertyRow>
                     <PropertyRow label="حجم التاريخ">
                         <div className="flex items-center gap-2">
-                             <input type="range" min="4" max="24" value={currentScopeStyles.dateFontSize || 8} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.dateFontSize || 8} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                             <input type="range" min="4" max="48" value={currentScopeStyles.dateFontSize || 12} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                             <input type="number" value={currentScopeStyles.dateFontSize || 12} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                         </div>
                     </PropertyRow>
                     <PropertyRow label="حجم كلمة للحبة">
