@@ -343,6 +343,20 @@ const AppContent: React.FC = () => {
       return false;
   };
 
+  const handleGoogleLogin = async (): Promise<boolean> => {
+      try {
+          const user = await db.auth.loginWithGoogle();
+          if (user) {
+              if (user.role !== 'admin' && !user.isActive) { alert("الحساب غير نشط"); return false; }
+              const safeUser: User = { id: user.id, username: user.username, fullName: user.fullName, role: user.role, branchId: user.branchId, permissions: user.permissions, isActive: user.isActive };
+              setCurrentUser(safeUser);
+              localStorage.setItem('sf_user_session', JSON.stringify(safeUser));
+              return true;
+          }
+      } catch (e) { console.error(e); }
+      return false;
+  };
+
   const handleLogout = () => { if (confirm('تسجيل الخروج؟')) { localStorage.removeItem('sf_user_session'); setCurrentUser(null); window.location.reload(); } };
   const handleProfileUpdate = (updatedUser: User) => { setCurrentUser(updatedUser); localStorage.setItem('sf_user_session', JSON.stringify(updatedUser)); };
   const handleNavigateToList = (listId: string, rowId?: string) => { setTargetListParams({ listId, rowId }); handleOpenApp('list'); };
@@ -354,7 +368,7 @@ const AppContent: React.FC = () => {
 
   if (authChecking || isCatalogLoading) return <div className="h-screen w-full flex items-center justify-center bg-white"><Loader2 className="animate-spin text-sap-primary" size={48}/></div>;
   if (viewCatalogId && viewCatalogData) return <CatalogGenerator products={[]} units={[]} viewModeData={viewCatalogData} />;
-  if (!currentUser) return <LoginScreen onLogin={handleLogin} />;
+  if (!currentUser) return <LoginScreen onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} />;
 
   // --- Render App Grid (Refined & Modern) ---
   const AppLauncher = () => {

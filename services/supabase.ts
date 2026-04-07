@@ -1,5 +1,6 @@
 
 import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { 
   getFirestore, 
   collection, 
@@ -29,10 +30,12 @@ const firebaseConfig = {
 
 let app;
 let firestore: any;
+export let auth: any;
 
 try {
     app = initializeApp(firebaseConfig);
     firestore = getFirestore(app);
+    auth = getAuth(app);
 } catch (error) {
     console.error("Firebase Initialization Error:", error);
 }
@@ -121,6 +124,35 @@ export const db = {
       } catch (e) { return false; }
   },
   auth: {
+    async loginWithGoogle() {
+        return safeDbCall(async () => {
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            
+            // Check if user exists in our users collection by email
+            const q = query(collection(firestore, "users"), where("email", "==", user.email));
+            const snapshot = await getDocs(q);
+            
+            if (snapshot.empty) {
+                // Create a new user if not exists
+                const newUserId = user.uid;
+                const newUser = {
+                    id: newUserId,
+                    username: user.email?.split('@')[0] || 'user',
+                    email: user.email,
+                    fullName: user.displayName || 'مستخدم جديد',
+                    role: 'user', // Default role
+                    isActive: true,
+                    permissions: ['view_dashboard', 'view_products'] // Default permissions
+                };
+                await setDoc(doc(firestore, "users", newUserId), newUser);
+                return newUser;
+            }
+            
+            return { id: snapshot.docs[0].id, ...sanitizeData(snapshot.docs[0].data()) };
+        });
+    },
     async login(username: string) {
         return safeDbCall(async () => {
             const q = query(collection(firestore, "users"), where("username", "==", username));

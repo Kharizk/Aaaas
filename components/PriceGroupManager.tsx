@@ -68,9 +68,17 @@ export const PriceGroupManager: React.FC = () => {
     padding: 30,
     boardsPerPage: 2,
     showGeometricPattern: true,
-    currencySymbolType: 'icon',
-    currencySymbolImage: null
+    currencySymbolType: settings.currencySymbolType || 'icon',
+    currencySymbolImage: settings.currencySymbolImage || null
   });
+
+  useEffect(() => {
+      setStyles(prev => ({
+          ...prev,
+          currencySymbolType: settings.currencySymbolType || prev.currencySymbolType,
+          currencySymbolImage: settings.currencySymbolImage || prev.currencySymbolImage,
+      }));
+  }, [settings.currencySymbolType, settings.currencySymbolImage]);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -99,9 +107,9 @@ export const PriceGroupManager: React.FC = () => {
         date: new Date().toISOString(),
         boards,
         showLogo,
-        logoUrl,
+        logoUrl: null, // Strip logo
         themeId,
-        styles: { ...styles, boardsPerPage }
+        styles: { ...styles, boardsPerPage, currencySymbolImage: null } // Strip currency image
       };
       await db.priceGroups.upsert(projectData);
       setActiveProjectId(projectData.id);
@@ -192,7 +200,11 @@ export const PriceGroupManager: React.FC = () => {
     setLogoUrl(pj.logoUrl || null);
     setThemeId(pj.themeId || 'geometric_luxe');
     if (pj.styles) {
-        setStyles({...styles, ...pj.styles});
+        setStyles({
+            ...styles, 
+            ...pj.styles,
+            currencySymbolImage: pj.styles.currencySymbolImage || settings.currencySymbolImage || null
+        });
         setBoardsPerPage(pj.styles.boardsPerPage || 2);
     }
     setActiveTab('content');

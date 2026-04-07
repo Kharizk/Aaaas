@@ -271,7 +271,24 @@ export const Settings: React.FC = () => {
                                         <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
                                             <button onClick={() => setCurrencySymbolType('text')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${currencySymbolType === 'text' ? 'bg-white shadow-sm text-sap-primary' : 'text-gray-500'}`}>نص (SAR)</button>
                                             <button onClick={() => setCurrencySymbolType('icon')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${currencySymbolType === 'icon' ? 'bg-white shadow-sm text-sap-primary' : 'text-gray-500'}`}>رمز ($)</button>
+                                            <button onClick={() => setCurrencySymbolType('custom_image')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${currencySymbolType === 'custom_image' ? 'bg-white shadow-sm text-sap-primary' : 'text-gray-500'}`}>صورة مخصصة</button>
                                         </div>
+                                        {currencySymbolType === 'custom_image' && (
+                                            <div className="mt-3 flex items-center gap-3">
+                                                {currencySymbolImage && <img src={currencySymbolImage} alt="Currency" className="w-10 h-10 object-contain border border-gray-200 rounded-lg bg-white" />}
+                                                <label className="cursor-pointer px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
+                                                    رفع صورة العملة
+                                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (re) => setCurrencySymbolImage(re.target?.result as string);
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }} />
+                                                </label>
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-xs font-black text-gray-500 mb-2">تنبيه انتهاء الصلاحية (أيام)</label>
