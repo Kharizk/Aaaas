@@ -208,6 +208,58 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6 print:p-0 print:m-0" dir="rtl">
+            {/* Print Only Section */}
+            {showHistoryModal && selectedTrust && (
+                <div className="hidden print:block bg-white p-8">
+                    <div className="text-center mb-8 border-b border-gray-200 pb-6">
+                        <h2 className="text-3xl font-black text-gray-800 mb-2">سجل حركات الأمانة</h2>
+                        <p className="text-gray-500">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')} - {new Date().toLocaleTimeString('ar-SA')}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-6 mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">اسم العميل</div>
+                            <div className="font-bold text-lg text-gray-800">{selectedTrust.customerName}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">المنتج</div>
+                            <div className="font-bold text-lg text-gray-800">{selectedTrust.productName}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">إجمالي الكمية المودعة</div>
+                            <div className="font-black text-xl text-sap-primary">{selectedTrust.totalQty}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">الرصيد المتبقي</div>
+                            <div className="font-black text-xl text-red-600">{selectedTrust.remainingQty}</div>
+                        </div>
+                    </div>
+
+                    <table className="w-full text-right text-sm border border-gray-200">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="px-4 py-3 font-bold text-gray-800 border-b border-gray-300">التاريخ</th>
+                                <th className="px-4 py-3 font-bold text-gray-800 border-b border-gray-300">الحركة</th>
+                                <th className="px-4 py-3 font-bold text-gray-800 text-center border-b border-gray-300">الكمية</th>
+                                <th className="px-4 py-3 font-bold text-gray-800 border-b border-gray-300">ملاحظات</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {selectedTrust.history.map(h => (
+                                <tr key={h.id}>
+                                    <td className="px-4 py-3 text-gray-800" dir="ltr">{new Date(h.date).toLocaleString('en-GB')}</td>
+                                    <td className="px-4 py-3 font-bold text-gray-800">
+                                        {h.type === 'add' ? 'إضافة رصيد' : 'سحب'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center font-black text-gray-900">{h.qty}</td>
+                                    <td className="px-4 py-3 text-gray-600">{h.note || '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
             <div className={`flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 ${showHistoryModal ? 'print:hidden' : ''}`}>
                 <div>
                     <h1 className="text-2xl font-black text-gray-800 flex items-center gap-3">
@@ -519,9 +571,9 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
 
             {/* History Modal */}
             {showHistoryModal && selectedTrust && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:static print:bg-transparent print:p-0 print:block">
-                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] print:max-w-none print:shadow-none print:max-h-none print:h-auto print:rounded-none">
-                        <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0 print:hidden">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:hidden">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">
                             <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                                 <History size={20} className="text-sap-primary" />
                                 سجل حركات الأمانة
@@ -538,44 +590,32 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
                                 </button>
                             </div>
                         </div>
-                        
-                        {/* Print Header (Visible only when printing) */}
-                        <div className="hidden print:block p-6 border-b border-gray-200 mb-4">
-                            <h2 className="text-2xl font-black text-center mb-4">سجل حركات الأمانة</h2>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div><span className="font-bold">العميل:</span> {selectedTrust.customerName}</div>
-                                <div><span className="font-bold">المنتج:</span> {selectedTrust.productName}</div>
-                                <div><span className="font-bold">إجمالي الكمية:</span> {selectedTrust.totalQty}</div>
-                                <div><span className="font-bold">المتبقي:</span> {selectedTrust.remainingQty}</div>
-                                <div><span className="font-bold">تاريخ السجل:</span> {new Date().toLocaleDateString('ar-SA')}</div>
-                            </div>
-                        </div>
 
-                        <div className="p-4 bg-white border-b border-gray-100 shrink-0 print:hidden">
+                        <div className="p-4 bg-white border-b border-gray-100 shrink-0">
                             <div className="font-black text-gray-800">{selectedTrust.customerName}</div>
                             <div className="text-sm text-gray-500">{selectedTrust.productName}</div>
                         </div>
-                        <div className="p-0 overflow-y-auto flex-1 print:overflow-visible">
-                            <table className="w-full text-right text-sm print:border print:border-gray-200">
-                                <thead className="bg-gray-50 sticky top-0 print:static print:bg-gray-100">
+                        <div className="p-0 overflow-y-auto flex-1">
+                            <table className="w-full text-right text-sm">
+                                <thead className="bg-gray-50 sticky top-0">
                                     <tr>
-                                        <th className="px-4 py-3 font-bold text-gray-600 print:border-b print:border-gray-200">التاريخ</th>
-                                        <th className="px-4 py-3 font-bold text-gray-600 print:border-b print:border-gray-200">الحركة</th>
-                                        <th className="px-4 py-3 font-bold text-gray-600 text-center print:border-b print:border-gray-200">الكمية</th>
-                                        <th className="px-4 py-3 font-bold text-gray-600 print:border-b print:border-gray-200">ملاحظات</th>
+                                        <th className="px-4 py-3 font-bold text-gray-600">التاريخ</th>
+                                        <th className="px-4 py-3 font-bold text-gray-600">الحركة</th>
+                                        <th className="px-4 py-3 font-bold text-gray-600 text-center">الكمية</th>
+                                        <th className="px-4 py-3 font-bold text-gray-600">ملاحظات</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 print:divide-gray-200">
+                                <tbody className="divide-y divide-gray-100">
                                     {selectedTrust.history.map(h => (
-                                        <tr key={h.id} className="hover:bg-gray-50 print:hover:bg-transparent">
-                                            <td className="px-4 py-3 text-xs text-gray-500 print:text-black" dir="ltr">{new Date(h.date).toLocaleString('en-GB')}</td>
+                                        <tr key={h.id} className="hover:bg-gray-50">
+                                            <td className="px-4 py-3 text-xs text-gray-500" dir="ltr">{new Date(h.date).toLocaleString('en-GB')}</td>
                                             <td className="px-4 py-3">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-black print:p-0 print:bg-transparent print:text-black ${h.type === 'add' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                <span className={`px-2 py-1 rounded text-[10px] font-black ${h.type === 'add' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                                                     {h.type === 'add' ? 'إضافة رصيد' : 'سحب'}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-center font-black text-gray-800 print:text-black">{h.qty}</td>
-                                            <td className="px-4 py-3 text-xs text-gray-600 print:text-black">{h.note}</td>
+                                            <td className="px-4 py-3 text-center font-black text-gray-800">{h.qty}</td>
+                                            <td className="px-4 py-3 text-xs text-gray-600">{h.note}</td>
                                         </tr>
                                     ))}
                                 </tbody>
