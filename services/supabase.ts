@@ -431,5 +431,10 @@ export const db = {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "held_orders"), orderBy("date", "desc")))), []); },
     async upsert(order: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "held_orders", order.id), order); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "held_orders", id)); }); }
+  },
+  customerTrusts: {
+    async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "customer_trusts"), orderBy("date", "desc")))), []); },
+    async upsert(trust: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "customer_trusts", trust.id), trust); }); },
+    async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "customer_trusts", id)); }); }
   }
 };

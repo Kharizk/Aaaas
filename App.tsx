@@ -25,6 +25,7 @@ import { PromotionsManager } from './components/PromotionsManager';
 import { MobileInventory } from './components/MobileInventory';
 import { ReturnsManager } from './components/ReturnsManager';
 import { MarketPriceDiscoverer } from './components/MarketPriceDiscoverer';
+import { CustomerTrusts } from './components/CustomerTrusts';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManager } from './components/UserManager';
@@ -41,7 +42,7 @@ import {
   Percent, FileLineChart, Wallet, Crown, LogOut, Users, UserCircle, BookOpen, Monitor,
   ShoppingBag, TrendingDown, Bell, Moon, Sun, Loader2, Command, Keyboard, Search,
   Grid, ArrowRight, Home, Menu, X, ChevronRight, Building2,
-  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History, RotateCcw
+  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History, RotateCcw, Archive
 } from 'lucide-react';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -209,6 +210,7 @@ const AppContent: React.FC = () => {
             { id: 'sales_entry', label: t('nav.sales'), icon: DollarSign, color: COLORS.BURGUNDY, permission: 'record_sales' },
             { id: 'returns', label: t('nav.returns'), icon: RotateCcw, color: COLORS.SLATE, permission: 'manage_returns' },
             { id: 'customers', label: t('nav.customers'), icon: Users, color: COLORS.DARK_GRAY, permission: 'manage_customers' },
+            { id: 'customer_trusts', label: 'أمانات العملاء', icon: Archive, color: COLORS.GOLD, permission: 'manage_customers' },
             { id: 'offers', label: t('nav.offers'), icon: Percent, color: COLORS.GOLD, permission: 'print_labels' },
         ]
     },
@@ -719,6 +721,7 @@ const AppContent: React.FC = () => {
                             {appId === 'promotions' && <PromotionsManager products={products} />}
                             {appId === 'expenses' && <ExpenseManager />}
                             {appId === 'customers' && <CustomerManager />}
+                            {appId === 'customer_trusts' && <CustomerTrusts products={products} />}
                             {appId === 'suppliers' && <SupplierManager />}
                             {appId === 'purchase_orders' && <PurchaseOrderManager />}
                             {appId === 'list' && <ProductListBuilder products={products} units={units} onNewProductsAdded={fetchData} initialListParams={targetListParams} clearInitialParams={() => setTargetListParams(null)} />}

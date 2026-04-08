@@ -599,6 +599,28 @@ export interface HeldOrder {
   cart: CartItem[]; 
 }
 
+export interface CustomerTrust {
+  id: string;
+  customerId: string;
+  customerName: string;
+  productId: string;
+  productName: string;
+  totalQty: number;
+  takenQty: number;
+  remainingQty: number;
+  date: string;
+  lastUpdate: string;
+  notes: string;
+  status: 'active' | 'completed';
+  history: {
+      id: string;
+      date: string;
+      qty: number;
+      type: 'add' | 'withdraw';
+      note: string;
+  }[];
+}
+
 export interface ActivityLog {
   id: string;
   action: string;
