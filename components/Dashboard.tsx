@@ -28,6 +28,8 @@ interface ExpiryAlert {
     expiryDate: string;
     daysLeft: number;
     qty: number;
+    cartonQty?: number | '';
+    unitId?: string;
     listType: string;
 }
 
@@ -47,6 +49,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [showCashDrawerModal, setShowCashDrawerModal] = useState(false);
   const [cashDrawerAction, setCashDrawerAction] = useState<'deposit' | 'withdraw'>('deposit');
   const [cashDrawerAmount, setCashDrawerAmount] = useState('');
+  const [showExtraColumns, setShowExtraColumns] = useState(false);
 
   const handlePrintExpiry = () => {
       setShowExpiryPrint(true);
@@ -211,7 +214,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                       const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
                       if (daysDiff <= threshold) {
                           alerts.push({
-                              listId: list.id, rowId: row.id, productName: row.name, productCode: row.code, expiryDate: row.expiryDate, daysLeft: daysDiff, qty: Number(row.qty) || 0, listType: list.type || 'inventory'
+                              listId: list.id, rowId: row.id, productName: row.name, productCode: row.code, expiryDate: row.expiryDate, daysLeft: daysDiff, qty: Number(row.qty) || 0, cartonQty: row.cartonQty, unitId: row.unitId, listType: list.type || 'inventory'
                           });
                       }
                   }
@@ -237,11 +240,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
 
   const handleDismissAlert = async (e: React.MouseEvent, alertItem: ExpiryAlert) => {
       e.stopPropagation(); 
-      setIsUpdatingAlert(alertItem.rowId);
+      if (!alertItem.listId) {
+          alert("لا يمكن تحديث هذا العنصر لعدم وجود معرف القائمة.");
+          return;
+      }
+      setIsUpdatingAlert(alertItem.rowId || alertItem.productCode);
       try {
-          await db.lists.updateRowDismissed(alertItem.listId, alertItem.rowId);
-          setExpiryAlerts(prev => prev.filter(a => a.rowId !== alertItem.rowId));
-      } catch (e) { alert("فشل تحديث الحالة"); }
+          await db.lists.updateRowDismissed(alertItem.listId, alertItem.rowId, alertItem.productCode, alertItem.expiryDate);
+          setExpiryAlerts(prev => prev.filter(a => {
+              if (alertItem.rowId) return a.rowId !== alertItem.rowId;
+              return !(a.productCode === alertItem.productCode && a.expiryDate === alertItem.expiryDate);
+          }));
+      } catch (error) { 
+          console.error(error);
+          alert("فشل تحديث الحالة"); 
+      }
       finally { setIsUpdatingAlert(null); }
   };
 
@@ -608,6 +621,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                   <div className="flex items-center gap-2">
                       <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-xs font-black ml-2">{expiryAlerts.length} تنبيه</span>
                       
+                      <button onClick={() => setShowExtraColumns(!showExtraColumns)} className={`p-2 rounded-lg border shadow-sm transition-colors text-xs font-bold ${showExtraColumns ? 'bg-red-100 text-red-700 border-red-200' : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'}`} title="إظهار/إخفاء التفاصيل">
+                          {showExtraColumns ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}
+                      </button>
                       <button onClick={handlePrintExpiry} className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50 border border-red-100 shadow-sm transition-colors" title="طباعة تقرير">
                           <Printer size={18} />
                       </button>
@@ -621,17 +637,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
               </div>
               <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
                   <table className="w-full text-right text-xs">
-                      <thead className="text-red-400 font-bold sticky top-0 bg-red-50 z-10"><tr><th className="p-4">المنتج</th><th className="p-4">تاريخ الانتهاء</th><th className="p-4">الحالة</th><th className="p-4 text-center">إجراء</th></tr></thead>
+                      <thead className="text-red-400 font-bold sticky top-0 bg-red-50 z-10">
+                          <tr>
+                              <th className="p-4">كود الصنف</th>
+                              <th className="p-4">اسم المنتج</th>
+                              {showExtraColumns && <th className="p-4">الكمية كرتون</th>}
+                              {showExtraColumns && <th className="p-4">كمية الجرد</th>}
+                              {showExtraColumns && <th className="p-4">الوحدة</th>}
+                              <th className="p-4">تاريخ الانتهاء</th>
+                              <th className="p-4">المتبقي يوم</th>
+                              <th className="p-4 text-center">إجراء</th>
+                          </tr>
+                      </thead>
                       <tbody className="divide-y divide-red-100/50">
                           {expiryAlerts.map(alert => (
-                              <tr key={alert.rowId} onClick={() => onNavigateToList?.(alert.listId, alert.rowId)} className="hover:bg-red-100/40 transition-colors cursor-pointer group rounded-xl">
+                              <tr key={alert.rowId || `${alert.productCode}-${alert.expiryDate}`} onClick={() => onNavigateToList?.(alert.listId, alert.rowId)} className="hover:bg-red-100/40 transition-colors cursor-pointer group rounded-xl">
+                                  <td className="p-4 font-mono text-gray-500">{alert.productCode}</td>
                                   <td className="p-4 group-hover:text-red-800 transition-colors">
-                                      <div className="font-black text-gray-800 group-hover:text-red-900 text-sm">{alert.productName}</div>
-                                      <div className="text-[10px] text-gray-500 font-mono mt-0.5 opacity-60">REF: {alert.productCode}</div>
+                                      <div className="font-black text-gray-800 group-hover:text-red-900 text-sm whitespace-normal">{alert.productName}</div>
                                   </td>
+                                  {showExtraColumns && <td className="p-4 font-mono">{alert.cartonQty || '-'}</td>}
+                                  {showExtraColumns && <td className="p-4 font-mono">{alert.qty || '-'}</td>}
+                                  {showExtraColumns && <td className="p-4 text-gray-600">{units.find(u => u.id === alert.unitId)?.name || '-'}</td>}
                                   <td className="p-4 font-mono font-bold text-red-600">{alert.expiryDate}</td>
                                   <td className="p-4">{alert.daysLeft <= 0 ? <span className="bg-red-600 text-white px-2 py-1 rounded text-[10px] font-black">منتهي الصلاحية</span> : <span className="text-red-600 font-bold bg-red-100 px-2 py-1 rounded text-[10px]">باقي {alert.daysLeft} يوم</span>}</td>
-                                  <td className="p-4 text-center"><button onClick={(e) => handleDismissAlert(e, alert)} disabled={isUpdatingAlert === alert.rowId} className="text-[10px] font-bold text-gray-400 hover:text-sap-primary transition-colors px-3 py-1.5 rounded hover:bg-white border border-transparent hover:border-gray-200 shadow-sm">تجاهل</button></td>
+                                  <td className="p-4 text-center"><button onClick={(e) => handleDismissAlert(e, alert)} disabled={isUpdatingAlert === (alert.rowId || alert.productCode)} className="text-[10px] font-bold text-gray-400 hover:text-sap-primary transition-colors px-3 py-1.5 rounded hover:bg-white border border-transparent hover:border-gray-200 shadow-sm">تجاهل</button></td>
                               </tr>
                           ))}
                       </tbody>

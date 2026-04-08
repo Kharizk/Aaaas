@@ -320,15 +320,15 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
     const [showHeader, setShowHeader] = useState(true);
     const [showFooter, setShowFooter] = useState(true);
     const [visibleColumns, setVisibleColumns] = useState({
-        expiryDate: true,
-        daysRemaining: true,
-        productName: true,
         code: true,
-        currentStock: true,
+        productName: true,
         cartonQty: true,
         qty: true,
         unitName: true,
-        listName: true,
+        expiryDate: true,
+        daysRemaining: true,
+        currentStock: false,
+        listName: false,
         actions: true
     });
 
@@ -356,7 +356,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             );
 
             const updatedList = { ...listToUpdate, rows: updatedRows };
-            await db.lists.update(listId, updatedList);
+            await db.lists.upsert(updatedList);
             
             // Update local state
             setLists(prev => prev.map(l => l.id === listId ? updatedList : l));
@@ -616,14 +616,14 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                     <h3 className="text-xs font-black text-gray-800 mb-3 border-b border-gray-100 pb-2">الأعمدة المرئية</h3>
                                     <div className="space-y-2 max-h-48 overflow-y-auto">
                                         {Object.entries({
-                                            expiryDate: 'تاريخ الانتهاء',
-                                            daysRemaining: 'المتبقي (يوم)',
-                                            productName: 'اسم المنتج',
                                             code: 'كود الصنف',
-                                            currentStock: 'الرصيد الحالي',
+                                            productName: 'اسم المنتج',
                                             cartonQty: 'الكرتون',
                                             qty: 'كمية الجرد',
                                             unitName: 'الوحدة',
+                                            expiryDate: 'تاريخ الانتهاء',
+                                            daysRemaining: 'المتبقي (يوم)',
+                                            currentStock: 'الرصيد الحالي',
                                             listName: 'المصدر',
                                             actions: 'إجراء'
                                         }).map(([key, label]) => (
@@ -677,14 +677,14 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                         <table className="w-full text-right border-collapse">
                             <thead>
                                 <tr className="bg-sap-shell text-white text-[10px] font-black uppercase tracking-widest border-b border-white/10 print:bg-gray-100 print:text-black print:border-gray-300">
-                                    {visibleColumns.expiryDate && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">تاريخ الانتهاء</th>}
-                                    {visibleColumns.daysRemaining && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">المتبقي (يوم)</th>}
-                                    {visibleColumns.productName && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">اسم المنتج</th>}
                                     {visibleColumns.code && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">كود الصنف</th>}
-                                    {visibleColumns.currentStock && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الرصيد الحالي</th>}
+                                    {visibleColumns.productName && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">اسم المنتج</th>}
                                     {visibleColumns.cartonQty && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الكرتون</th>}
                                     {visibleColumns.qty && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">كمية الجرد</th>}
                                     {visibleColumns.unitName && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24">الوحدة</th>}
+                                    {visibleColumns.expiryDate && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">تاريخ الانتهاء</th>}
+                                    {visibleColumns.daysRemaining && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-32">المتبقي (يوم)</th>}
+                                    {visibleColumns.currentStock && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300 w-24 text-center">الرصيد الحالي</th>}
                                     {visibleColumns.listName && <th className="px-6 py-4 print:px-2 print:py-2 border-l border-white/5 print:border-gray-300">المصدر</th>}
                                     {visibleColumns.actions && <th className="px-6 py-4 print:hidden w-16">إجراء</th>}
                                 </tr>
@@ -706,15 +706,8 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                         const isUrgent = item.daysRemaining <= 30;
                                         return (
                                             <tr key={idx} className={`hover:bg-gray-50 transition-all group ${isExpired ? 'bg-red-50/30' : ''} print:bg-transparent`}>
-                                                {visibleColumns.expiryDate && <td className={`px-6 py-3 print:px-2 print:py-1 font-mono font-black ${isExpired ? 'text-red-600' : 'text-gray-700'} print:text-black print:border print:border-gray-200`}>{item.expiryDate}</td>}
-                                                {visibleColumns.daysRemaining && <td className="px-6 py-3 print:px-2 print:py-1 print:border print:border-gray-200">
-                                                    <span className={`px-2 py-1 rounded text-[10px] font-black ${isExpired ? 'bg-red-100 text-red-700' : (isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700')} print:bg-transparent print:text-black print:p-0`}>
-                                                        {isExpired ? `منتهي منذ ${Math.abs(item.daysRemaining)}` : `باقي ${item.daysRemaining}`}
-                                                    </span>
-                                                </td>}
-                                                {visibleColumns.productName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-800 print:text-black print:border print:border-gray-200">{item.productName}</td>}
                                                 {visibleColumns.code && <td className="px-6 py-3 print:px-2 print:py-1 font-mono text-gray-500 print:text-black print:border print:border-gray-200">{item.code || '-'}</td>}
-                                                {visibleColumns.currentStock && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-blue-600 bg-blue-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.currentStock}</td>}
+                                                {visibleColumns.productName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-800 print:text-black print:border print:border-gray-200 whitespace-normal">{item.productName}</td>}
                                                 {visibleColumns.cartonQty && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-sap-text bg-gray-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">
                                                     <input 
                                                         type="number" 
@@ -732,6 +725,13 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                                     />
                                                 </td>}
                                                 {visibleColumns.unitName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-500 print:text-black print:border print:border-gray-200">{item.unitName}</td>}
+                                                {visibleColumns.expiryDate && <td className={`px-6 py-3 print:px-2 print:py-1 font-mono font-black ${isExpired ? 'text-red-600' : 'text-gray-700'} print:text-black print:border print:border-gray-200`}>{item.expiryDate}</td>}
+                                                {visibleColumns.daysRemaining && <td className="px-6 py-3 print:px-2 print:py-1 print:border print:border-gray-200">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-black ${isExpired ? 'bg-red-100 text-red-700' : (isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700')} print:bg-transparent print:text-black print:p-0`}>
+                                                        {isExpired ? `منتهي منذ ${Math.abs(item.daysRemaining)}` : `باقي ${item.daysRemaining}`}
+                                                    </span>
+                                                </td>}
+                                                {visibleColumns.currentStock && <td className="px-6 py-3 print:px-2 print:py-1 text-center font-black text-blue-600 bg-blue-50/50 print:bg-transparent print:text-black print:border print:border-gray-200">{item.currentStock}</td>}
                                                 {visibleColumns.listName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-400 text-[10px] print:text-black print:border print:border-gray-200">{item.listName} ({item.listDate})</td>}
                                                 {visibleColumns.actions && <td className="px-6 py-3 print:hidden text-center">
                                                     <button 

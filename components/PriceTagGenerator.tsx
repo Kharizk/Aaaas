@@ -672,6 +672,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       }
 
       if (s.template === 'big_impact') {
+          const product = products.find(p => p.id === tag.productId);
+          const itemCode = product?.code || tag.productId.slice(0,8).toUpperCase();
           return (
             <div className="flex flex-col h-full w-full bg-white relative overflow-hidden border border-gray-200 shadow-sm group">
                 {/* Top Section - Price */}
@@ -730,6 +732,8 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       }
 
       if (s.template === 'discount_red') {
+          const product = products.find(p => p.id === tag.productId);
+          const itemCode = product?.code || tag.productId.slice(0,8).toUpperCase();
           return (
             <div className="flex flex-col h-full border-2 border-red-600 relative overflow-hidden">
                 <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-bold px-3 py-1 rounded-bl-lg z-10">SALE</div>

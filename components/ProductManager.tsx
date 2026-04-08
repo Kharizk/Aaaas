@@ -329,7 +329,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                       <thead className="bg-[#F9FAFB] border-b border-gray-200 text-gray-600 font-bold">
                           <tr>
                               <th className="p-3 w-10 text-center">
-                                  <input type="checkbox" className="accent-sap-primary" 
+                                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-sap-primary focus:ring-sap-primary" 
                                     onChange={(e) => setSelectedIds(e.target.checked ? new Set(filteredProducts.map(p => p.id)) : new Set())}
                                     checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0}
                                   />
@@ -345,20 +345,24 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                           {filteredProducts.map(p => (
-                              <tr key={p.id} className={`hover:bg-gray-50 group transition-colors cursor-pointer ${(p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0 ? 'bg-amber-50' : ''}`} onClick={() => handleOpenModal(p)}>
+                              <tr key={p.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 group transition-colors cursor-pointer ${(p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0 ? 'bg-amber-50 dark:bg-amber-500/10' : ''} ${selectedIds.has(p.id) ? 'bg-sap-primary/5 dark:bg-sap-primary/10' : ''}`} onClick={() => handleOpenModal(p)}>
                                   <td className="p-3 text-center" onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }}>
-                                      <input type="checkbox" checked={selectedIds.has(p.id)} className="accent-sap-primary" readOnly />
+                                      <input type="checkbox" checked={selectedIds.has(p.id)} className="w-4 h-4 rounded border-slate-300 text-sap-primary focus:ring-sap-primary" readOnly />
                                   </td>
                                   <td className="p-3 font-mono text-sap-secondary font-bold">{p.code}</td>
-                                  <td className="p-3 font-bold text-gray-800">{p.name}</td>
-                                  <td className="p-3 text-gray-500">
-                                      <span className="bg-gray-100 px-2 py-0.5 rounded text-xs border border-gray-200">{units.find(u => u.id === p.unitId)?.name}</span>
+                                  <td className="p-3 font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color || '#94a3b8' }}></div>
+                                      {p.name}
+                                      {p.isFavorite && <Star size={12} className="text-yellow-400 fill-yellow-400" />}
                                   </td>
-                                  <td className="p-3 font-bold">{p.price}</td>
-                                  <td className="p-3 text-gray-400">{p.costPrice || '-'}</td>
+                                  <td className="p-3 text-slate-500 dark:text-slate-400">
+                                      <span className="bg-slate-100 dark:bg-slate-700/50 px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700/50">{units.find(u => u.id === p.unitId)?.name}</span>
+                                  </td>
+                                  <td className="p-3 font-bold text-sap-secondary">{p.price}</td>
+                                  <td className="p-3 text-slate-400 dark:text-slate-500">{p.costPrice || '-'}</td>
                                   <td className="p-3">
                                       {p.price && p.costPrice && parseFloat(p.price) > 0 ? (
-                                          <span className={((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price)) * 100 >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                                          <span className={((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price)) * 100 >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-red-600 dark:text-red-400 font-bold'}>
                                               {(((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price)) * 100).toFixed(1)}%
                                           </span>
                                       ) : '-'}
@@ -366,23 +370,28 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                                   <td className="p-3 text-center flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button 
                                         onClick={(e) => handleDuplicate(p, e)}
-                                        className="p-1 text-gray-400 hover:text-sap-primary hover:bg-blue-50 rounded"
+                                        className="p-1.5 text-slate-400 hover:text-sap-primary hover:bg-sap-primary/10 rounded-lg transition-colors"
                                         title="تكرار المنتج"
                                       >
                                           <Copy size={16} />
                                       </button>
-                                      <MoreHorizontal size={16} className="text-gray-400" />
+                                      <button 
+                                          onClick={(e) => { e.stopPropagation(); handleOpenModal(p); }}
+                                          className="p-1.5 text-slate-400 hover:text-sap-primary hover:bg-sap-primary/10 rounded-lg transition-colors"
+                                      >
+                                          <MoreHorizontal size={16} />
+                                      </button>
                                   </td>
                               </tr>
                           ))}
                           {filteredProducts.length === 0 && (
                               <tr>
                                   <td colSpan={8} className="p-16 text-center">
-                                      <div className="flex flex-col items-center justify-center text-gray-400">
-                                          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
-                                              <Package size={32} className="text-gray-300" />
+                                      <div className="flex flex-col items-center justify-center text-slate-400">
+                                          <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-4 border border-slate-100 dark:border-slate-800">
+                                              <Package size={32} className="text-slate-300 dark:text-slate-600" />
                                           </div>
-                                          <p className="text-lg font-bold text-gray-500 mb-1">لا يوجد منتجات</p>
+                                          <p className="text-lg font-bold text-slate-500 dark:text-slate-400 mb-1">لا يوجد منتجات</p>
                                           <p className="text-sm">لم يتم العثور على أي منتجات تطابق بحثك.</p>
                                       </div>
                                   </td>
@@ -392,28 +401,28 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                   </table>
               </div>
           ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                   {filteredProducts.map(p => (
-                      <div key={p.id} onClick={() => handleOpenModal(p)} className={`bg-white border border-gray-200 rounded-md p-4 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-32 relative overflow-hidden group ${(p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0 ? 'ring-2 ring-amber-400' : ''}`}>
-                          <div className="absolute top-0 right-0 w-1 h-full" style={{ backgroundColor: p.color || '#ccc' }}></div>
-                          <div className="flex justify-between items-start mb-2 pl-2 pr-3">
-                              <h3 className="font-bold text-gray-800 line-clamp-2 text-sm">{p.name}</h3>
+                      <div key={p.id} onClick={() => handleOpenModal(p)} className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col h-36 relative overflow-hidden group ${(p.stock || 0) <= (p.lowStockThreshold || 0) && (p.lowStockThreshold || 0) > 0 ? 'ring-2 ring-amber-400 dark:ring-amber-500/50' : ''}`}>
+                          <div className="absolute top-0 right-0 w-1.5 h-full transition-colors duration-300" style={{ backgroundColor: p.color || '#94a3b8' }}></div>
+                          <div className="flex justify-between items-start mb-3 pl-2 pr-4">
+                              <h3 className="font-bold text-slate-800 dark:text-slate-200 line-clamp-2 text-sm leading-tight group-hover:text-sap-primary transition-colors">{p.name}</h3>
                               <div className="flex items-center gap-2">
                                 <button 
                                     onClick={(e) => handleDuplicate(p, e)}
-                                    className="p-1 text-gray-400 hover:text-sap-primary hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="p-1.5 text-slate-400 hover:text-sap-primary hover:bg-sap-primary/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                                     title="تكرار المنتج"
                                 >
                                     <Copy size={14} />
                                 </button>
-                                <input type="checkbox" checked={selectedIds.has(p.id)} onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }} className="accent-sap-primary" />
+                                <input type="checkbox" checked={selectedIds.has(p.id)} onClick={(e) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setSelectedIds(n); }} className="w-4 h-4 rounded border-slate-300 text-sap-primary focus:ring-sap-primary" />
                               </div>
                           </div>
-                          <div className="mt-auto pr-3">
-                              <div className="text-xs text-gray-500 font-mono mb-1">{p.code}</div>
+                          <div className="mt-auto pr-4 pl-2">
+                              <div className="text-xs text-slate-500 dark:text-slate-400 font-mono mb-1.5">{p.code}</div>
                               <div className="flex justify-between items-center">
-                                  <span className="font-black text-sap-primary text-lg">{p.price} <span className="text-[10px] text-gray-400">SAR</span></span>
-                                  <span className="text-[10px] bg-gray-100 px-2 rounded text-gray-500">{units.find(u => u.id === p.unitId)?.name}</span>
+                                  <span className="font-black text-sap-secondary text-lg">{p.price} <span className="text-[10px] text-slate-400 font-medium">ر.س</span></span>
+                                  <span className="text-[10px] bg-slate-100 dark:bg-slate-700/50 px-2 py-1 rounded-md text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50">{units.find(u => u.id === p.unitId)?.name}</span>
                               </div>
                           </div>
                       </div>

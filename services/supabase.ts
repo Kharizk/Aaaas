@@ -323,14 +323,21 @@ export const db = {
       },
       async upsert(list: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "lists", list.id), list); }); },
       async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "lists", id)); }); },
-      async updateRowDismissed(listId: string, rowId: string) {
+      async updateRowDismissed(listId: string, rowId: string | undefined, productCode?: string, expiryDate?: string) {
           return safeDbCall(async () => {
+              if (!listId) throw new Error("listId is missing");
               const docRef = doc(firestore, "lists", listId);
               const docSnap = await getDoc(docRef);
               if (docSnap.exists()) {
                   const data = docSnap.data();
-                  const updatedRows = data.rows.map((r: any) => r.id === rowId ? { ...r, isDismissed: true } : r);
+                  const updatedRows = data.rows.map((r: any) => {
+                      if (rowId && r.id === rowId) return { ...r, isDismissed: true };
+                      if (!rowId && productCode && expiryDate && r.code === productCode && r.expiryDate === expiryDate) return { ...r, isDismissed: true };
+                      return r;
+                  });
                   await updateDoc(docRef, { rows: updatedRows });
+              } else {
+                  throw new Error("List document does not exist");
               }
           });
       }
