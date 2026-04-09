@@ -295,7 +295,11 @@ export type PriceGroupTheme =
   | 'modern_grid' 
   | 'royal_minimal' 
   | 'digital_punch' 
-  | 'abstract_gradient';
+  | 'abstract_gradient'
+  | 'ramadan_vibes'
+  | 'super_market'
+  | 'elegant_gold'
+  | 'fresh_nature';
 
 export interface PriceGroupItem {
   id: string;

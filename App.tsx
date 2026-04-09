@@ -112,6 +112,13 @@ const AppContent: React.FC = () => {
 
   const handleCloseApp = (appId: string, e?: React.MouseEvent) => {
       e?.stopPropagation();
+      if ((window as any).sf_unsaved_changes?.[appId]) {
+          if (!confirm('لديك تغييرات غير محفوظة. هل أنت متأكد من الإغلاق؟')) {
+              return;
+          }
+          // Clear the flag if they choose to close
+          (window as any).sf_unsaved_changes[appId] = false;
+      }
       const newApps = openApps.filter(id => id !== appId);
       setOpenApps(newApps);
       if (activeTab === appId) {
