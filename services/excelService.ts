@@ -18,6 +18,7 @@ export const generateInventoryTemplate = () => {
     { 
       'كود الصنف': '1001', 
       'اسم الصنف': 'منتج تجريبي', 
+      'كمية الكرتون': 5,
       'الكمية': 50, 
       'الوحدة': 'قطعة', 
       'تاريخ الصلاحية': '2025-12-31' 
@@ -25,15 +26,16 @@ export const generateInventoryTemplate = () => {
     { 
       'كود الصنف': '1002', 
       'اسم الصنف': 'منتج آخر', 
+      'كمية الكرتون': 2,
       'الكمية': 12, 
-      'الوحدة': 'كرتون', 
+      'الوحدة': 'حبة', 
       'تاريخ الصلاحية': '' 
     }
   ];
 
   const ws = XLSX.utils.json_to_sheet(headers);
   // Adjust column widths
-  ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 15 }];
+  ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 15 }];
   
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "نموذج الجرد");

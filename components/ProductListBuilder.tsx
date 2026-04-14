@@ -237,8 +237,13 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           await new Promise(resolve => setTimeout(resolve, 500));
 
           const newRows: ListRow[] = rawData.map(item => {
-              const findVal = (keys: string[]) => {
-                  const key = Object.keys(item).find(k => keys.some(search => k.toLowerCase().includes(search.toLowerCase())));
+              const findVal = (keys: string[], excludeKeys: string[] = []) => {
+                  const key = Object.keys(item).find(k => {
+                      const lowerK = k.toLowerCase();
+                      const matches = keys.some(search => lowerK.includes(search.toLowerCase()));
+                      const excluded = excludeKeys.some(ex => lowerK.includes(ex.toLowerCase()));
+                      return matches && !excluded;
+                  });
                   return key ? item[key] : '';
               };
 
@@ -246,7 +251,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               const code = rawCode ? String(rawCode).trim() : '';
               
               const name = findVal(['name', 'اسم', 'صنف', 'item', 'product']) || '';
-              const qty = findVal(['qty', 'quantity', 'كمية', 'عدد', 'رصيد']) || '';
+              const cartonQty = findVal(['carton qty', 'carton quantity', 'كمية الكرتون', 'كرتون']) || '';
+              const qty = findVal(['qty', 'quantity', 'كمية', 'عدد', 'رصيد'], ['كرتون', 'carton']) || '';
               const unitRaw = findVal(['unit', 'وحدة', 'عبوة']) || '';
               const expiryDate = findVal(['date', 'expiry', 'تاريخ', 'صلاحية']) || '';
 
@@ -269,6 +275,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                   name: finalName ? String(finalName) : 'صنف غير معروف',
                   unitId: finalUnit,
                   qty: Number(qty) || '',
+                  cartonQty: Number(cartonQty) || '',
                   expiryDate: expiryDate ? String(expiryDate).split('T')[0] : '', 
                   note: '',
                   isDismissed: false
@@ -315,7 +322,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                     properties: {
                         code: { type: Type.STRING, description: "The product code, SKU, or barcode if visible." },
                         name: { type: Type.STRING, description: "The full name or description of the product." },
-                        qty: { type: Type.NUMBER, description: "The quantity or count. Must be a number." },
+                        cartonQty: { type: Type.NUMBER, description: "The quantity in cartons/boxes (كمية الكرتون) if explicitly specified." },
+                        qty: { type: Type.NUMBER, description: "The quantity in pieces/units (الكمية/الحبة). Must be a number." },
                         unit: { type: Type.STRING, description: "The unit of measure (e.g., PCS, KG, BOX) if available." },
                         expiryDate: { type: Type.STRING, description: "Expiry date in YYYY-MM-DD format if available." },
                         price: { type: Type.NUMBER, description: "Unit price if available." }
@@ -390,6 +398,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                         name: finalName,
                         unitId: finalUnitId,
                         qty: Number(item.qty) || '',
+                        cartonQty: Number(item.cartonQty) || '',
                         expiryDate: item.expiryDate || '',
                         note: '',
                         isDismissed: false
@@ -841,13 +850,13 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                   {/* Carton Qty */}
                   {visibleColumns.cartonQty && (
                     <td className="p-3">
-                      <input id={`cartonQty-${row.id}`} type="number" value={row.cartonQty || ''} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'cartonQty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, cartonQty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
+                      <input id={`cartonQty-${row.id}`} type="number" value={row.cartonQty || ''} onWheel={(e) => (e.target as HTMLInputElement).blur()} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'cartonQty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, cartonQty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
                     </td>
                   )}
 
                   {/* Qty */}
                   {visibleColumns.qty && <td className="p-3">
-                    <input id={`qty-${row.id}`} type="number" value={row.qty} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
+                    <input id={`qty-${row.id}`} type="number" value={row.qty} onWheel={(e) => (e.target as HTMLInputElement).blur()} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
                   </td>}
 
                   {/* Unit */}
