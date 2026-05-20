@@ -235,6 +235,23 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     setShowProductPicker(false);
   };
 
+  const moveItem = (id: string, direction: 'up' | 'down') => {
+      setItems(prev => {
+          const index = prev.findIndex(i => i.id === id);
+          if (index < 0) return prev;
+          if (direction === 'up' && index === 0) return prev;
+          if (direction === 'down' && index === prev.length - 1) return prev;
+          
+          const newItems = [...prev];
+          const swapIndex = direction === 'up' ? index - 1 : index + 1;
+          const temp = newItems[index];
+          newItems[index] = newItems[swapIndex];
+          newItems[swapIndex] = temp;
+          
+          return newItems;
+      });
+  };
+
   const updateItem = (id: string, updates: Partial<CatalogItem>) => {
     setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
   };
@@ -514,40 +531,60 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
             {activeTab === 'content' && (
                <div className="space-y-6 animate-in slide-in-from-right-4">
                   {/* Global Info */}
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Info size={14}/> معلومات المجلة</h4>
-                     <input type="text" value={pageTitle} onChange={e => setPageTitle(e.target.value)} className="w-full text-sm font-bold p-2 border rounded-lg" placeholder="العنوان الرئيسي (مثال: عروض الجمعة)" />
-                     <input type="text" value={pageSubtitle} onChange={e => setPageSubtitle(e.target.value)} className="w-full text-xs p-2 border rounded-lg" placeholder="العنوان الفرعي..." />
-                     <div className="relative">
-                        <input type="text" value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value)} className="w-full text-xs p-2 border rounded-lg pr-8" placeholder="رقم الواتساب..." />
-                        <MessageCircle size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500"/>
+                  <div className="space-y-4 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2"><FolderOpen size={16} strokeWidth={2.5}/> إعدادات المشروع الأساسية</h4>
+                     
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 ml-1">اسم المشروع (للحفظ الداخلي)</label>
+                        <input type="text" value={projectName} onChange={e => setProjectName(e.target.value)} className="w-full text-sm font-bold p-3 border-slate-200 border rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all bg-white" placeholder="مثال: مجلة رمضان 2026" />
+                     </div>
+                     
+                     <div className="space-y-1 mt-4">
+                        <h4 className="text-[10px] font-bold text-slate-500 ml-1 mt-4 mb-2 flex items-center gap-2"><Type size={14}/> نصوص واجهة المجلة</h4>
+                        <input type="text" value={pageTitle} onChange={e => setPageTitle(e.target.value)} className="w-full text-sm font-bold p-3 border-slate-200 border rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all bg-white" placeholder="العنوان الرئيسي للمجلة" />
+                     </div>
+                     
+                     <div className="space-y-1">
+                        <input type="text" value={pageSubtitle} onChange={e => setPageSubtitle(e.target.value)} className="w-full text-xs p-3 border-slate-200 border rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all bg-white" placeholder="العنوان الفرعي الوصفي..." />
+                     </div>
+
+                     <div className="space-y-1 pt-2">
+                        <label className="text-[10px] font-bold text-slate-500 ml-1 flex items-center gap-1"><MessageCircle size={12}/> رقم استقبال الطلبات (واتساب)</label>
+                        <div className="relative">
+                           <input type="text" value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value)} className="w-full text-xs font-bold font-mono p-3 border-slate-200 border rounded-xl pr-10 focus:ring-2 focus:ring-[#25D366]/20 focus:border-[#25D366] transition-all bg-white" placeholder="966500000000" dir="ltr" />
+                           <MessageCircle size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#25D366]"/>
+                        </div>
                      </div>
                   </div>
 
                   {/* Active Item Editor */}
                   {activeItem ? (
-                     <div className="space-y-4 border-t pt-4 border-gray-100">
-                        <div className="flex justify-between items-center">
-                           <span className="text-xs font-black text-sap-primary bg-sap-highlight/30 px-3 py-1 rounded-full">تعديل: {activeItem.name}</span>
-                           <button onClick={() => { setActiveItemId(null); }} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
+                     <div className="space-y-4 border-t pt-6 mt-4 border-slate-100">
+                        <div className="flex justify-between items-center bg-sap-highlight/20 p-2 rounded-xl">
+                           <span className="text-[11px] font-black text-sap-primary pr-2 px-3 flex items-center gap-2"><Sparkles size={14}/> تعديل: {activeItem.name}</span>
+                           <button onClick={() => { setActiveItemId(null); }} className="text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm hover:shadow transition-all"><X size={16}/></button>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3 bg-white p-4 rounded-3xl border border-slate-200/60 shadow-sm">
                            <div className="col-span-2">
-                              <label className="text-[10px] font-bold text-gray-400 block mb-1">اسم المنتج</label>
-                              <input type="text" value={activeItem.name} onChange={e => updateItem(activeItem.id, { name: e.target.value })} className="w-full p-2 text-xs font-bold border rounded-lg" />
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">اسم المنتج</label>
+                              <input type="text" value={activeItem.name} onChange={e => updateItem(activeItem.id, { name: e.target.value })} className="w-full p-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all" />
+                           </div>
+                           <div className="col-span-2">
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">وصف قصير (يظهر في بعض القوالب)</label>
+                              <textarea value={activeItem.description || ''} onChange={e => updateItem(activeItem.id, { description: e.target.value })} rows={2} className="w-full p-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all resize-none" placeholder="وصف المنتج..." />
                            </div>
                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 block mb-1">السعر</label>
-                              <input type="text" value={activeItem.price} onChange={e => updateItem(activeItem.id, { price: e.target.value })} className="w-full p-2 text-xs font-black text-sap-primary border rounded-lg" />
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">السعر (شامل الضريبة)</label>
+                              <input type="text" value={activeItem.price} onChange={e => updateItem(activeItem.id, { price: e.target.value })} className="w-full p-2.5 text-sm font-black text-sap-primary border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all bg-sap-highlight/5" />
                            </div>
                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 block mb-1">السعر السابق</label>
-                              <input type="text" value={activeItem.originalPrice} onChange={e => updateItem(activeItem.id, { originalPrice: e.target.value })} className="w-full p-2 text-xs font-bold text-red-400 border rounded-lg line-through" />
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">السعر السابق (يشطب)</label>
+                              <input type="text" value={activeItem.originalPrice} onChange={e => updateItem(activeItem.id, { originalPrice: e.target.value })} className="w-full p-2.5 text-sm font-bold text-red-500 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all line-through bg-red-50/50" />
                            </div>
                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 block mb-1">القسم</label>
-                              <input type="text" value={activeItem.sectionName} onChange={e => updateItem(activeItem.id, { sectionName: e.target.value })} className="w-full p-2 text-xs border rounded-lg" list="sections" />
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">القسم الأب</label>
+                              <input type="text" value={activeItem.sectionName} onChange={e => updateItem(activeItem.id, { sectionName: e.target.value })} className="w-full p-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all" list="sections" />
                               <datalist id="sections">
                                  <option value="خضروات وفواكه" />
                                  <option value="لحوم ودواجن" />
@@ -556,20 +593,34 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                               </datalist>
                            </div>
                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 block mb-1">الوحدة</label>
-                              <select value={activeItem.unitName} onChange={e => updateItem(activeItem.id, { unitName: e.target.value })} className="w-full p-2 text-xs border rounded-lg bg-white">
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">وحدة البيع</label>
+                              <select value={activeItem.unitName} onChange={e => updateItem(activeItem.id, { unitName: e.target.value })} className="w-full p-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all bg-white">
                                  <option value="قطعة">قطعة</option>
                                  <option value="كرتون">كرتون</option>
                                  <option value="كيلو">كيلو</option>
                                  <option value="حبة">حبة</option>
                                  <option value="ربطة">ربطة</option>
+                                 {units.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
                               </select>
+                           </div>
+                        </div>
+
+                        {/* Order Arranger */}
+                        <div className="bg-slate-50 p-3 rounded-2xl flex items-center justify-between border border-slate-200">
+                           <span className="text-[10px] font-bold text-slate-600">ترتيب المنتج:</span>
+                           <div className="flex gap-2">
+                              <button onClick={() => moveItem(activeItem.id, 'up')} className="p-2 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-sap-primary hover:text-sap-primary transition-colors text-slate-500" title="تحريك لأعلى">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                              </button>
+                              <button onClick={() => moveItem(activeItem.id, 'down')} className="p-2 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-sap-primary hover:text-sap-primary transition-colors text-slate-500" title="تحريك لأسفل">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                              </button>
                            </div>
                         </div>
 
                         {/* Badges */}
                         <div>
-                           <label className="text-[10px] font-bold text-gray-400 block mb-2">شارة العرض (Badge)</label>
+                           <label className="text-[10px] font-bold text-slate-500 block mb-2">شارة العرض (Badge)</label>
                            <div className="flex flex-wrap gap-2">
                               {['sale', 'new', '1plus1', 'limited', 'best_seller'].map((b: any) => (
                                  <button 
@@ -616,60 +667,74 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
 
             {activeTab === 'design' && (
                <div className="space-y-6 animate-in slide-in-from-right-4">
-                  <div className="space-y-3">
-                     <label className="text-xs font-black text-gray-500">هيكل التصميم (Layout)</label>
+                  <div className="space-y-3 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <h4 className="text-xs font-black text-slate-500 flex items-center gap-2 mb-2"><Smartphone size={16} strokeWidth={2.5}/> هيكل التصميم (Layout)</h4>
                      <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'app_modern'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 ${styleConfig.layoutType === 'app_modern' ? 'bg-sap-primary text-white border-sap-primary shadow-lg' : 'bg-white hover:bg-gray-50'}`}>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'app_modern'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'app_modern' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
                            <Smartphone size={20}/> <span className="text-[10px] font-bold">تطبيق عصري</span>
                         </button>
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'geometric_grid'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 ${styleConfig.layoutType === 'geometric_grid' ? 'bg-sap-primary text-white border-sap-primary shadow-lg' : 'bg-white hover:bg-gray-50'}`}>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'geometric_grid'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'geometric_grid' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
                            <Grid size={20}/> <span className="text-[10px] font-bold">شبكة هندسية</span>
                         </button>
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'restaurant_menu'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 ${styleConfig.layoutType === 'restaurant_menu' ? 'bg-sap-primary text-white border-sap-primary shadow-lg' : 'bg-white hover:bg-gray-50'}`}>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'restaurant_menu'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'restaurant_menu' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
                            <Coffee size={20}/> <span className="text-[10px] font-bold">قائمة مطعم</span>
                         </button>
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'luxury_cards'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 ${styleConfig.layoutType === 'luxury_cards' ? 'bg-sap-primary text-white border-sap-primary shadow-lg' : 'bg-white hover:bg-gray-50'}`}>
-                           <Gem size={20}/> <span className="text-[10px] font-bold">فاخر</span>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'luxury_cards'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'luxury_cards' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
+                           <Gem size={20}/> <span className="text-[10px] font-bold">نمط فاخر</span>
                         </button>
                         {/* New Ramadan Template */}
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'ramadan_special', backgroundColor: '#002b49', primaryColor: '#C5A059'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 ${styleConfig.layoutType === 'ramadan_special' ? 'bg-[#002b49] text-[#C5A059] border-[#C5A059] shadow-lg' : 'bg-white hover:bg-gray-50'}`}>
-                           <Moon size={20}/> <span className="text-[10px] font-bold">الموسم الاحتفالي</span>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'ramadan_special', backgroundColor: '#002b49', primaryColor: '#C5A059'})} className={`col-span-2 p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'ramadan_special' ? 'bg-[#002b49] text-[#C5A059] border-[#C5A059] shadow-[0_4px_12px_rgba(197,160,89,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
+                           <div className="flex items-center gap-2"><Moon size={20}/> <span className="text-[11px] font-black">الموسم الاحتفالي (رمضان)</span></div>
                         </button>
                      </div>
                   </div>
                   
-                  <div className="space-y-3 pt-4 border-t border-gray-100">
-                     <label className="text-xs font-black text-gray-500">زوايا الكروت (Border Radius)</label>
+                  <div className="space-y-4 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-slate-500">زوايا الكروت (انحناء)</label>
+                        <span className="text-xs font-bold bg-slate-200 px-2 py-0.5 rounded-full text-slate-600">{styleConfig.borderRadius}px</span>
+                     </div>
                      <input type="range" min="0" max="32" value={styleConfig.borderRadius} onChange={e => setStyleConfig({...styleConfig, borderRadius: Number(e.target.value)})} className="w-full accent-sap-primary" />
+                     <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
+                        <span>حادة</span>
+                        <span>دائرية</span>
+                     </div>
                   </div>
                </div>
             )}
 
             {activeTab === 'style' && (
                <div className="space-y-6 animate-in slide-in-from-right-4">
-                  <div className="space-y-2">
-                     <label className="text-xs font-black text-gray-500">اللون الأساسي</label>
-                     <div className="flex gap-2">
-                        {['#006C35', '#DC2626', '#2563EB', '#000000', '#7C3AED', '#C5A059'].map(c => (
-                           <button key={c} onClick={() => setStyleConfig({...styleConfig, primaryColor: c})} className={`w-8 h-8 rounded-full border-2 ${styleConfig.primaryColor === c ? 'border-gray-900 scale-110' : 'border-transparent'}`} style={{ backgroundColor: c }} />
-                        ))}
-                        <input type="color" value={styleConfig.primaryColor} onChange={e => setStyleConfig({...styleConfig, primaryColor: e.target.value})} className="w-8 h-8 rounded-full overflow-hidden border-none p-0" />
+                  <div className="space-y-4 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <label className="text-[11px] font-black text-slate-500 flex items-center gap-2 uppercase tracking-widest"><Palette size={14}/> الألوان والهوية</label>
+                     <div className="space-y-2 pt-2">
+                        <label className="text-[10px] font-bold text-slate-400">اللون الأساسي (Primary Color)</label>
+                        <div className="flex flex-wrap gap-2">
+                           {['#00A09D', '#006C35', '#DC2626', '#2563EB', '#000000', '#7C3AED', '#C5A059'].map(c => (
+                              <button key={c} onClick={() => setStyleConfig({...styleConfig, primaryColor: c})} className={`w-9 h-9 rounded-full shadow-sm transition-all ${styleConfig.primaryColor === c ? 'ring-2 ring-offset-2 ring-slate-800 scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'}`} style={{ backgroundColor: c }} />
+                           ))}
+                           <div className="relative group">
+                               <input type="color" value={styleConfig.primaryColor} onChange={e => setStyleConfig({...styleConfig, primaryColor: e.target.value})} className="w-9 h-9 rounded-full overflow-hidden border-none p-0 cursor-pointer shadow-sm opacity-0 absolute inset-0 z-10" />
+                               <div className="w-9 h-9 rounded-full bg-[conic-gradient(red,yellow,lime,aqua,blue,magenta,red)] flex items-center justify-center opacity-80 group-hover:opacity-100 transition-all"><Plus size={16} color="white" className="drop-shadow-md"/></div>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="space-y-2 pt-4 border-t border-slate-200">
+                        <label className="text-[10px] font-bold text-slate-400">لون الخلفية (Background)</label>
+                        <div className="flex gap-2">
+                           {['#F8FAFC', '#FFFFFF', '#FEF2F2', '#F0F9FF', '#1A1C1E', '#002b49'].map(c => (
+                              <button key={c} onClick={() => setStyleConfig({...styleConfig, backgroundColor: c})} className={`w-9 h-9 rounded-full border border-slate-300 shadow-sm transition-all ${styleConfig.backgroundColor === c ? 'ring-2 ring-offset-2 ring-sap-primary scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'}`} style={{ backgroundColor: c }} />
+                           ))}
+                        </div>
                      </div>
                   </div>
-                  <div className="space-y-2">
-                     <label className="text-xs font-black text-gray-500">لون الخلفية</label>
-                     <div className="flex gap-2">
-                        {['#F8FAFC', '#FFFFFF', '#FEF2F2', '#F0F9FF', '#1A1C1E', '#002b49'].map(c => (
-                           <button key={c} onClick={() => setStyleConfig({...styleConfig, backgroundColor: c})} className={`w-8 h-8 rounded-full border border-gray-200 shadow-sm ${styleConfig.backgroundColor === c ? 'ring-2 ring-sap-primary' : ''}`} style={{ backgroundColor: c }} />
-                        ))}
-                     </div>
-                  </div>
-                  <div className="space-y-2">
-                     <label className="text-xs font-black text-gray-500">نوع الخط</label>
-                     <select value={styleConfig.fontFamily} onChange={e => setStyleConfig({...styleConfig, fontFamily: e.target.value})} className="w-full p-2 bg-gray-50 border rounded-lg text-xs font-bold">
-                        <option value="Cairo">Cairo (عصري)</option>
-                        <option value="Segoe UI">Segoe UI (رسمي)</option>
-                        <option value="Tahoma">Tahoma (كلاسيك)</option>
+                  
+                  <div className="space-y-2 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2"><Type size={14}/> نوع الخط (Typography)</label>
+                     <select value={styleConfig.fontFamily} onChange={e => setStyleConfig({...styleConfig, fontFamily: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all">
+                        <option value="Cairo">Cairo (عصري - موصى به)</option>
+                        <option value="Segoe UI">Segoe UI (رسمي - نظام)</option>
+                        <option value="Tahoma">Tahoma (كلاسيكي)</option>
                      </select>
                   </div>
                </div>
@@ -763,26 +828,31 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
       
       {/* Product Picker */}
       {showProductPicker && (
-         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in">
-            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-               <div className="p-6 border-b flex justify-between items-center">
-                  <h3 className="font-black text-lg">إضافة منتج من السجل</h3>
-                  <button onClick={() => setShowProductPicker(false)}><X/></button>
+         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in">
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95">
+               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                  <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><ShoppingBag size={20} className="text-sap-primary"/> إضافة منتج للمجلة</h3>
+                  <button onClick={() => setShowProductPicker(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><X size={20}/></button>
                </div>
-               <div className="p-4 bg-gray-50">
-                  <input type="text" placeholder="بحث..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-3 border rounded-xl" autoFocus />
+               <div className="p-5 bg-white border-b border-slate-100 relative">
+                  <input type="text" placeholder="البحث بالاسم أو الباركود..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary font-bold text-sm transition-all" autoFocus />
+                  <div className="absolute left-9 top-1/2 -translate-y-1/2 text-slate-400 bg-white p-1 rounded-md shadow-sm border border-slate-100 font-mono text-[10px]">كيبورد</div>
                </div>
-               <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                  <button onClick={() => addItem()} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:bg-gray-50 mb-4">+ إضافة يدوية فارغة</button>
-                  {(filteredProducts as Product[]).map(p => (
-                     <div key={p.id} onClick={() => addItem(p)} className="flex justify-between items-center p-4 hover:bg-sap-highlight/20 cursor-pointer rounded-xl border border-gray-100">
-                        <div>
-                           <div className="font-bold">{p.name}</div>
-                           <div className="text-xs text-gray-400 font-mono">{p.code}</div>
+               <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/30">
+                  <button onClick={() => addItem()} className="w-full py-4 border-2 border-dashed border-sap-primary/30 bg-sap-highlight/5 rounded-2xl text-sap-primary font-bold hover:bg-sap-highlight/20 hover:border-sap-primary transition-all mb-4 flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"><Plus size={18}/> إضافة عنصر مخصص (فارغ)</button>
+                  <div className="grid gap-2">
+                     {(filteredProducts as Product[]).map(p => (
+                        <div key={p.id} onClick={() => addItem(p)} className="flex justify-between items-center p-4 bg-white hover:bg-sap-highlight/10 cursor-pointer rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-sap-primary/30 transition-all group">
+                           <div>
+                              <div className="font-bold text-slate-800 group-hover:text-sap-primary transition-colors">{p.name}</div>
+                              <div className="text-[11px] font-bold text-slate-400 font-mono mt-1 flex items-center gap-1"><QrCode size={12}/> {p.code}</div>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-sap-primary group-hover:text-white transition-all shadow-sm">
+                              <Plus size={16}/>
+                           </div>
                         </div>
-                        <Plus size={20} className="text-sap-primary"/>
-                     </div>
-                  ))}
+                     ))}
+                  </div>
                </div>
             </div>
          </div>
@@ -790,23 +860,36 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
 
       {/* Saved Projects */}
       {showSavedModal && (
-         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in">
-            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-               <div className="p-6 border-b flex justify-between items-center">
-                  <h3 className="font-black text-lg">أرشيف المجلات</h3>
-                  <button onClick={() => setShowSavedModal(false)}><X/></button>
+         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in">
+            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95">
+               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                  <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><FolderOpen size={20} className="text-sap-primary"/> الأرشيف: مشاريع المجلات</h3>
+                  <button onClick={() => setShowSavedModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><X size={20}/></button>
                </div>
-               <div className="flex-1 overflow-y-auto p-4 space-y-2">
+               <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/30">
                   {(savedCatalogs as CatalogProject[]).map(cat => (
-                     <div key={cat.id} onClick={() => loadProject(cat)} className="flex justify-between items-center p-4 hover:bg-gray-50 cursor-pointer rounded-xl border border-gray-100 group">
+                     <div key={cat.id} onClick={() => loadProject(cat)} className="flex justify-between items-center p-4 bg-white hover:bg-sap-highlight/10 cursor-pointer rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-sap-primary/30 transition-all group">
                         <div>
-                           <div className="font-bold text-gray-800">{cat.name}</div>
-                           <div className="text-xs text-gray-400">{new Date(cat.date).toLocaleDateString('ar-SA')} • {cat.items?.length || 0} منتج</div>
+                           <div className="font-bold text-sm text-slate-800 group-hover:text-sap-primary transition-colors">{cat.name}</div>
+                           <div className="text-[11px] font-bold text-slate-400 mt-1 flex items-center gap-1">
+                               <MapPin size={10} className="text-slate-300"/> 
+                               {new Date(cat.date).toLocaleString('ar-SA')} 
+                               <span className="mx-1">•</span>
+                               <Package size={10} className="text-slate-300"/>
+                               {cat.items?.length || 0} منتج
+                           </div>
                         </div>
-                        <ArrowRight size={20} className="text-gray-300 group-hover:text-sap-primary transition-colors"/>
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-sap-primary group-hover:text-white transition-all shadow-sm">
+                           <ArrowRight size={16}/>
+                        </div>
                      </div>
                   ))}
-                  {savedCatalogs.length === 0 && <div className="p-10 text-center text-gray-400">لا توجد مجلات محفوظة</div>}
+                  {savedCatalogs.length === 0 && (
+                     <div className="py-12 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white">
+                        <FolderOpen size={32} className="mb-3 opacity-20"/>
+                        <p className="font-bold text-sm">لا توجد مشاريع سابقة</p>
+                     </div>
+                  )}
                </div>
             </div>
          </div>

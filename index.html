@@ -48,6 +48,47 @@
            }
         }
       }, 6000);
+
+      // --- CUSTOM GLOBAL TOAST (Overrides native alert) ---
+      window._nativeAlert = window.alert;
+      window.alert = function(message) {
+          if(!message) return;
+          let toastContainer = document.getElementById('global-toast-container');
+          if (!toastContainer) {
+              toastContainer = document.createElement('div');
+              toastContainer.id = 'global-toast-container';
+              toastContainer.className = 'fixed bottom-8 left-1/2 -translate-x-1/2 z-[10000] flex flex-col gap-3 pointer-events-none items-center w-full max-w-sm px-4';
+              document.body.appendChild(toastContainer);
+          }
+
+          const toast = document.createElement('div');
+          toast.className = 'w-full bg-[#1e293b] text-white px-5 py-4 rounded-xl shadow-2xl text-sm font-bold opacity-0 translate-y-6 scale-95 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-auto flex items-start gap-4 border border-slate-700/50';
+          
+          let iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+          if (String(message).includes('نجاح') || String(message).includes('تم ')) {
+               iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+          } else if (String(message).includes('خطأ') || String(message).includes('فشل') || String(message).includes('غير صحيح')) {
+               iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+          }
+
+          toast.innerHTML = iconHtml + `<span style="font-family: inherit; line-height: 1.5; padding-top:2px;" class="flex-1 text-right" dir="rtl">${message}</span>`;
+          toastContainer.appendChild(toast);
+
+          requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                  toast.classList.remove('opacity-0', 'translate-y-6', 'scale-95');
+                  toast.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+              });
+          });
+
+          setTimeout(() => {
+              toast.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+              toast.classList.add('opacity-0', 'translate-y-4', 'scale-95');
+              setTimeout(() => {
+                  if (toast.parentElement) toast.parentElement.removeChild(toast);
+              }, 400); 
+          }, 3500);
+      };
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -107,13 +148,37 @@
             margin: 0;
             padding: 0;
             font-size: 13px;
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
-        /* Odoo-like Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+        /* Smooth input focus transitions */
+        input, select, textarea, button {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Subtle interactive scales */
+        button:active {
+            transform: scale(0.97);
+        }
+
+        /* Improved Focus Rings */
+        *:focus-visible {
+            outline: 2px solid #C5A059;
+            outline-offset: 2px;
+        }
+
+        /* Improved Shadows & Table rows */
+        tr {
+            transition: background-color 0.15s ease;
+        }
+
+        /* Odoo-like Scrollbar (Refined) */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Odoo Table Style Override */
         table { border-collapse: separate; border-spacing: 0; }
@@ -204,11 +269,21 @@
     <!-- Root container -->
     <div id="root" class="h-screen w-screen flex flex-col">
         <!-- Initial Loading State -->
-        <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #718096; background: #F3F4F6;">
-            <div style="width: 50px; height: 50px; border: 4px solid #e2e8f0; border-top-color: #800020; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
-            <div style="font-weight: 800; font-size: 18px; color: #2D3748;">StoreFlow</div>
-            <div style="font-size: 12px; margin-top: 5px;">جاري تحميل النظام...</div>
-            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+        <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #F9FAFB; animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1);">
+            <div style="position: relative; width: 80px; height: 80px; margin-bottom: 32px;">
+                <div style="position: absolute; inset: 0; border: 4px solid #E2E8F0; border-radius: 50%;"></div>
+                <div style="position: absolute; inset: 0; border: 4px solid transparent; border-top-color: #800020; border-right-color: #800020; border-radius: 50%; opacity: 0.9; animation: spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;"></div>
+            </div>
+            <div style="font-weight: 900; font-size: 28px; color: #1A202C; letter-spacing: -0.5px; margin-bottom: 12px; font-family: 'Segoe UI', system-ui, sans-serif;">StoreFlow</div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <div style="width: 6px; height: 6px; border-radius: 50%; background-color: #C5A059; animation: pulse-dot 1.4s infinite;"></div>
+                <div style="font-size: 14px; color: #64748B; font-weight: 500;">تهيئة بيئة العمل...</div>
+            </div>
+            <style>
+                @keyframes spin-smooth { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+                @keyframes pulse-dot { 0%, 100% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } }
+            </style>
         </div>
     </div>
 

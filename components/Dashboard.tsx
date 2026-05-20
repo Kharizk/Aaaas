@@ -259,12 +259,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   };
 
   const SAPTile = ({ title, value, subValue, icon: Icon, onClick, colorClass }: any) => (
-    <div onClick={onClick} className="relative overflow-hidden bg-white/50 backdrop-blur-md border border-white/40 rounded-[2rem] shadow-sap-1 hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer group h-40">
-      <div className={`absolute inset-0 bg-gradient-to-br ${colorClass} opacity-[0.03] group-hover:opacity-[0.08] transition-opacity`}></div>
-      <div className={`absolute -right-6 -bottom-6 opacity-[0.07] group-hover:opacity-[0.15] transition-opacity text-black`}><Icon size={140} /></div>
+    <div onClick={onClick} className="relative overflow-hidden bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group h-40">
+      <div className={`absolute inset-0 bg-gradient-to-br ${colorClass} opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-300`}></div>
+      <div className={`absolute -right-6 -bottom-6 opacity-[0.05] group-hover:opacity-[0.12] transition-all duration-300 text-black group-hover:rotate-3 group-hover:scale-110`}><Icon size={140} /></div>
       <div className="p-6 flex flex-col h-full justify-between relative z-10">
           <div className="flex justify-between items-start">
-            <div className={`p-3 rounded-2xl bg-white shadow-sm text-gray-600 group-hover:text-white group-hover:bg-gradient-to-br ${colorClass} transition-all duration-300`}><Icon size={24} /></div>
+            <div className={`p-3 rounded-2xl bg-white shadow-sm text-gray-600 group-hover:text-white group-hover:bg-gradient-to-br ${colorClass} transition-all duration-300 transform group-hover:scale-110`}><Icon size={24} /></div>
             {subValue && <span className="text-[10px] font-black bg-white/80 text-gray-500 px-3 py-1 rounded-full shadow-sm">{subValue}</span>}
           </div>
           <div className="mt-2"><div className="text-2xl font-black text-gray-800 tracking-tight font-mono">{value}</div><div className="text-xs font-bold text-gray-500 mt-1">{title}</div></div>
@@ -273,9 +273,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   );
 
   const QuickAction = ({ label, icon: Icon, action }: any) => (
-      <button onClick={() => switchToTab(action)} className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl hover:border-sap-primary hover:bg-sap-highlight/10 transition-all group shadow-sm hover:shadow-lg active:scale-95">
-          <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-sap-primary group-hover:bg-sap-primary group-hover:text-white transition-colors shadow-inner"><Icon size={22} /></div>
-          <span className="text-xs font-black text-gray-600 group-hover:text-sap-primary">{label}</span>
+      <button onClick={() => switchToTab(action)} className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-100 rounded-3xl hover:border-sap-primary/30 hover:bg-sap-highlight/5 transition-all duration-300 group shadow-sm hover:shadow-md hover:-translate-y-1 active:scale-95">
+          <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-sap-primary group-hover:bg-sap-primary group-hover:text-white transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-inner"><Icon size={22} /></div>
+          <span className="text-xs font-bold text-gray-600 group-hover:text-sap-primary transition-colors">{label}</span>
       </button>
   );
 
