@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { Product, Unit, ListType, ListRow, SavedTagList, SelectedTag } from '../types';
 import { db } from '../services/supabase';
 import { ReportLayout } from './ReportLayout';
-import { GoogleGenAI, Type } from "@google/genai";
 import { parseExcelFile, generateInventoryTemplate } from '../services/excelService';
 import { 
   Printer, Plus, Trash2, Save, FolderOpen, Loader2, SlidersHorizontal,
@@ -313,59 +312,37 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
             
             setScanStep('تحليل المستند بالذكاء الاصطناعي...');
             
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            
-            const inventorySchema = {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        code: { type: Type.STRING, description: "The product code, SKU, or barcode if visible." },
-                        name: { type: Type.STRING, description: "The full name or description of the product." },
-                        cartonQty: { type: Type.NUMBER, description: "The quantity in cartons/boxes (كمية الكرتون) if explicitly specified." },
-                        qty: { type: Type.NUMBER, description: "The quantity in pieces/units (الكمية/الحبة). Must be a number." },
-                        unit: { type: Type.STRING, description: "The unit of measure (e.g., PCS, KG, BOX) if available." },
-                        expiryDate: { type: Type.STRING, description: "Expiry date in YYYY-MM-DD format if available." },
-                        price: { type: Type.NUMBER, description: "Unit price if available." }
-                    },
-                    required: ["name"]
-                }
-            };
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: [
-                    {
-                        parts: [
-                            { 
-                                text: `Extract inventory items. Return strict JSON. If qty missing use 0. If code missing use empty string.` 
-                            },
-                            { inlineData: { mimeType: file.type, data: base64Data } }
-                        ]
-                    }
-                ],
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: inventorySchema
-                }
+            const response = await fetch('/api/upload-inventory-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Data, mimeType: file.type })
             });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Failed to process image');
+            }
+
+            const data = await response.json();
+            const text = data.text;
 
             setScanStep('معالجة البيانات...');
             
             let extractedData: any[] = [];
             try {
-                const text = response.text || '[]';
-                extractedData = JSON.parse(text);
+                const textOutput = text || '[]';
+                // Try JSON.parse on the cleaned format
+                extractedData = JSON.parse(textOutput.replace(/```json|```/g, '').trim());
             } catch (e) {
-                const cleanText = (response.text || '').replace(/```json|```/g, '').trim();
-                try { extractedData = JSON.parse(cleanText); } catch (e2) {}
+                console.error("Failed to parse JSON response:", e);
             }
             
             if (Array.isArray(extractedData) && extractedData.length > 0) {
                 const foundNewProducts: Product[] = [];
                 const processedRows: ListRow[] = extractedData.map((item: any) => {
                     const extractedCode = item.code ? String(item.code).trim() : '';
-                    const extractedName = item.name ? String(item.name).trim() : 'UNKNOWN';
+                    const rawNameText = item.name || item.category || '';
+                    const extractedName = rawNameText ? String(rawNameText).trim() : 'UNKNOWN';
                     
                     const existingProduct = products.find(p => 
                         (extractedCode && p.code === extractedCode) || 
@@ -385,6 +362,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                                 id: crypto.randomUUID(),
                                 code: extractedCode || `AUTO-${Math.floor(Math.random() * 10000)}`,
                                 name: extractedName,
+                                category: item.category ? String(item.category).trim() : undefined,
                                 unitId: finalUnitId || '',
                                 price: item.price ? String(item.price) : '0',
                                 color: '#ffffff'
@@ -396,6 +374,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                         id: generateId(),
                         code: extractedCode,
                         name: finalName,
+                        category: existingProduct ? existingProduct.category : (item.category ? String(item.category).trim() : undefined),
                         unitId: finalUnitId,
                         qty: Number(item.qty) || '',
                         cartonQty: Number(item.cartonQty) || '',

@@ -249,6 +249,23 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
     });
   };
 
+  const duplicateProject = async (list: SavedTagList) => {
+    try {
+      const newList: SavedTagList = {
+        ...list,
+        id: crypto.randomUUID(),
+        name: `${list.name} (نسخة)`,
+        date: new Date().toISOString()
+      };
+      await db.tagLists.upsert(newList);
+      fetchSavedLists();
+      addToast("تم نسخ المشروع بنجاح", "success");
+    } catch (e) {
+      console.error("Duplicate Project Error:", e);
+      addToast("فشل نسخ المشروع", "error");
+    }
+  };
+
   const addTag = (product?: Product) => {
     let unitName = '';
     if (product && product.unitId) {
@@ -936,6 +953,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                   </div>
                                   <div className="flex items-center gap-2">
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity text-sap-primary text-xs font-bold bg-sap-highlight/20 px-3 py-1 rounded-full">فتح</div>
+                                      <button onClick={(e) => { e.stopPropagation(); duplicateProject(list); }} className="text-gray-300 hover:text-sap-primary hover:bg-sap-highlight/10 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100" title="نسخ المشروع"><Copy size={16}/></button>
                                       <button onClick={(e) => { e.stopPropagation(); deleteProject(list.id); }} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
                                   </div>
                               </div>
@@ -1411,114 +1429,124 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       {/* Main Canvas */}
       <main className="flex-1 flex flex-col overflow-hidden relative print:hidden">
-        <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm relative">
-            <div className="flex items-center gap-4">
+        <div className="min-h-16 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between px-6 py-3 shrink-0 z-20 shadow-sm relative gap-4">
+            
+            {/* Left Group: Project Management */}
+            <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
                     <div className="bg-white shadow-sm border border-gray-100 p-1.5 rounded-md">
                         <LayoutGrid size={18} className="text-sap-primary"/>
                     </div>
-                    <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="bg-transparent border-none text-sm w-56 focus:ring-0 font-bold text-gray-700 placeholder-gray-400" placeholder="اسم المشروع..." />
+                    <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="bg-transparent border-none text-sm w-40 sm:w-56 focus:ring-0 font-bold text-gray-700 placeholder-gray-400" placeholder="اسم المشروع..." />
                 </div>
                 
-                <div className="h-8 w-px bg-gray-200 mx-2"></div>
-
-                <div className="flex items-center gap-2">
-                    <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all shadow-sm text-xs font-bold">
+                <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-100 shadow-inner">
+                    <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center gap-2 px-4 py-1.5 bg-white text-gray-800 rounded-md shadow-sm border border-gray-200 hover:border-sap-primary hover:text-sap-primary transition-all text-xs font-bold" title="حفظ المشروع">
                         {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
-                        <span>حفظ</span>
+                        <span className="hidden lg:inline">حفظ</span>
                     </button>
-                    <button onClick={() => setShowSavedLists(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all shadow-sm text-xs font-bold">
+                    <div className="w-px bg-gray-200 mx-1"></div>
+                    <button onClick={() => setShowSavedLists(true)} className="flex items-center gap-2 px-4 py-1.5 text-gray-600 hover:text-sap-primary hover:bg-white rounded-md transition-all text-xs font-bold" title="فتح مشروع">
                         <FolderOpen size={16}/>
-                        <span>فتح</span>
+                        <span className="hidden lg:inline">فتح</span>
                     </button>
-                    <button 
-                        onClick={() => { 
-                            if (selectedTags.length === 0) return;
-                            setConfirmDialog({
-                                isOpen: true,
-                                message: 'هل أنت متأكد من مسح جميع الملصقات؟',
-                                onConfirm: () => {
-                                    setSelectedTags([]); 
-                                    setActiveTagIds([]); 
-                                    addToast("تم مسح الصفحة", "info");
-                                    setConfirmDialog(null);
-                                }
-                            });
-                        }} 
-                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all shadow-sm text-xs font-bold ${selectedTags.length === 0 ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'}`}
-                        title="مسح الكل"
-                    >
-                        <Trash2 size={16}/>
-                        <span>مسح الكل</span>
-                    </button>
-                    <button 
-                        onClick={() => {
-                            if (selectedTags.length > 0) {
+                </div>
+            </div>
+
+            {/* Center Group: Tag Actions */}
+            {selectedTags.length > 0 && (
+                <div className="flex-1 flex justify-center order-last lg:order-none w-full lg:w-auto mt-2 lg:mt-0">
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+                        <button 
+                            onClick={() => {
                                 if (activeTagIds.length === selectedTags.length) {
                                     setActiveTagIds([]);
                                 } else {
                                     setActiveTagIds(selectedTags.map(t => t.id));
                                 }
-                            }
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all shadow-sm text-xs font-bold ${selectedTags.length === 0 ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' : activeTagIds.length === selectedTags.length ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-                        title={activeTagIds.length === selectedTags.length ? "إلغاء تحديد الكل" : "تحديد الكل"}
-                    >
-                        <CheckCircle2 size={16}/>
-                        <span>{activeTagIds.length === selectedTags.length ? "إلغاء الكل" : "تحديد الكل"}</span>
-                    </button>
-                </div>
-            </div>
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap ${activeTagIds.length === selectedTags.length ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'}`}
+                        >
+                            <CheckCircle2 size={16}/>
+                            <span>{activeTagIds.length === selectedTags.length ? "إلغاء التحديد" : "تحديد الكل"}</span>
+                        </button>
+                        
+                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
 
-            <div className="flex items-center gap-4">
-                {activeTagIds.length === 1 && (
-                    <>
                         <button 
                             onClick={() => {
-                                const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
-                                if (currentTag && selectedTags.length < 16) {
-                                    const newTag = { ...currentTag, id: generateId() };
-                                    setSelectedTags(prev => [...prev, newTag]);
-                                    addToast("تم تكرار الملصق", "success");
-                                } else if (selectedTags.length >= 16) {
-                                    addToast("الصفحة ممتلئة", "warning");
-                                }
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 transition-all shadow-sm text-xs font-bold animate-in fade-in"
-                        >
-                            <Copy size={16}/>
-                            <span>تكرار</span>
-                        </button>
-                        <button 
-                            onClick={() => {
-                                const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
-                                if (currentTag) {
-                                    const remainingSlots = 16 - selectedTags.length;
-                                    if (remainingSlots > 0) {
-                                        const newTags = Array.from({ length: remainingSlots }).map(() => ({ ...currentTag, id: generateId() }));
-                                        setSelectedTags(prev => [...prev, ...newTags]);
-                                        addToast(`تم تعبئة الصفحة بـ ${remainingSlots} ملصق`, "success");
-                                    } else {
-                                        addToast("الصفحة ممتلئة", "warning");
+                                setConfirmDialog({
+                                    isOpen: true,
+                                    message: 'هل أنت متأكد من مسح جميع الملصقات؟',
+                                    onConfirm: () => {
+                                        setSelectedTags([]); 
+                                        setActiveTagIds([]); 
+                                        addToast("تم مسح الصفحة", "info");
+                                        setConfirmDialog(null);
                                     }
-                                }
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-all shadow-sm text-xs font-bold animate-in fade-in"
+                                });
+                            }} 
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap text-red-600 hover:bg-red-50"
                         >
-                            <LayoutGrid size={16}/>
-                            <span>تعبئة الصفحة</span>
+                            <Trash2 size={16}/>
+                            <span className="hidden sm:inline">مسح الصفحة</span>
                         </button>
-                    </>
-                )}
-                <div className="flex items-center gap-1 bg-white border border-gray-200 p-1 rounded-lg shadow-sm">
-                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><ZoomOut size={16}/></button>
-                    <span className="text-xs font-black w-12 text-center font-mono text-gray-700">{globalStyles.previewZoom}%</span>
-                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><ZoomIn size={16}/></button>
+
+                        {activeTagIds.length === 1 && (
+                            <>
+                                <div className="w-px h-6 bg-gray-200 mx-1 animate-in zoom-in"></div>
+                                <button 
+                                    onClick={() => {
+                                        const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
+                                        if (currentTag && selectedTags.length < 16) {
+                                            const newTag = { ...currentTag, id: generateId() };
+                                            setSelectedTags(prev => [...prev, newTag]);
+                                            addToast("تم تكرار الملصق", "success");
+                                        } else if (selectedTags.length >= 16) {
+                                            addToast("الصفحة ممتلئة", "warning");
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap text-blue-600 hover:bg-blue-50 animate-in fade-in"
+                                >
+                                    <Copy size={16}/>
+                                    <span>تكرار</span>
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
+                                        if (currentTag) {
+                                            const remainingSlots = 16 - selectedTags.length;
+                                            if (remainingSlots > 0) {
+                                                const newTags = Array.from({ length: remainingSlots }).map(() => ({ ...currentTag, id: generateId() }));
+                                                setSelectedTags(prev => [...prev, ...newTags]);
+                                                addToast(`تم تعبئة الصفحة بـ ${remainingSlots} ملصق`, "success");
+                                            } else {
+                                                addToast("الصفحة ممتلئة", "warning");
+                                            }
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap text-green-600 hover:bg-green-50 animate-in fade-in"
+                                >
+                                    <LayoutGrid size={16}/>
+                                    <span>تعبئة الصفحة</span>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Right Group: View & Print Output */}
+            <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 bg-white border border-gray-200 p-1.5 rounded-lg shadow-sm">
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-1 hover:bg-gray-100 rounded-md text-gray-500 transition-colors" title="تصغير المنتصف"><ZoomOut size={16}/></button>
+                    <span className="text-xs font-black w-10 text-center font-mono text-gray-700">{globalStyles.previewZoom}%</span>
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="p-1 hover:bg-gray-100 rounded-md text-gray-500 transition-colors" title="تكبير المنتصف"><ZoomIn size={16}/></button>
                 </div>
                 
-                <button onClick={() => window.print()} className="flex items-center gap-2 px-5 py-2.5 bg-sap-primary text-white rounded-lg hover:bg-sap-primary-hover shadow-lg shadow-sap-primary/20 transition-all text-xs font-black tracking-wide">
+                <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2.5 bg-sap-primary text-white rounded-lg hover:bg-sap-primary-hover shadow-lg shadow-sap-primary/20 transition-all text-sm font-black tracking-wide shrink-0">
                     <Printer size={18}/> 
-                    <span>طباعة الملصقات</span>
+                    <span className="hidden sm:inline">طباعة</span>
                 </button>
             </div>
         </div>
@@ -1652,7 +1680,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                         <div className="font-bold text-gray-800 text-sm group-hover:text-sap-primary transition-colors">{list.name}</div>
                                         <div className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-1"><Clock size={10}/> {new Date(list.date).toLocaleDateString('ar-SA')}</div>
                                     </div>
-                                    <button onClick={(e) => { e.stopPropagation(); deleteProject(list.id); }} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={(e) => { e.stopPropagation(); duplicateProject(list); }} className="text-gray-300 hover:text-sap-primary hover:bg-sap-highlight/10 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100" title="نسخ المشروع"><Copy size={16}/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); deleteProject(list.id); }} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

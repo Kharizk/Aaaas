@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Loader2, DollarSign, TrendingUp, TrendingDown, ExternalLink, AlertCircle } from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
 
 interface MarketPriceDiscovererProps {
   initialProductName?: string;
@@ -37,45 +36,24 @@ export const MarketPriceDiscoverer: React.FC<MarketPriceDiscovererProps> = ({ in
 
     try {
       // Initialize Gemini API
-      const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('مفتاح API الخاص بـ Gemini غير متوفر. يرجى إضافته في الإعدادات.');
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-
-      const prompt = `
-        أريد معرفة أسعار السوق الحالية للمنتج التالي: "${productName}" في منطقة/دولة: "${region}".
-        يرجى البحث في الويب عن أحدث الأسعار وتقديم استجابة بتنسيق JSON فقط، بدون أي نصوص إضافية أو علامات Markdown.
-        يجب أن يكون الـ JSON بالهيكل التالي:
-        {
-          "averagePrice": "متوسط السعر كرقم",
-          "priceRange": "نطاق السعر (مثال: 100 - 150)",
-          "piecePrice": "سعر الحبة الواحدة التقريبي",
-          "cartonPrice": "سعر الكرتون/الجملة التقريبي",
-          "currency": "العملة المحلية (مثال: ريال سعودي)",
-          "summary": "ملخص قصير عن حالة السعر في السوق وتوفره"
-        }
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-        },
+      const response = await fetch('/api/market-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productName, region })
       });
 
-      const text = response.text;
-      if (!text) {
-        throw new Error('لم يتم تلقي استجابة من الخادم.');
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'حدث خطأ أثناء جلب الأسعار...');
       }
 
+      const data = await response.json();
+      const text = data.text;
+      
       const parsedData = JSON.parse(text);
       
       // Extract grounding sources if available
-      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+      const chunks = data.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
       const sources = chunks
         .filter((chunk: any) => chunk.web && chunk.web.uri && chunk.web.title)
         .map((chunk: any) => ({

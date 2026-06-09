@@ -2,7 +2,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Product, Unit, CatalogProject, CatalogItem, CatalogStyleConfig, CatalogLayoutType, CatalogBadgeType } from '../types';
 import { db } from '../services/supabase';
-import { GoogleGenAI } from "@google/genai";
 import { useSystemSettings } from './SystemSettingsContext';
 import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
 import { 
@@ -12,7 +11,7 @@ import {
   Zap, MousePointer2, ZoomIn, ZoomOut, Box, Clock, ScanLine, 
   Maximize2, MoreHorizontal, Square, Hash, Ruler, MessageCircle,
   QrCode, ShoppingBag, Send, Minus, Share2, Download, ExternalLink, Info, AlertCircle, MapPin,
-  Smartphone, Layout, Type, Grid, Coffee, Gem, Flame, CheckCircle2, Eye, PaintBucket, Moon
+  Smartphone, Layout, Type, Grid, Coffee, Gem, Flame, CheckCircle2, Eye, PaintBucket, Moon, Package
 } from 'lucide-react';
 
 interface CatalogGeneratorProps {
@@ -164,55 +163,33 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
 
   // --- AI IMAGE GENERATION (REALISTIC) ---
   const generateAiImage = async (item: CatalogItem) => {
-    // Fix: Mandatory API Key Selection check for Pro image generation models
-    if (!(await (window as any).aistudio.hasSelectedApiKey())) {
-        await (window as any).aistudio.openSelectKey();
-        // Proceed as per race condition mitigation instruction
-    }
-
     setIsGenerating(true);
     try {
-      // Fix: Create new instance before call to use current API Key
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      // Fix: Using correct model 'gemini-3-pro-image-preview' for realism and handling response parts
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview', 
-        contents: {
-          parts: [{ text: `Professional advertising product photography of ${item.name} (${item.description || 'food product'}). 
+      const prompt = `Professional advertising product photography of ${item.name} (${item.description || 'food product'}). 
           Hyper-realistic, 8k resolution, cinematic lighting, appetizing, isolated on a clean soft studio background. 
-          High detailed texture, commercial look.` }],
-        },
-        config: { imageConfig: { aspectRatio: "1:1", imageSize: "1K" } } as any
+          High detailed texture, commercial look.`;
+
+      const response = await fetch('/api/generate-catalog-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
       });
 
-      // Fix: Iterate through parts to find image part as per GenAI guidelines
-      let foundImage = false;
-      const parts = response.candidates?.[0]?.content?.parts;
-      if (parts) {
-        for (const part of parts) {
-          if (part.inlineData) {
-            const compressed = await compressImage(`data:image/png;base64,${part.inlineData.data}`);
-            updateItem(item.id, { image: compressed });
-            foundImage = true;
-            break;
-          } else if (part.text) {
-            console.log("Model response text:", part.text);
-          }
-        }
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to generate image');
       }
-      
-      if (!foundImage) {
-          console.warn("No image data found in model response");
+
+      const resData = await response.json();
+      if (resData.base64Image) {
+        const compressed = await compressImage(resData.base64Image);
+        updateItem(item.id, { image: compressed });
+      } else {
+        console.warn("No image data found in model response");
       }
     } catch (e: any) { 
       console.error(e);
-      // Fix: Handle specific GenAI error message for missing entity by re-opening key selection
-      if (e?.message?.includes("Requested entity was not found.")) {
-          await (window as any).aistudio.openSelectKey();
-      } else {
-          alert('لم نتمكن من توليد الصورة. تأكد من إعدادات المفتاح.'); 
-      }
+      alert('لم نتمكن من توليد الصورة. تأكد من إعدادات الخادم.'); 
     }
     finally { setIsGenerating(false); }
   };

@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Building2, Layout, CheckCircle2, ShieldCheck, Sparkles, Loader2, Lock, UserCog, AlertCircle, CalendarClock, Coins, Download, Upload, Database, Trash2 } from 'lucide-react';
+import { Save, Building2, Layout, CheckCircle2, ShieldCheck, Sparkles, Loader2, Lock, UserCog, AlertCircle, CalendarClock, Coins, Download, Upload, Database, Trash2, Palette } from 'lucide-react';
 import { db } from '../services/supabase';
 import { useSystemSettings } from './SystemSettingsContext';
+import { THEMES, AppTheme } from '../utils/themes';
 
 export const Settings: React.FC = () => {
     const { settings, updateSettings, isLoading: isSettingsLoading } = useSystemSettings();
@@ -22,7 +23,7 @@ export const Settings: React.FC = () => {
     const [showHeaderOnReceipt, setShowHeaderOnReceipt] = useState(true);
     const [showFooterOnReceipt, setShowFooterOnReceipt] = useState(true);
     const [enableSoundEffects, setEnableSoundEffects] = useState(true);
-    const [themeColor, setThemeColor] = useState('#6366f1'); // Default Indigo
+    const [appTheme, setAppTheme] = useState('burgundy');
     const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<'cash' | 'card'>('cash');
 
     const [isSaving, setIsSaving] = useState(false);
@@ -54,7 +55,7 @@ export const Settings: React.FC = () => {
             setShowHeaderOnReceipt(settings.showHeaderOnReceipt ?? true);
             setShowFooterOnReceipt(settings.showFooterOnReceipt ?? true);
             setEnableSoundEffects(settings.enableSoundEffects ?? true);
-            setThemeColor(settings.themeColor || '#6366f1');
+            setAppTheme(settings.appTheme || 'burgundy');
             setDefaultPaymentMethod(settings.defaultPaymentMethod || 'cash');
         }
     }, [settings, isSettingsLoading]);
@@ -77,13 +78,10 @@ export const Settings: React.FC = () => {
                 showHeaderOnReceipt,
                 showFooterOnReceipt,
                 enableSoundEffects,
-                themeColor,
+                appTheme,
                 defaultPaymentMethod
             });
 
-            // Update CSS Variable
-            document.documentElement.style.setProperty('--sap-primary', themeColor);
-            
             // Log Activity
             await db.activityLogs.add({
                 action: 'تحديث الإعدادات',
@@ -405,18 +403,22 @@ export const Settings: React.FC = () => {
 
                                     <div className="space-y-4 border-t border-dashed border-gray-200 pt-6">
                                         <label className="block text-xs font-black text-md-on-surface-variant uppercase tracking-widest px-1 flex items-center gap-2">
-                                            <Sparkles size={16} /> لون النظام الرئيسي
+                                            <Palette size={16} /> ثيم وتصميم النظام
                                         </label>
-                                        <div className="flex items-center gap-4">
-                                            <input 
-                                                type="color" 
-                                                value={themeColor}
-                                                onChange={(e) => setThemeColor(e.target.value)}
-                                                className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-200 p-1"
-                                            />
-                                            <div className="text-xs text-gray-500 font-bold">
-                                                اختر اللون المفضل للنظام (الأزرار، النصوص المميزة، الخلفيات)
-                                            </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                            {(Object.entries(THEMES) as [AppTheme, typeof THEMES[AppTheme]][]).map(([key, theme]) => (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => setAppTheme(key)}
+                                                    className={`p-4 rounded-2xl border-2 flex flex-col gap-3 transition-all ${appTheme === key ? 'border-sap-primary bg-sap-highlight/10 shadow-md transform scale-[1.02]' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    <div className="flex gap-2 w-full justify-center">
+                                                        <div className="w-10 h-10 rounded-full shadow-sm" style={{ backgroundColor: theme.colors['--sap-primary'] }}></div>
+                                                        <div className="w-10 h-10 rounded-full shadow-sm" style={{ backgroundColor: theme.colors['--sap-secondary'] }}></div>
+                                                    </div>
+                                                    <span className={`text-xs font-bold text-center w-full ${appTheme === key ? 'text-sap-primary' : 'text-gray-600'}`}>{theme.name}</span>
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 

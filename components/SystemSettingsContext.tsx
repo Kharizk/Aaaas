@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../services/supabase';
 import { CurrencySymbolType } from '../types';
+import { applyTheme, AppTheme } from '../utils/themes';
 
 interface SystemSettings {
   orgName: string;
@@ -17,7 +18,7 @@ interface SystemSettings {
   showHeaderOnReceipt?: boolean;
   showFooterOnReceipt?: boolean;
   enableSoundEffects?: boolean;
-  themeColor?: string;
+  appTheme?: string;
   defaultPaymentMethod?: 'cash' | 'card';
 }
 
@@ -39,7 +40,7 @@ const defaultSettings: SystemSettings = {
   showHeaderOnReceipt: true,
   showFooterOnReceipt: true,
   enableSoundEffects: true,
-  themeColor: '#6366f1',
+  appTheme: 'burgundy',
   defaultPaymentMethod: 'cash'
 };
 
@@ -59,7 +60,9 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
     const loadSettings = async () => {
       try {
         const data = await db.settings.get();
-        setSettings({ ...defaultSettings, ...data });
+        const loadedSettings = { ...defaultSettings, ...data };
+        setSettings(loadedSettings);
+        if (loadedSettings.appTheme) applyTheme(loadedSettings.appTheme as AppTheme);
       } catch (e) {
         console.error("Failed to load settings", e);
       } finally {
@@ -73,6 +76,7 @@ export const SystemSettingsProvider: React.FC<{ children: React.ReactNode }> = (
     try {
       const updated = { ...settings, ...newSettings };
       setSettings(updated);
+      if (updated.appTheme) applyTheme(updated.appTheme as AppTheme);
       await db.settings.upsert(updated);
     } catch (e) {
       console.error("Failed to save settings", e);

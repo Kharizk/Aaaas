@@ -33,7 +33,7 @@ import { UserProfile } from './components/UserProfile';
 import { ActivityLogViewer } from './components/ActivityLog';
 import { InstallApp } from './components/InstallApp';
 import { NotificationProvider } from './components/Notifications';
-import { SystemSettingsProvider } from './components/SystemSettingsContext';
+import { SystemSettingsProvider, useSystemSettings } from './components/SystemSettingsContext';
 import { Product, Unit, Branch, DailySales, User, Permission, CatalogProject } from './types';
 import { db } from './services/supabase';
 import { 
@@ -42,8 +42,9 @@ import {
   Percent, FileLineChart, Wallet, Crown, LogOut, Users, UserCircle, BookOpen, Monitor,
   ShoppingBag, TrendingDown, Bell, Moon, Sun, Loader2, Command, Keyboard, Search,
   Grid, ArrowRight, Home, Menu, X, ChevronRight, Building2,
-  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History, RotateCcw, Archive
+  Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History, RotateCcw, Archive, Palette, CheckCircle2
 } from 'lucide-react';
+import { THEMES, AppTheme, applyTheme } from './utils/themes';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {
@@ -92,7 +93,9 @@ import { Languages } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
+  const { settings, updateSettings } = useSystemSettings();
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [viewCatalogId, setViewCatalogId] = useState<string | null>(null);
@@ -669,6 +672,31 @@ const AppContent: React.FC = () => {
           <button onClick={toggleFullScreen} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="ملء الشاشة">
               <Monitor size={16}/>
           </button>
+
+          <div className="relative">
+            <button onClick={() => setShowThemePicker(!showThemePicker)} className={`p-1.5 rounded-[4px] transition-colors ${showThemePicker ? 'bg-white text-sap-primary' : 'hover:bg-white/10 text-white/80 hover:text-white'}`} title="تغيير ثيم النظام">
+                <Palette size={16}/>
+            </button>
+            {showThemePicker && (
+               <>
+                 <div className="fixed inset-0 z-40" onClick={() => setShowThemePicker(false)}></div>
+                 <div className="absolute top-10 left-0 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 p-2 grid grid-cols-1 gap-1 animate-in fade-in slide-in-from-top-4" onClick={(e) => e.stopPropagation()}>
+                     <div className="text-[10px] font-black text-slate-400 mb-1 px-2 uppercase shadow-none border-b border-slate-100 pb-1">الثيمات المتاحة</div>
+                     {(Object.entries(THEMES) as [AppTheme, typeof THEMES[AppTheme]][]).map(([key, theme]) => (
+                         <button
+                             key={key}
+                             onClick={() => { updateSettings({ appTheme: key }); setShowThemePicker(false); }}
+                             className={`flex items-center gap-2 p-2 rounded-lg text-xs font-bold transition-all w-full text-right ${settings.appTheme === key ? 'bg-sap-primary/10 text-sap-primary' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'}`}
+                         >
+                             <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: theme.colors['--sap-primary'] }}></div>
+                             <span className="flex-1">{theme.name}</span>
+                             {settings.appTheme === key && <CheckCircle2 size={12} className="text-sap-primary" />}
+                         </button>
+                     ))}
+                 </div>
+               </>
+            )}
+          </div>
 
           <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="الوضع الليلي">
               {darkMode ? <Sun size={16}/> : <Moon size={16}/>}

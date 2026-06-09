@@ -3,5 +3,8 @@
   "description": "Advanced store management system for products, sales, and cashier settlements",
   "requestFramePermissions": [
     "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }
