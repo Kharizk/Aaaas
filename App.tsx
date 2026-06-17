@@ -102,6 +102,24 @@ const AppContent: React.FC = () => {
   const [viewCatalogData, setViewCatalogData] = useState<CatalogProject | null>(null);
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [hiddenApps, setHiddenApps] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('sf_hidden_apps');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const toggleAppVisibility = (appId: string) => {
+    setHiddenApps(prev => {
+      const isHidden = prev.includes(appId);
+      const newHidden = isHidden ? prev.filter(id => id !== appId) : [...prev, appId];
+      localStorage.setItem('sf_hidden_apps', JSON.stringify(newHidden));
+      return newHidden;
+    });
+  };
 
   const [activeTab, setActiveTab] = useState<'launcher' | 'dashboard' | 'products' | 'list' | 'price_tags' | 'offers' | 'price_groups' | 'catalog' | 'sales_entry' | 'reports_center' | 'advanced_reports' | 'settlement' | 'pos_setup' | 'units' | 'branches' | 'settings' | 'database' | 'users' | 'user_profile' | 'pos' | 'expenses' | 'customers' | 'suppliers' | 'purchase_orders' | 'activity_log' | 'promotions' | 'mobile_inventory' | 'returns' | 'market_prices'>('launcher');
   const [openApps, setOpenApps] = useState<string[]>([]);
@@ -221,7 +239,6 @@ const AppContent: React.FC = () => {
             { id: 'returns', label: t('nav.returns'), icon: RotateCcw, color: COLORS.SLATE, permission: 'manage_returns' },
             { id: 'customers', label: t('nav.customers'), icon: Users, color: COLORS.DARK_GRAY, permission: 'manage_customers' },
             { id: 'customer_trusts', label: 'أمانات العملاء', icon: Archive, color: COLORS.GOLD, permission: 'manage_customers' },
-            { id: 'offers', label: t('nav.offers'), icon: Percent, color: COLORS.GOLD, permission: 'print_labels' },
         ]
     },
     {
@@ -250,6 +267,7 @@ const AppContent: React.FC = () => {
         title: t('nav.promotions'),
         apps: [
             { id: 'promotions', label: t('nav.promotions'), icon: Percent, color: COLORS.BURGUNDY, permission: 'manage_products' },
+            { id: 'offers', label: t('nav.offers'), icon: Percent, color: COLORS.GOLD, permission: 'print_labels' },
             { id: 'price_tags', label: t('nav.price_tags'), icon: Tag, color: COLORS.DARK_GRAY, permission: 'print_labels' },
             { id: 'catalog', label: t('nav.catalog'), icon: BookOpen, color: COLORS.GOLD, permission: 'print_labels' },
             { id: 'price_groups', label: t('nav.price_groups'), icon: Monitor, color: COLORS.SLATE, permission: 'print_labels' },
@@ -410,15 +428,26 @@ const AppContent: React.FC = () => {
                  </p>
               </div>
               
-              {/* Quick Search Trigger */}
-              <button 
-                onClick={() => setShowCmdPalette(true)}
-                className="w-full md:w-96 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 text-slate-400 hover:border-sap-primary/50 hover:shadow-lg hover:shadow-sap-primary/5 transition-all group cursor-text"
-              >
-                 <Search className="text-sap-secondary group-hover:scale-110 transition-transform" />
-                 <span className="flex-1 text-right text-sm font-bold group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">ابحث عن تطبيق أو تقرير...</span>
-                 <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md text-[10px] font-mono border border-slate-200 dark:border-slate-600">Ctrl K</span>
-              </button>
+              {/* Quick Search and Customize Triggers */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                  <button 
+                    onClick={() => setShowCmdPalette(true)}
+                    className="flex-1 md:w-96 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 text-slate-400 hover:border-sap-primary/50 hover:shadow-lg hover:shadow-sap-primary/5 transition-all group cursor-text"
+                  >
+                     <Search className="text-sap-secondary group-hover:scale-110 transition-transform" />
+                     <span className="flex-1 text-right text-sm font-bold group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">ابحث عن تطبيق أو تقرير...</span>
+                     <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md text-[10px] font-mono border border-slate-200 dark:border-slate-600">Ctrl K</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setShowCustomizeModal(true)}
+                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-center gap-2 text-slate-700 dark:text-slate-200 hover:border-sap-primary/50 hover:shadow-lg hover:shadow-sap-primary/5 hover:text-sap-primary transition-all group shrink-0 cursor-pointer"
+                    title="تعديل تفريد وإخفاء التطبيقات بالشاشة والواجهة الأساسية"
+                  >
+                     <SettingsIcon className="w-5 h-5 group-hover:rotate-45 transition-transform duration-300 text-sap-primary" />
+                     <span className="text-sm font-bold">تفتيح وتبسيط الواجهة</span>
+                  </button>
+              </div>
            </div>
         </div>
 
@@ -460,6 +489,7 @@ const AppContent: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 md:px-12 pb-24">
             {appGroups.map((group, groupIdx) => {
                 const visibleApps = group.apps.filter(app => {
+                    if (hiddenApps.includes(app.id)) return false;
                     if (app.permission) return hasPermission(app.permission as any);
                     if (app.permissions) return hasAnyPermission(app.permissions as any);
                     return true;
@@ -484,17 +514,17 @@ const AppContent: React.FC = () => {
                                     onClick={() => handleOpenApp(app.id)}
                                     role="button"
                                     tabIndex={0}
-                                    className="relative flex flex-col items-center p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700/50 hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] hover:border-sap-primary/20 hover:-translate-y-1.5 transition-all duration-300 group overflow-hidden cursor-pointer"
+                                    className="relative flex flex-col items-center p-5 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700/50 hover:shadow-[0_15px_30px_-10px_rgba(0,0,0,0.1)] hover:border-sap-primary/30 hover:-translate-y-1 transition-all duration-300 group overflow-hidden cursor-pointer"
                                 >
                                     {/* Hover Gradient Effect */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-50/50 dark:to-slate-700/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                     
                                     {/* Icon Container */}
                                     <div 
-                                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-gray-200/50 dark:shadow-none mb-5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 relative z-10"
+                                        className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-md shadow-gray-200/50 dark:shadow-none mb-4 group-hover:scale-105 group-hover:rotate-2 transition-all duration-300 relative z-10"
                                         style={{ backgroundColor: app.color }}
                                     >
-                                        <app.icon size={30} strokeWidth={1.5} className="drop-shadow-md" />
+                                        <app.icon size={26} strokeWidth={1.75} className="drop-shadow-sm" />
                                         {/* Glossy reflection */}
                                         <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent rounded-2xl" />
                                     </div>
@@ -502,14 +532,14 @@ const AppContent: React.FC = () => {
                                     {/* Favorite Button */}
                                     <button 
                                         onClick={(e) => toggleFavorite(app.id, e)}
-                                        className={`absolute top-3 left-3 p-1.5 rounded-full z-20 transition-all hover:scale-110 ${favorites.includes(app.id) ? 'text-yellow-400 bg-white shadow-sm opacity-100' : 'text-slate-300 bg-slate-50/50 hover:bg-white hover:text-yellow-400'}`}
+                                        className={`absolute top-2.5 left-2.5 p-1.5 rounded-full z-20 transition-all hover:scale-110 ${favorites.includes(app.id) ? 'text-yellow-400 bg-white shadow-sm opacity-100' : 'text-slate-300 bg-slate-50/50 hover:bg-white hover:text-yellow-400'}`}
                                         title={favorites.includes(app.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
                                     >
-                                        <Star size={16} fill={favorites.includes(app.id) ? "currentColor" : "none"} />
+                                        <Star size={14} fill={favorites.includes(app.id) ? "currentColor" : "none"} />
                                     </button>
                                     
                                     {/* Label */}
-                                    <span className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-sap-primary dark:group-hover:text-white transition-colors relative z-10">
+                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-sap-primary dark:group-hover:text-white transition-colors relative z-10 text-center leading-tight">
                                         {app.label}
                                     </span>
                                 </div>
@@ -595,19 +625,120 @@ const AppContent: React.FC = () => {
           </div>
       )}
 
+      {/* Customize Apps Visibility Modal */}
+      {showCustomizeModal && (
+          <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowCustomizeModal(false)}>
+              <div className="bg-white dark:bg-slate-800 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()} dir="rtl">
+                  {/* Header */}
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-gradient-to-l from-sap-primary/5 to-transparent shrink-0">
+                      <div>
+                          <h2 className="text-xl font-black text-slate-800 dark:text-white mb-1">تخصيص الواجهة الرئيسية</h2>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">حدد التطبيقات التي ترغب في إظهارها أو إخفائها لتناسب احتياجات عملك وتبسيط الشاشة</p>
+                      </div>
+                      <button onClick={() => setShowCustomizeModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer">
+                          <X className="w-5 h-5 text-slate-500" />
+                      </button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                      {appGroups.map((group, gIdx) => {
+                          const permittedApps = group.apps.filter(app => {
+                              if (app.permission) return hasPermission(app.permission as any);
+                              if (app.permissions) return hasAnyPermission(app.permissions as any);
+                              return true;
+                          });
+
+                          if (permittedApps.length === 0) return null;
+
+                          return (
+                              <div key={gIdx} className="space-y-4">
+                                  <h4 className="text-sm font-black text-sap-primary dark:text-amber-500 border-r-4 border-sap-primary dark:border-amber-500 pr-2.5">
+                                      {group.title}
+                                  </h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                      {permittedApps.map(app => {
+                                          const isHidden = hiddenApps.includes(app.id);
+                                          return (
+                                              <div 
+                                                  key={app.id}
+                                                  onClick={() => toggleAppVisibility(app.id)}
+                                                  className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${!isHidden ? 'bg-sap-primary/5 border-sap-primary/20 dark:bg-slate-700/30' : 'bg-slate-50/50 border-slate-200 dark:bg-slate-950/20 dark:border-slate-800 opacity-60 hover:opacity-100'}`}
+                                              >
+                                                  {/* App Icon */}
+                                                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm" style={{ backgroundColor: app.color }}>
+                                                      <app.icon size={16} />
+                                                  </div>
+
+                                                  <span className="flex-1 text-sm font-bold text-slate-700 dark:text-slate-200">
+                                                      {app.label}
+                                                  </span>
+
+                                                  {/* Beautiful Switch Toggle */}
+                                                  <div className="relative inline-flex items-center">
+                                                      <div className={`w-10 h-5 rounded-full transition-colors relative ${!isHidden ? 'bg-sap-primary' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                                                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${!isHidden ? 'right-5.5' : 'right-0.5'}`} />
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                          );
+                                      })}
+                                  </div>
+                              </div>
+                          );
+                      })}
+                  </div>
+
+                  {/* Footer Action Buttons */}
+                  <div className="p-5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center gap-3 justify-between shrink-0">
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <button 
+                            onClick={() => { setHiddenApps([]); localStorage.setItem('sf_hidden_apps', JSON.stringify([])); }}
+                            className="text-xs font-black text-slate-600 dark:text-slate-400 hover:text-sap-primary transition-colors py-2 px-3 cursor-pointer"
+                          >
+                              إظهار كافة التطبيقات
+                          </button>
+                          <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
+                          <button 
+                            onClick={() => {
+                                const allAppsIds = appGroups.flatMap(g => g.apps).map(a => a.id);
+                                // Except basic critical ones
+                                const toHide = allAppsIds.filter(id => !['dashboard', 'products', 'list', 'pos'].includes(id));
+                                setHiddenApps(toHide);
+                                localStorage.setItem('sf_hidden_apps', JSON.stringify(toHide));
+                            }}
+                            className="text-xs font-black text-slate-600 dark:text-slate-400 hover:text-red-500 transition-colors py-2 px-3 cursor-pointer"
+                          >
+                              تبسيط كامل (إبقاء الأساسيات فقط)
+                          </button>
+                      </div>
+                      <button 
+                        onClick={() => setShowCustomizeModal(false)}
+                        className="w-full sm:w-auto px-6 py-2.5 bg-sap-primary hover:bg-sap-primary-hover text-white rounded-xl shadow-lg shadow-sap-primary/20 hover:shadow-sap-primary/35 transition-all text-sm font-bold cursor-pointer"
+                      >
+                          حفظ وإغلاق
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Top Navigation Bar */}
-      <header className="h-[46px] bg-[#1A202C] dark:bg-slate-950 text-white flex items-center justify-between px-3 shrink-0 z-50 shadow-md print:hidden">
-        <div className="flex items-center gap-3">
+      <header className="h-12 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between px-2 shrink-0 z-50 border-b border-white/10 shadow-sm print:hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-sap-primary/10 to-transparent pointer-events-none"></div>
+        <div className="flex items-center gap-2 z-10 w-full overflow-hidden">
           <button 
             onClick={() => setActiveTab('launcher')} 
-            className={`p-1.5 rounded-[4px] transition-colors flex items-center justify-center ${activeTab === 'launcher' ? 'bg-white/20 text-white' : 'hover:bg-white/10 text-white/80'}`}
+            className={`p-2 rounded-lg transition-all flex items-center justify-center shrink-0 ${activeTab === 'launcher' ? 'bg-sap-primary text-white shadow-inner' : 'hover:bg-white/10 text-white/80 hover:text-white'}`}
             title="التطبيقات"
           >
              <Grid size={18}/>
           </button>
           
+          <div className="h-5 w-px bg-white/20 mx-1 shrink-0"></div>
+          
           {/* Tab Bar */}
-          <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar no-scrollbar max-w-[60vw]">
+          <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar no-scrollbar flex-1 pl-4">
               {openApps.map(appId => {
                   const app = flattenApps.find(a => a.id === appId);
                   if (!app) return null;
@@ -618,18 +749,18 @@ const AppContent: React.FC = () => {
                         id={`tab-${appId}`}
                         onClick={() => setActiveTab(appId as any)}
                         className={`
-                            group relative flex items-center gap-2 px-3 py-1.5 rounded-[4px] cursor-pointer transition-all duration-200 select-none border border-transparent
+                            group relative flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-200 select-none border border-transparent shadow-sm shrink-0
                             ${isActive 
-                                ? 'bg-white text-slate-900 shadow-sm font-bold' 
-                                : 'hover:bg-white/10 text-white/70 hover:text-white'
+                                ? 'bg-white text-slate-800 font-bold border-b-2 border-b-sap-primary shadow-[0_2px_10px_rgba(0,0,0,0.1)]' 
+                                : 'bg-white/5 hover:bg-white/15 text-white/70 hover:text-white'
                             }
                         `}
                       >
-                          <app.icon size={14} className={isActive ? 'text-sap-primary' : ''} />
+                          <app.icon size={14} className={isActive ? 'text-sap-primary drop-shadow-sm' : 'opacity-70'} />
                           <span className="text-xs whitespace-nowrap max-w-[120px] truncate">{app.label}</span>
                           <button 
                             onClick={(e) => handleCloseApp(appId, e)}
-                            className={`p-0.5 rounded-full transition-colors ${isActive ? 'hover:bg-gray-200 text-gray-400 hover:text-red-500' : 'opacity-0 group-hover:opacity-100 hover:bg-white/20 text-white/60 hover:text-white'}`}
+                            className={`p-0.5 rounded-full transition-colors ${isActive ? 'hover:bg-red-50 hover:text-red-500 text-gray-400' : 'opacity-0 group-hover:opacity-100 hover:bg-white/20 text-white/60 hover:text-white'}`}
                           >
                               <X size={12} />
                           </button>
@@ -640,7 +771,7 @@ const AppContent: React.FC = () => {
               {openApps.length > 1 && (
                 <button 
                     onClick={() => { setOpenApps([]); setActiveTab('launcher'); }}
-                    className="p-1.5 hover:bg-red-500/20 hover:text-red-400 text-white/20 rounded-md transition-colors ml-2"
+                    className="p-1.5 hover:bg-red-500/20 hover:text-red-400 text-white/30 rounded-lg transition-colors mx-1 shrink-0"
                     title="إغلاق الكل"
                 >
                     <Trash2 size={14} />
@@ -651,30 +782,30 @@ const AppContent: React.FC = () => {
 
         {/* Center Search (Fake Odoo Search) */}
         {activeTab === 'launcher' && (
-            <div className="hidden md:flex flex-1 max-w-lg mx-auto">
-                <button onClick={() => setShowCmdPalette(true)} className="w-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white py-1.5 px-4 rounded-[6px] text-xs flex items-center justify-between transition-all group border border-transparent hover:border-white/10">
-                    <span className="flex items-center gap-2"><Search size={12}/> ابحث...</span>
-                    <span className="bg-black/20 px-1.5 rounded text-[10px] font-mono opacity-50 group-hover:opacity-100">Ctrl+K</span>
+            <div className="hidden md:flex flex-1 max-w-sm absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-full px-4">
+                <button onClick={() => setShowCmdPalette(true)} className="w-full bg-black/20 hover:bg-black/40 text-white/60 hover:text-white py-1.5 px-4 rounded-lg text-xs flex items-center justify-between transition-all group shadow-inner border border-white/5 hover:border-white/20">
+                    <span className="flex items-center gap-2"><Search size={14}/> <span>ابحث في النظام...</span></span>
+                    <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-mono opacity-50 group-hover:opacity-100">Ctrl+K</span>
                 </button>
             </div>
         )}
 
-        <div className="flex items-center gap-2 text-xs font-bold">
-          <button onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white flex items-center gap-1" title="تغيير اللغة">
+        <div className="flex items-center gap-1.5 text-xs font-bold shrink-0 z-10 pl-2">
+          <button onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white flex items-center gap-1 hidden sm:flex" title="تغيير اللغة">
               <Languages size={16}/>
               <span className="text-[10px] uppercase">{language}</span>
           </button>
 
-          <button onClick={() => setShowShortcuts(true)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="اختصارات لوحة المفاتيح">
+          <button onClick={() => setShowShortcuts(true)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white hidden sm:block" title="اختصارات لوحة المفاتيح">
               <Keyboard size={16}/>
           </button>
           
-          <button onClick={toggleFullScreen} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="ملء الشاشة">
+          <button onClick={toggleFullScreen} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white hidden sm:block" title="ملء الشاشة">
               <Monitor size={16}/>
           </button>
 
-          <div className="relative">
-            <button onClick={() => setShowThemePicker(!showThemePicker)} className={`p-1.5 rounded-[4px] transition-colors ${showThemePicker ? 'bg-white text-sap-primary' : 'hover:bg-white/10 text-white/80 hover:text-white'}`} title="تغيير ثيم النظام">
+          <div className="relative hidden sm:block">
+            <button onClick={() => setShowThemePicker(!showThemePicker)} className={`p-1.5 rounded-lg transition-colors ${showThemePicker ? 'bg-white text-sap-primary shadow-inner' : 'hover:bg-white/10 text-white/70 hover:text-white'}`} title="تغيير ثيم النظام">
                 <Palette size={16}/>
             </button>
             {showThemePicker && (
@@ -698,21 +829,21 @@ const AppContent: React.FC = () => {
             )}
           </div>
 
-          <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 rounded-[4px] hover:bg-white/10 transition-colors text-white/80 hover:text-white" title="الوضع الليلي">
+          <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white hidden sm:block" title="الوضع الليلي">
               {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
           </button>
 
-          <button onClick={() => setShowCalculator(!showCalculator)} className={`p-1.5 rounded-[4px] transition-colors ${showCalculator ? 'bg-white text-sap-primary' : 'hover:bg-white/10 text-white/80 hover:text-white'}`} title="الآلة الحاسبة">
+          <button onClick={() => setShowCalculator(!showCalculator)} className={`p-1.5 rounded-lg transition-colors hidden sm:block ${showCalculator ? 'bg-sap-primary text-white' : 'hover:bg-white/10 text-white/70 hover:text-white'}`} title="الآلة الحاسبة">
               <Calculator size={16}/>
           </button>
           
-          <div className="h-4 w-px bg-white/20 mx-1"></div>
+          <div className="h-5 w-px bg-white/20 mx-1 hidden sm:block"></div>
 
-          <button onClick={() => setActiveTab('user_profile')} className="flex items-center gap-2 px-2 py-1 rounded-[4px] hover:bg-white/10 transition-all group">
-             <div className="w-6 h-6 rounded-full flex items-center justify-center text-white font-black text-[10px] border border-white/20" style={{ backgroundColor: COLORS.GOLD }}>
+          <button onClick={() => setActiveTab('user_profile')} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-all group ml-1">
+             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-[10px] border border-white/20 shadow-sm" style={{ backgroundColor: COLORS.GOLD }}>
                  {currentUser.fullName.charAt(0)}
              </div>
-             <span className="hidden sm:inline text-white/90 group-hover:text-white">{currentUser.fullName}</span>
+             <span className="hidden sm:inline text-white/90 group-hover:text-white text-sm font-bold pl-1">{currentUser.fullName}</span>
           </button>
         </div>
       </header>

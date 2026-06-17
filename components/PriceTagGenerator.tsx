@@ -1429,34 +1429,34 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       {/* Main Canvas */}
       <main className="flex-1 flex flex-col overflow-hidden relative print:hidden">
-        <div className="min-h-16 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between px-6 py-3 shrink-0 z-20 shadow-sm relative gap-4">
+        <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 flex flex-wrap items-center justify-between px-6 py-4 shrink-0 z-20 shadow-sm relative gap-4 rounded-b-2xl mx-2">
             
             {/* Left Group: Project Management */}
             <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
-                    <div className="bg-white shadow-sm border border-gray-100 p-1.5 rounded-md">
-                        <LayoutGrid size={18} className="text-sap-primary"/>
+                <div className="flex items-center gap-2 bg-gray-50/80 p-2 rounded-xl border border-gray-200/60 focus-within:border-sap-primary/40 focus-within:bg-white focus-within:shadow-md transition-all group">
+                    <div className="bg-white shadow-sm border border-gray-100 p-2 rounded-lg text-gray-400 group-focus-within:text-sap-primary transition-colors">
+                        <LayoutGrid size={18}/>
                     </div>
-                    <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="bg-transparent border-none text-sm w-40 sm:w-56 focus:ring-0 font-bold text-gray-700 placeholder-gray-400" placeholder="اسم المشروع..." />
+                    <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="bg-transparent border-none text-sm w-40 sm:w-64 focus:ring-0 font-bold text-gray-800 placeholder-gray-400 py-1" placeholder="اسم المشروع..." />
                 </div>
                 
-                <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-100 shadow-inner">
-                    <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center gap-2 px-4 py-1.5 bg-white text-gray-800 rounded-md shadow-sm border border-gray-200 hover:border-sap-primary hover:text-sap-primary transition-all text-xs font-bold" title="حفظ المشروع">
-                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
-                        <span className="hidden lg:inline">حفظ</span>
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                    <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-sap-primary hover:bg-sap-highlight/20 rounded-lg transition-all text-sm font-bold" title="حفظ المشروع">
+                        {isSaving ? <Loader2 size={18} className="animate-spin text-sap-primary" /> : <Save size={18} className="text-gray-500 hover:text-sap-primary"/>}
+                        <span className="hidden lg:inline">حفظ المشروع</span>
                     </button>
-                    <div className="w-px bg-gray-200 mx-1"></div>
-                    <button onClick={() => setShowSavedLists(true)} className="flex items-center gap-2 px-4 py-1.5 text-gray-600 hover:text-sap-primary hover:bg-white rounded-md transition-all text-xs font-bold" title="فتح مشروع">
-                        <FolderOpen size={16}/>
-                        <span className="hidden lg:inline">فتح</span>
+                    <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                    <button onClick={() => setShowSavedLists(true)} className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-sap-primary hover:bg-sap-highlight/20 rounded-lg transition-all text-sm font-bold" title="فتح مشروع">
+                        <FolderOpen size={18} className="text-gray-500 hover:text-sap-primary"/>
+                        <span className="hidden lg:inline">الأرشيف</span>
                     </button>
                 </div>
             </div>
 
             {/* Center Group: Tag Actions */}
             {selectedTags.length > 0 && (
-                <div className="flex-1 flex justify-center order-last lg:order-none w-full lg:w-auto mt-2 lg:mt-0">
-                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+                <div className="flex-1 flex justify-center order-last xl:order-none w-full xl:w-auto mt-2 xl:mt-0">
+                    <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm overflow-x-auto ring-1 ring-black/5">
                         <button 
                             onClick={() => {
                                 if (activeTagIds.length === selectedTags.length) {
@@ -1465,12 +1465,12 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     setActiveTagIds(selectedTags.map(t => t.id));
                                 }
                             }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap ${activeTagIds.length === selectedTags.length ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap ${activeTagIds.length === selectedTags.length ? 'bg-indigo-50 text-indigo-700 shadow-inner ring-1 ring-indigo-100' : 'hover:bg-gray-50 text-gray-600'}`}
                         >
-                            <CheckCircle2 size={16}/>
-                            <span>{activeTagIds.length === selectedTags.length ? "إلغاء التحديد" : "تحديد الكل"}</span>
+                            <CheckCircle2 size={16} className={activeTagIds.length === selectedTags.length ? "text-indigo-600" : "text-gray-400"}/>
+                            <span className="hidden sm:inline">{activeTagIds.length === selectedTags.length ? "إلغاء التحديد" : "تحديد الكل"}</span>
                         </button>
-                        
+
                         <div className="w-px h-6 bg-gray-200 mx-1"></div>
 
                         <button 
@@ -1486,10 +1486,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     }
                                 });
                             }} 
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap text-red-600 hover:bg-red-50"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-red-600 hover:bg-red-50"
                         >
                             <Trash2 size={16}/>
-                            <span className="hidden sm:inline">مسح الصفحة</span>
+                            <span className="hidden sm:inline">تفريغ الصفحة</span>
                         </button>
 
                         {activeTagIds.length === 1 && (
@@ -1506,10 +1506,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                             addToast("الصفحة ممتلئة", "warning");
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap text-blue-600 hover:bg-blue-50 animate-in fade-in"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-blue-600 hover:bg-blue-50 animate-in fade-in"
                                 >
                                     <Copy size={16}/>
-                                    <span>تكرار</span>
+                                    <span className="hidden sm:inline">نسخ الملصق</span>
                                 </button>
                                 <button 
                                     onClick={() => {
@@ -1525,10 +1525,10 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                             }
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-xs font-bold whitespace-nowrap text-green-600 hover:bg-green-50 animate-in fade-in"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-emerald-600 hover:bg-emerald-50 animate-in fade-in"
                                 >
                                     <LayoutGrid size={16}/>
-                                    <span>تعبئة الصفحة</span>
+                                    <span className="hidden sm:inline">تعبئة الشواغر</span>
                                 </button>
                             </>
                         )}
@@ -1538,15 +1538,15 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
             {/* Right Group: View & Print Output */}
             <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 bg-white border border-gray-200 p-1.5 rounded-lg shadow-sm">
-                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-1 hover:bg-gray-100 rounded-md text-gray-500 transition-colors" title="تصغير المنتصف"><ZoomOut size={16}/></button>
-                    <span className="text-xs font-black w-10 text-center font-mono text-gray-700">{globalStyles.previewZoom}%</span>
-                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="p-1 hover:bg-gray-100 rounded-md text-gray-500 transition-colors" title="تكبير المنتصف"><ZoomIn size={16}/></button>
+                <div className="flex items-center gap-1 bg-gray-50 border border-gray-200/60 p-1.5 rounded-xl shadow-sm">
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-gray-500 transition-all" title="تصغير"><ZoomOut size={16}/></button>
+                    <span className="text-sm font-black w-12 text-center font-mono text-gray-700">{globalStyles.previewZoom}%</span>
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-gray-500 transition-all" title="تكبير"><ZoomIn size={16}/></button>
                 </div>
                 
-                <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2.5 bg-sap-primary text-white rounded-lg hover:bg-sap-primary-hover shadow-lg shadow-sap-primary/20 transition-all text-sm font-black tracking-wide shrink-0">
-                    <Printer size={18}/> 
-                    <span className="hidden sm:inline">طباعة</span>
+                <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sap-primary to-sap-primary-hover text-white rounded-xl hover:shadow-lg hover:shadow-sap-primary/30 transition-all text-sm font-black tracking-wide shrink-0 border border-sap-primary-hover border-b-4 active:border-b-0 active:translate-y-1">
+                    <Printer size={20} strokeWidth={2.5}/> 
+                    <span className="hidden sm:inline">طباعة الصفحة</span>
                 </button>
             </div>
         </div>

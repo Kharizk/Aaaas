@@ -3,6 +3,23 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 
+function getFriendlyErrorMessage(error: any): string {
+  const msg = error?.message || "";
+  const errorStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
+  const combined = (msg + " " + errorStr).toLowerCase();
+
+  if (combined.includes("503") || combined.includes("unavailable") || combined.includes("high demand") || combined.includes("service_unavailable")) {
+    return "خوادم الذكاء الاصطناعي تواجه حالياً ضغطاً عالياً كبيراً (503 Service Unavailable). هذا الضغط مؤقت ومجرد بضع ثوانٍ وسيعود للعمل بشكل طبيعي. يرجى المحاولة مرة أخرى الآن.";
+  }
+  if (combined.includes("429") || combined.includes("exhausted") || combined.includes("quota") || combined.includes("rate_limit")) {
+    return "تم تجاوز حصة الاستخدام المسموح بها لخادم الذكاء الاصطناعي حالياً. يرجى المحاولة مجدداً بعد دقيقة.";
+  }
+  if (combined.includes("api key") || combined.includes("apikey")) {
+    return "مفتاح الـ API للذكاء الاصطناعي (GEMINI_API_KEY) الخاص بك غير صالح أو مفقود. يرجى مراجعة إعدادات تطبيقك.";
+  }
+  return error.message || "حدث خطأ غير متوقع أثناء معالجة الطلب بالذكاء الاصطناعي.";
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -61,7 +78,7 @@ async function startServer() {
       res.json({ text, candidates: response.candidates });
     } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: error.message || 'Internal Server Error' });
+      res.status(500).json({ error: getFriendlyErrorMessage(error) });
     }
   });
 
@@ -99,7 +116,7 @@ async function startServer() {
       res.json({ text });
     } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: error.message || 'Internal Server Error' });
+      res.status(500).json({ error: getFriendlyErrorMessage(error) });
     }
   });
 
@@ -131,7 +148,7 @@ async function startServer() {
       res.json({ base64Image });
     } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: error.message || 'Internal Server Error' });
+      res.status(500).json({ error: getFriendlyErrorMessage(error) });
     }
   });
 
@@ -150,8 +167,8 @@ async function startServer() {
                   code: { type: Type.STRING, description: "The product code, SKU, or barcode if visible." },
                   category: { type: Type.STRING, description: "The classification or category of the product (القسم / التصنيف)." },
                   name: { type: Type.STRING, description: "The full name or description of the product/item (اسم الصنف / اسم المنتج / البيان). MUST NOT be empty." },
-                  cartonQty: { type: Type.NUMBER, description: "The quantity in cartons/boxes (كمية الكرتون) if explicitly specified." },
-                  qty: { type: Type.NUMBER, description: "The quantity in pieces/units (الكمية/الحبة). Must be a number." },
+                  cartonQty: { type: Type.NUMBER, description: "The quantity in cartons/boxes (الكمية كرتون / كرتون / الكرتون). NEVER put this value in the 'qty' field." },
+                  qty: { type: Type.NUMBER, description: "The quantity in individual pieces/units (الكمية حبة / حبة / الفردي / عدد). If cartonQty was set, qty handles the remaining pieces if available." },
                   unit: { type: Type.STRING, description: "The unit of measure (e.g., PCS, KG, BOX) if available." },
                   expiryDate: { type: Type.STRING, description: "Expiry date in YYYY-MM-DD format if available." },
                   price: { type: Type.NUMBER, description: "Unit price if available." }
@@ -160,13 +177,23 @@ async function startServer() {
           }
       };
 
+      const promptInstruction = `Extract inventory items with high accuracy from the provided PDF or image.
+Pay close attention to quantities:
+- Identify if there is a "Carton Quantity" (الكمية كرتون، كرتون، كرتونة, Ctn, Carton, Box, صناديق) column or field.
+- Identify if there is a "Piece / Unit Quantity" (الكمية حبة، حبة، حبه، فردي، قطعة، العدد, Pcs, Qty, Pcs Qty, الكمية) column or field.
+- CRITICAL RULE: Set the extracted Carton quantity strictly in the "cartonQty" field. Keep individual pieces or general piece quantity in the "qty" field. Do NOT write carton quantities into the "qty" field. If the item's quantity represents cartons, it must go into "cartonQty".
+- Clean and map names and categories accurately. If names are in Arabic, keep them in Arabic.
+- If code, bar-code, or SKU is visible, capture it into the "code" field.
+- Exclude summary totals or headers; only extract row items of the inventory list.
+- Return strict JSON matching the schema.`;
+
       const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: [
               {
                   parts: [
                       { 
-                          text: `Extract inventory items. Return strict JSON. If qty missing use 0. If code missing use empty string. Use arabic text for name if it's in Arabic.` 
+                          text: promptInstruction 
                       },
                       { inlineData: { mimeType, data: base64Data } }
                   ]
@@ -181,7 +208,7 @@ async function startServer() {
       res.json({ text: response.text });
     } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: error.message || 'Internal Server Error' });
+      res.status(500).json({ error: getFriendlyErrorMessage(error) });
     }
   });
 

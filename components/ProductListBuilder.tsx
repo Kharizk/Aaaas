@@ -307,103 +307,109 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     try {
         const reader = new FileReader();
         reader.onloadend = async () => {
-            const result = reader.result as string;
-            const base64Data = result.split(',')[1];
-            
-            setScanStep('تحليل المستند بالذكاء الاصطناعي...');
-            
-            const response = await fetch('/api/upload-inventory-scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ base64Data, mimeType: file.type })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Failed to process image');
-            }
-
-            const data = await response.json();
-            const text = data.text;
-
-            setScanStep('معالجة البيانات...');
-            
-            let extractedData: any[] = [];
             try {
-                const textOutput = text || '[]';
-                // Try JSON.parse on the cleaned format
-                extractedData = JSON.parse(textOutput.replace(/```json|```/g, '').trim());
-            } catch (e) {
-                console.error("Failed to parse JSON response:", e);
-            }
-            
-            if (Array.isArray(extractedData) && extractedData.length > 0) {
-                const foundNewProducts: Product[] = [];
-                const processedRows: ListRow[] = extractedData.map((item: any) => {
-                    const extractedCode = item.code ? String(item.code).trim() : '';
-                    const rawNameText = item.name || item.category || '';
-                    const extractedName = rawNameText ? String(rawNameText).trim() : 'UNKNOWN';
-                    
-                    const existingProduct = products.find(p => 
-                        (extractedCode && p.code === extractedCode) || 
-                        p.name.toLowerCase() === extractedName.toLowerCase()
-                    );
-                    
-                    const finalName = existingProduct ? existingProduct.name : extractedName;
-                    let finalUnitId = existingProduct ? existingProduct.unitId : '';
-                    
-                    if (!finalUnitId && item.unit) {
-                            finalUnitId = units.find(u => u.name.includes(item.unit) || item.unit?.includes(u.name))?.id || '';
-                    }
-
-                    if (!existingProduct && extractedName && extractedName !== 'UNKNOWN') {
-                        if (!foundNewProducts.some(np => np.name === extractedName)) {
-                            foundNewProducts.push({
-                                id: crypto.randomUUID(),
-                                code: extractedCode || `AUTO-${Math.floor(Math.random() * 10000)}`,
-                                name: extractedName,
-                                category: item.category ? String(item.category).trim() : undefined,
-                                unitId: finalUnitId || '',
-                                price: item.price ? String(item.price) : '0',
-                                color: '#ffffff'
-                            });
-                        }
-                    }
-
-                    return {
-                        id: generateId(),
-                        code: extractedCode,
-                        name: finalName,
-                        category: existingProduct ? existingProduct.category : (item.category ? String(item.category).trim() : undefined),
-                        unitId: finalUnitId,
-                        qty: Number(item.qty) || '',
-                        cartonQty: Number(item.cartonQty) || '',
-                        expiryDate: item.expiryDate || '',
-                        note: '',
-                        isDismissed: false
-                    };
+                const result = reader.result as string;
+                const base64Data = result.split(',')[1];
+                
+                setScanStep('تحليل المستند بالذكاء الاصطناعي...');
+                
+                const response = await fetch('/api/upload-inventory-scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base64Data, mimeType: file.type })
                 });
 
-                setTempExtractedRows(processedRows);
-
-                if (foundNewProducts.length > 0) {
-                    setPendingProducts(foundNewProducts);
-                    setSelectedPendingIds(new Set(foundNewProducts.map(p => p.id)));
-                    setShowNewItemsModal(true);
-                    setIsScanning(false); 
-                    return;
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'Failed to process image');
                 }
 
-                setRows(prev => {
-                    const cleanPrev = prev.filter(r => r.name.trim() !== '');
-                    return [...cleanPrev, ...processedRows, createEmptyRow()];
-                });
-                alert(`تم استخراج ${processedRows.length} صنف.`);
+                const data = await response.json();
+                const text = data.text;
+
+                setScanStep('معالجة البيانات...');
                 
-            } else {
-                alert("لم يتم العثور على بيانات في الصورة.");
+                let extractedData: any[] = [];
+                try {
+                    const textOutput = text || '[]';
+                    // Try JSON.parse on the cleaned format
+                    extractedData = JSON.parse(textOutput.replace(/```json|```/g, '').trim());
+                } catch (e) {
+                    console.error("Failed to parse JSON response:", e);
+                }
+                
+                if (Array.isArray(extractedData) && extractedData.length > 0) {
+                    const foundNewProducts: Product[] = [];
+                    const processedRows: ListRow[] = extractedData.map((item: any) => {
+                        const extractedCode = item.code ? String(item.code).trim() : '';
+                        const rawNameText = item.name || item.category || '';
+                        const extractedName = rawNameText ? String(rawNameText).trim() : 'UNKNOWN';
+                        
+                        const existingProduct = products.find(p => 
+                            (extractedCode && p.code === extractedCode) || 
+                            p.name.toLowerCase() === extractedName.toLowerCase()
+                        );
+                        
+                        const finalName = existingProduct ? existingProduct.name : extractedName;
+                        let finalUnitId = existingProduct ? existingProduct.unitId : '';
+                        
+                        if (!finalUnitId && item.unit) {
+                            finalUnitId = units.find(u => u.name.includes(item.unit) || item.unit?.includes(u.name))?.id || '';
+                        }
+
+                        if (!existingProduct && extractedName && extractedName !== 'UNKNOWN') {
+                            if (!foundNewProducts.some(np => np.name === extractedName)) {
+                                foundNewProducts.push({
+                                    id: crypto.randomUUID(),
+                                    code: extractedCode || `AUTO-${Math.floor(Math.random() * 10000)}`,
+                                    name: extractedName,
+                                    category: item.category ? String(item.category).trim() : undefined,
+                                    unitId: finalUnitId || '',
+                                    price: item.price ? String(item.price) : '0',
+                                    color: '#ffffff'
+                                });
+                            }
+                        }
+
+                        return {
+                            id: generateId(),
+                            code: extractedCode,
+                            name: finalName,
+                            category: existingProduct ? existingProduct.category : (item.category ? String(item.category).trim() : undefined),
+                            unitId: finalUnitId,
+                            qty: (item.qty !== undefined && item.qty !== null && item.qty !== '' && !isNaN(Number(item.qty))) ? Number(item.qty) : '',
+                            cartonQty: (item.cartonQty !== undefined && item.cartonQty !== null && item.cartonQty !== '' && !isNaN(Number(item.cartonQty))) ? Number(item.cartonQty) : '',
+                            expiryDate: item.expiryDate || '',
+                            note: '',
+                            isDismissed: false
+                        };
+                    });
+
+                    setTempExtractedRows(processedRows);
+
+                    if (foundNewProducts.length > 0) {
+                        setPendingProducts(foundNewProducts);
+                        setSelectedPendingIds(new Set(foundNewProducts.map(p => p.id)));
+                        setShowNewItemsModal(true);
+                        setIsScanning(false); 
+                        return;
+                    }
+
+                    setRows(prev => {
+                        const cleanPrev = prev.filter(r => r.name.trim() !== '');
+                        return [...cleanPrev, ...processedRows, createEmptyRow()];
+                    });
+                    alert(`تم استخراج ${processedRows.length} صنف.`);
+                    
+                } else {
+                    alert("لم يتم العثور على بيانات في الصورة.");
+                }
+            } catch (err: any) {
+                console.error("Smart Scan Error in onloadend:", err);
+                alert(err.message || "خطأ في خدمة الذكاء الاصطناعي");
+            } finally {
+                setIsScanning(false);
             }
-            setIsScanning(false);
         };
         reader.readAsDataURL(file);
     } catch (error) {
@@ -587,42 +593,42 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
       <PrintView />
       
       {/* Compact & Modern Unified Toolbar */}
-      <div className="bg-white border border-gray-200 p-2 rounded-2xl shadow-sm flex flex-col xl:flex-row justify-between items-center gap-3">
+      <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 px-6 py-4 flex flex-col xl:flex-row justify-between items-center gap-4 rounded-b-2xl mx-2 shadow-sm shrink-0 z-20 sticky top-0">
           {/* Left: Document Info */}
-          <div className="flex items-center gap-3 w-full xl:w-auto p-1 bg-gray-50/50 rounded-xl">
+          <div className="flex items-center gap-3 w-full xl:w-auto p-1 bg-gray-50/80 rounded-xl border border-gray-200/60 focus-within:border-sap-primary/40 focus-within:bg-white focus-within:shadow-md transition-all group">
               <button 
                 onClick={() => setListType(prev => prev === 'inventory' ? 'receipt' : 'inventory')}
-                className={`p-2 rounded-lg transition-all border shadow-sm ${listType === 'inventory' ? 'bg-white text-blue-600 border-blue-200' : 'bg-white text-amber-600 border-amber-200'}`}
+                className={`p-2.5 rounded-lg transition-all border shadow-sm ${listType === 'inventory' ? 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50' : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'}`}
                 title={listType === 'inventory' ? 'تحويل لسند استلام' : 'تحويل لقائمة جرد'}
               >
-                  {listType === 'inventory' ? <ClipboardList size={18}/> : <Truck size={18}/>}
+                  {listType === 'inventory' ? <ClipboardList size={20}/> : <Truck size={20}/>}
               </button>
               
-              <div className="flex-1 min-w-[200px]">
+              <div className="flex-1 min-w-[220px]">
                   <input 
                     type="text" 
                     value={listName} 
                     onChange={e => setListName(e.target.value)} 
                     placeholder="اسم القائمة..." 
-                    className="w-full text-xs font-black bg-transparent border-none focus:ring-0 px-2 py-1 transition-colors placeholder:text-gray-400" 
+                    className="w-full text-sm font-bold text-gray-800 bg-transparent border-none focus:ring-0 px-2 py-1 transition-colors placeholder:text-gray-400" 
                   />
-                  <div className="text-[9px] text-gray-400 font-bold px-2 flex items-center gap-2">
+                  <div className="text-[10px] text-gray-400 font-bold px-2 flex items-center gap-2">
                       <span>{listType === 'inventory' ? 'جرد مخزون' : 'سند استلام'}</span>
                       <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                       <input 
                         type="date" 
                         value={listDate} 
                         onChange={e => setListDate(e.target.value)} 
-                        className="bg-transparent border-none p-0 text-[9px] font-mono text-gray-500 focus:ring-0"
+                        className="bg-transparent border-none p-0 text-[10px] font-mono text-gray-500 focus:ring-0 font-bold"
                       />
                   </div>
               </div>
           </div>
           
           {/* Middle: Quick Local Search/Scan */}
-          <div className="flex-1 w-full max-w-md mx-4 relative hidden md:block">
-              <div className="flex items-center bg-gray-100 border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-sap-primary/20 focus-within:border-sap-primary transition-all shadow-inner">
-                  <div className="pl-3 pr-4 text-gray-400"><Target size={16}/></div>
+          <div className="flex-1 w-full max-w-lg mx-4 relative hidden md:block">
+              <div className="flex items-center bg-gray-50/80 border border-gray-200/60 rounded-xl focus-within:ring-2 focus-within:ring-sap-primary/20 focus-within:border-sap-primary focus-within:bg-white transition-all shadow-sm group">
+                  <div className="pl-3 pr-4 text-gray-400 group-focus-within:text-sap-primary transition-colors"><Target size={18}/></div>
                   <input 
                       ref={scanInputRef}
                       type="text" 
@@ -630,47 +636,47 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       onChange={e => setLocalScanQuery(e.target.value)}
                       onKeyDown={handleLocalScan}
                       placeholder="F9 للبحث السريع وتعديل الكمية..." 
-                      className="w-full bg-transparent border-none py-2.5 text-xs font-black placeholder-gray-400 focus:ring-0"
+                      className="w-full bg-transparent border-none py-3 text-sm font-bold text-gray-800 placeholder-gray-400 focus:ring-0"
                   />
-                  <div className="pl-2 pr-2 flex gap-1">
-                      <div className="text-[9px] bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-400 font-bold hidden xl:block">F9</div>
+                  <div className="pl-3 pr-2 flex gap-1">
+                      <div className="text-[10px] bg-white border border-gray-200 px-2.5 py-1 rounded-md text-gray-400 font-bold hidden xl:block shadow-sm">F9</div>
                   </div>
               </div>
           </div>
 
-          {/* Right: Actions */}
+           {/* Right: Actions */}
           <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-end">
                 
                 {/* 1. File Actions */}
-                <div className="flex gap-1 p-1 bg-gray-50 rounded-xl border border-gray-100">
-                    <button onClick={() => { setActiveListId(null); setRows([createEmptyRow()]); setListName(''); }} className="p-2 text-gray-500 hover:text-red-500 hover:bg-white rounded-lg transition-all" title="جديد">
-                        <Eraser size={16}/>
+                <div className="flex gap-1 p-1 bg-white rounded-xl border border-gray-200 shadow-sm">
+                    <button onClick={() => { setActiveListId(null); setRows([createEmptyRow()]); setListName(''); }} className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="جديد">
+                        <Eraser size={18}/>
                     </button>
-                    <button onClick={() => { fetchSavedLists(); setShowSavedLists(true); }} className="p-2 text-gray-500 hover:text-sap-primary hover:bg-white rounded-lg transition-all" title="الأرشيف">
-                        <FolderOpen size={16}/>
+                    <button onClick={() => { fetchSavedLists(); setShowSavedLists(true); }} className="p-2 text-gray-500 hover:text-sap-primary hover:bg-sap-highlight/20 rounded-lg transition-all" title="الأرشيف">
+                        <FolderOpen size={18}/>
                     </button>
                 </div>
 
                 {/* 2. Import Tools */}
-                <div className="flex gap-1 p-1 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex gap-1 p-1 bg-white rounded-xl border border-gray-200 shadow-sm items-center">
                     <input type="file" ref={excelInputRef} onChange={handleExcelImport} accept=".xlsx, .xls" className="hidden" />
-                    <button onClick={() => excelInputRef.current?.click()} className="p-2 text-green-600 hover:bg-white rounded-lg transition-all flex items-center gap-2" title="استيراد Excel">
-                        <FileSpreadsheet size={16}/> 
+                    <button onClick={() => excelInputRef.current?.click()} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all flex items-center gap-2 font-bold" title="استيراد Excel">
+                        <FileSpreadsheet size={18}/> 
                     </button>
                     <input type="file" ref={fileInputRef} onChange={handleSmartScan} accept="image/*, application/pdf" className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} disabled={isScanning} className="p-2 text-indigo-600 hover:bg-white rounded-lg transition-all flex items-center gap-2" title="مسح ذكي AI">
-                        {isScanning ? <Loader2 size={16} className="animate-spin"/> : <ScanLine size={16}/>}
+                    <button onClick={() => fileInputRef.current?.click()} disabled={isScanning} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-2 font-bold" title="مسح ذكي AI">
+                        {isScanning ? <Loader2 size={18} className="animate-spin"/> : <ScanLine size={18}/>}
                     </button>
-                    <div className="w-px h-6 bg-gray-200 self-center"></div>
-                    <button onClick={generateInventoryTemplate} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-all" title="تحميل نموذج">
-                        <Download size={16}/>
+                    <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                    <button onClick={generateInventoryTemplate} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all" title="تحميل نموذج">
+                        <Download size={18}/>
                     </button>
                 </div>
 
                 {/* 3. Main Actions */}
                 <div className="flex gap-2 items-center relative">
-                    <button onClick={() => setShowPrintSettings(!showPrintSettings)} className="px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2">
-                        <SlidersHorizontal size={16}/> <span className="hidden sm:inline">إعدادات الطباعة</span>
+                    <button onClick={() => setShowPrintSettings(!showPrintSettings)} className="px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2">
+                        <SlidersHorizontal size={18}/> <span className="hidden sm:inline">الإعدادات</span>
                     </button>
                     
                     {showPrintSettings && (
@@ -734,11 +740,11 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                         </div>
                     )}
 
-                    <button onClick={() => window.print()} className="px-4 py-2 bg-gray-800 text-white rounded-xl text-xs font-black hover:bg-black transition-all shadow-sm flex items-center gap-2">
-                        <Printer size={16}/> <span className="hidden sm:inline">طباعة</span>
+                    <button onClick={() => window.print()} className="px-4 py-2 bg-gray-100 text-gray-800 border border-gray-200 rounded-xl text-sm font-black hover:bg-gray-200 transition-all shadow-sm flex items-center gap-2">
+                        <Printer size={18}/> <span className="hidden sm:inline">طباعة</span>
                     </button>
-                    <button onClick={handleSave} disabled={isSaving} className="px-5 py-2 bg-sap-primary text-white rounded-xl text-xs font-black hover:bg-sap-primary-hover transition-all shadow-md active:scale-95 flex items-center gap-2">
-                        {isSaving ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>} <span>حفظ</span>
+                    <button onClick={handleSave} disabled={isSaving} className="px-6 py-2.5 bg-gradient-to-r from-sap-primary to-sap-primary-hover text-white rounded-xl text-sm font-black hover:shadow-lg hover:shadow-sap-primary/30 active:scale-95 transition-all shrink-0 border border-sap-primary-hover border-b-4 active:border-b-0 active:translate-y-1 flex items-center gap-2">
+                        {isSaving ? <Loader2 size={18} className="animate-spin"/> : <Save size={18} strokeWidth={2.5}/>} <span>حفظ السند</span>
                     </button>
                 </div>
           </div>
@@ -748,18 +754,18 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
       <div className="flex-1 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col relative">
         <div className="overflow-auto custom-scrollbar flex-1 bg-gray-50/30">
           <table className="w-full text-right text-xs">
-            <thead className="bg-white sticky top-0 z-10 shadow-sm">
-              <tr className="text-gray-500 font-black border-b border-gray-200 text-[11px] uppercase">
+            <thead className="bg-gray-50/80 sticky top-0 z-10">
+              <tr className="text-gray-500 font-bold border-b border-gray-100 text-[11px] uppercase tracking-wider backdrop-blur-md">
                 <th className="p-4 w-12 text-center">#</th>
-                {visibleColumns.code && <th className="p-4 w-40">كود الصنف</th>}
-                {visibleColumns.name && <th className="p-4">اسم المنتج / الوصف</th>}
+                {visibleColumns.code && <th className="p-4 w-40 text-right">كود الصنف</th>}
+                {visibleColumns.name && <th className="p-4 text-right">اسم المنتج / الوصف</th>}
                 {visibleColumns.cartonQty && <th className="p-4 w-28 text-center">كمية الكرتون</th>}
                 {visibleColumns.qty && <th className="p-4 w-28 text-center">الكمية</th>}
-                {visibleColumns.unit && <th className="p-4 w-32">الوحدة</th>}
-                {visibleColumns.expiry && <th className="p-4 w-32">الصلاحية</th>}
-                {visibleColumns.note && <th className="p-4 w-40">ملاحظات</th>}
+                {visibleColumns.unit && <th className="p-4 w-36 text-right">الوحدة</th>}
+                {visibleColumns.expiry && <th className="p-4 w-36 text-right">الصلاحية</th>}
+                {visibleColumns.note && <th className="p-4 w-40 text-right">ملاحظات</th>}
                 {customColumns.map(col => (
-                    <th key={col.id} className="p-4 w-32">{col.name}</th>
+                    <th key={col.id} className="p-4 w-32 text-right">{col.name}</th>
                 ))}
                 <th className="p-4 w-14"></th>
               </tr>
@@ -769,13 +775,13 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 <tr 
                   id={`row-${row.id}`}
                   key={row.id} 
-                  className={`group transition-colors duration-500 ${highlightedRowId === row.id ? 'bg-yellow-100 shadow-inner' : 'hover:bg-blue-50/30'}`}
+                  className={`group transition-all duration-300 hover:bg-sap-primary/5 ${highlightedRowId === row.id ? 'bg-yellow-50 shadow-inner' : ''}`}
                 >
-                  <td className="p-4 text-center text-gray-400 font-mono font-bold">{idx + 1}</td>
+                  <td className="p-4 text-center text-gray-400 font-mono font-bold text-xs">{idx + 1}</td>
                   
                   {/* Code */}
                   {visibleColumns.code && <td className="p-3 relative">
-                    <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg focus-within:border-sap-primary focus-within:ring-2 focus-within:ring-sap-primary/10 transition-all">
+                    <div className="flex items-center bg-gray-50/50 border border-gray-200/60 rounded-xl focus-within:border-sap-primary/40 focus-within:ring-2 focus-within:ring-sap-primary/10 focus-within:bg-white transition-all shadow-sm">
                         <div className="pl-2 pr-3 text-gray-400"><Barcode size={14}/></div>
                         <input 
                           id={`code-${row.id}`} type="text" value={row.code} 
@@ -786,15 +792,15 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                             setActiveSearch({ rowId: row.id, field: 'code' });
                             setSearchTerm(val);
                           }}
-                          className="w-full bg-transparent border-none p-2.5 font-mono font-black text-sap-primary placeholder-gray-300 text-sm focus:ring-0"
+                          className="w-full bg-transparent border-none py-2 text-sap-primary placeholder-gray-300 text-sm font-mono font-black focus:ring-0 outline-none"
                           placeholder="SCAN" autoComplete="off"
                         />
                     </div>
                     {activeSearch?.rowId === row.id && activeSearch.field === 'code' && filteredProducts.length > 0 && (
-                      <div className="absolute top-full right-0 z-50 bg-white border border-sap-primary w-64 shadow-xl mt-1 rounded-xl overflow-hidden">
+                      <div className="absolute top-full right-0 z-50 bg-white border border-gray-100 w-64 shadow-xl mt-1 rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
                           {filteredProducts.map((p, i) => (
-                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center ${i === selectedIndex ? 'bg-sap-primary text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
-                                  <span className="font-mono font-black">{p.code}</span><span className="text-[10px] opacity-70 truncate max-w-[100px]">{p.name}</span>
+                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center transition-colors ${i === selectedIndex ? 'bg-sap-primary/10 text-sap-primary' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                  <span className="font-mono font-black text-sm">{p.code}</span><span className="text-[10px] opacity-70 truncate max-w-[100px]">{p.name}</span>
                               </div>
                           ))}
                       </div>
@@ -812,14 +818,14 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                         setActiveSearch({ rowId: row.id, field: 'name' });
                         setSearchTerm(val);
                       }}
-                      className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 font-bold text-gray-800 placeholder-gray-300 transition-colors"
+                      className="w-full bg-transparent border-b border-gray-200/60 hover:border-sap-primary/30 focus:border-sap-primary p-2 focus:ring-0 font-bold text-gray-800 placeholder-gray-300 transition-colors outline-none text-xs"
                       placeholder="بحث عن منتج..." autoComplete="off"
                     />
                     {activeSearch?.rowId === row.id && activeSearch.field === 'name' && filteredProducts.length > 0 && (
-                      <div className="absolute top-full right-0 z-50 bg-white border border-sap-primary w-full shadow-xl mt-1 rounded-xl overflow-hidden">
+                      <div className="absolute top-full right-0 z-50 bg-white border border-gray-100 w-full shadow-xl mt-1 rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
                           {filteredProducts.map((p, i) => (
-                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center ${i === selectedIndex ? 'bg-sap-primary text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
-                                  <span className="font-bold">{p.name}</span><span className="text-[10px] opacity-70 font-mono">{p.code}</span>
+                              <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center transition-colors ${i === selectedIndex ? 'bg-sap-primary/10 text-sap-primary' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                  <span className="font-bold text-xs">{p.name}</span><span className="text-[10px] opacity-70 font-mono">{p.code}</span>
                               </div>
                           ))}
                       </div>
@@ -829,32 +835,32 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                   {/* Carton Qty */}
                   {visibleColumns.cartonQty && (
                     <td className="p-3">
-                      <input id={`cartonQty-${row.id}`} type="number" value={row.cartonQty || ''} onWheel={(e) => (e.target as HTMLInputElement).blur()} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'cartonQty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, cartonQty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
+                      <input id={`cartonQty-${row.id}`} type="number" value={row.cartonQty || ''} onWheel={(e) => (e.target as HTMLInputElement).blur()} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'cartonQty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, cartonQty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50/50 rounded-xl border border-gray-200/60 focus:border-sap-primary/40 focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2 text-sm outline-none transition-all shadow-sm" placeholder="-" />
                     </td>
                   )}
 
                   {/* Qty */}
                   {visibleColumns.qty && <td className="p-3">
-                    <input id={`qty-${row.id}`} type="number" value={row.qty} onWheel={(e) => (e.target as HTMLInputElement).blur()} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50 rounded-xl border-transparent focus:border-sap-primary focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2.5 text-sm" placeholder="0" />
+                    <input id={`qty-${row.id}`} type="number" value={row.qty} onWheel={(e) => (e.target as HTMLInputElement).blur()} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'qty') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, qty: e.target.value === '' ? '' : Number(e.target.value) } : r))} className="w-full bg-gray-50/50 rounded-xl border border-gray-200/60 focus:border-sap-primary/40 focus:bg-white text-center font-black text-sap-secondary placeholder-gray-300 py-2 text-sm outline-none transition-all shadow-sm" placeholder="0" />
                   </td>}
 
                   {/* Unit */}
                   {visibleColumns.unit && <td className="p-3">
-                    <select id={`unit-${row.id}`} value={row.unitId} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'unit') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, unitId: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-bold text-gray-600 cursor-pointer">
-                      <option value="">- اختر -</option>
+                    <select id={`unit-${row.id}`} value={row.unitId} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'unit') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, unitId: e.target.value } : r))} className="w-full bg-gray-50/50 border border-gray-200/60 hover:border-sap-primary/30 focus:border-sap-primary focus:bg-white rounded-xl py-2 px-3 focus:ring-0 text-xs font-bold text-gray-700 cursor-pointer outline-none transition-all shadow-sm">
+                      <option value="">اختر الوحدة</option>
                       {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
                   </td>}
 
                   {/* Expiry */}
                   {visibleColumns.expiry && <td className="p-3 relative">
-                    <input id={`expiry-${row.id}`} type="date" value={row.expiryDate} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'expiryDate') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, expiryDate: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-mono text-gray-600" />
-                    {getExpiryStatus(row.expiryDate).status !== 'normal' && <div className="absolute left-0 top-1/2 -translate-y-1/2 text-red-500"><AlertTriangle size={14} /></div>}
+                    <input id={`expiry-${row.id}`} type="date" value={row.expiryDate} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'expiryDate') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, expiryDate: e.target.value } : r))} className="w-full bg-gray-50/50 border border-gray-200/60 hover:border-sap-primary/30 focus:border-sap-primary focus:bg-white rounded-xl p-2 focus:ring-0 text-xs font-mono text-gray-700 outline-none transition-all shadow-sm" />
+                    {getExpiryStatus(row.expiryDate).status !== 'normal' && <div className="absolute left-1 top-1/2 -translate-y-1/2 text-red-500 bg-red-50 p-1 rounded-md shadow-sm"><AlertTriangle size={12} /></div>}
                   </td>}
 
                   {/* Note */}
                   {visibleColumns.note && <td className="p-3">
-                    <input id={`note-${row.id}`} type="text" value={row.note || ''} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'note') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, note: e.target.value } : r))} className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-xs font-bold text-gray-600" />
+                    <input id={`note-${row.id}`} type="text" value={row.note || ''} onKeyDown={(e) => { if(e.key === 'Enter') focusNextField(e, row.id, 'note') }} onChange={e => setRows(prev => prev.map(r => r.id === row.id ? { ...r, note: e.target.value } : r))} className="w-full bg-gray-50/50 border border-gray-200/60 hover:border-sap-primary/30 focus:border-sap-primary focus:bg-white rounded-xl p-2 focus:ring-0 text-xs font-bold text-gray-700 outline-none transition-all shadow-sm" placeholder="ملاحظة..." />
                   </td>}
 
                   {/* Custom Columns */}
@@ -870,22 +876,22 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                                       customFields: { ...(r.customFields || {}), [col.id]: val } 
                                   } : r));
                               }}
-                              className="w-full bg-transparent border-b border-gray-200 focus:border-sap-primary p-2 focus:ring-0 text-sm font-bold text-gray-800"
+                              className="w-full bg-gray-50/50 border border-gray-200/60 hover:border-sap-primary/30 focus:border-sap-primary focus:bg-white rounded-xl p-2 focus:ring-0 text-xs font-bold text-gray-700 outline-none transition-all shadow-sm"
                           />
                       </td>
                   ))}
 
                   <td className="p-3 text-center">
-                    <button onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))} className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={16}/></button>
+                    <button onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 hover:shadow-sm rounded-xl transition-all"><Trash2 size={16}/></button>
                   </td>
                 </tr>
               ))}
               
               {/* Add Row Button at bottom of table */}
               <tr>
-                  <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length + customColumns.length + (showCartonQty && !visibleColumns.cartonQty ? 1 : 0)} className="p-3">
-                      <button onClick={() => setRows(prev => [...prev, createEmptyRow()])} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 font-bold hover:border-sap-primary hover:text-sap-primary hover:bg-sap-highlight/10 transition-all flex items-center justify-center gap-2">
-                          <Plus size={18}/> إضافة سطر جديد (أو اضغط Enter)
+                  <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length + customColumns.length + (showCartonQty && !visibleColumns.cartonQty ? 1 : 0)} className="p-4">
+                      <button onClick={() => setRows(prev => [...prev, createEmptyRow()])} className="w-full py-4 bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:border-sap-primary/50 hover:text-sap-primary hover:bg-sap-primary/5 transition-all flex items-center justify-center gap-2 shadow-sm">
+                          <Plus size={18} strokeWidth={2.5}/> إضافة سطر جديد (أو اضغط Enter في آخر حقل)
                       </button>
                   </td>
               </tr>
@@ -894,10 +900,18 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
         </div>
         
         {/* Footer Summary */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center text-xs font-black text-gray-500 uppercase tracking-wide">
-            <div>عدد السجلات: <span className="text-gray-900 text-sm ml-1">{validRowsCount}</span></div>
-            <div className="flex gap-4">
-                {showCartonQty && <div>إجمالي الكراتين: <span className="text-sap-primary text-xl font-mono ml-2">{totalCartonQty}</span></div>}
+        <div className="p-5 border-t border-gray-100 bg-white flex justify-between items-center text-xs font-black text-gray-500 uppercase tracking-wide shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center gap-2">
+                عدد السجلات: 
+                <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded-lg text-sm">{validRowsCount}</span>
+            </div>
+            <div className="flex gap-6">
+                {(visibleColumns.cartonQty || showCartonQty) && (
+                    <div className="flex items-center gap-2">
+                        إجمالي الكراتين: 
+                        <span className="text-sap-secondary text-2xl font-mono bg-sap-secondary/10 px-3 py-1 rounded-xl ring-1 ring-sap-secondary/20">{totalCartonQty}</span>
+                    </div>
+                )}
                 <div>إجمالي الكميات: <span className="text-sap-primary text-xl font-mono ml-2">{totalQty}</span></div>
             </div>
         </div>

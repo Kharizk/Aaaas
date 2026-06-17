@@ -709,30 +709,30 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
         )}
 
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 p-3 flex justify-between items-center shrink-0">
+        <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-6 py-4 flex justify-between items-center shrink-0 relative z-20 shadow-sm">
             <div className="flex items-center gap-4">
-                <div className="bg-sap-primary text-white p-2 rounded-lg"><ShoppingCart size={20}/></div>
-                <h1 className="font-black text-lg text-gray-800">نقطة البيع</h1>
+                <div className="bg-gradient-to-br from-sap-primary to-sap-primary-hover text-white p-2.5 rounded-xl shadow-md"><ShoppingCart size={22} strokeWidth={2.5}/></div>
+                <h1 className="font-black text-xl text-gray-800 tracking-tight">نقطة البيع</h1>
                 
-                <div className="h-8 w-px bg-gray-200 mx-2"></div>
+                <div className="h-8 w-px bg-gray-200 mx-4"></div>
                 
-                <div className="relative w-64">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                <div className="relative w-80 group">
+                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-sap-primary transition-colors" size={18}/>
                     <input 
                         ref={searchInputRef}
                         type="text" 
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="بحث (اسم / كود)..." 
-                        className="w-full bg-gray-100 border-none rounded-full py-2 pr-10 pl-4 text-sm font-bold focus:ring-2 focus:ring-sap-primary/20 outline-none"
+                        className="w-full bg-gray-50/80 border border-gray-200/60 rounded-xl py-2.5 pr-12 pl-4 text-sm font-bold focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary focus:bg-white outline-none transition-all shadow-sm"
                     />
                 </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
                  <button 
                     onClick={() => setShowHelpModal(true)}
-                    className="p-2 text-gray-500 hover:text-sap-primary hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2.5 text-gray-500 hover:text-sap-primary hover:bg-sap-highlight/20 rounded-xl transition-all font-bold"
                     title="اختصارات لوحة المفاتيح"
                 >
                     <Keyboard size={20}/>
@@ -740,7 +740,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
 
                  <button 
                     onClick={toggleFullscreen}
-                    className="p-2 text-gray-500 hover:text-sap-primary hover:bg-gray-100 rounded-lg transition-colors hidden md:block"
+                    className="p-2.5 text-gray-500 hover:text-sap-primary hover:bg-sap-highlight/20 rounded-xl transition-all hidden md:block"
                     title="ملء الشاشة"
                 >
                     <Maximize size={20}/>
@@ -748,43 +748,45 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
 
                  <button 
                     onClick={() => setShowCalculator(!showCalculator)}
-                    className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${showCalculator ? 'bg-gray-200 text-sap-primary' : 'text-gray-500'}`}
+                    className={`p-2.5 rounded-xl transition-all ${showCalculator ? 'bg-sap-primary text-white shadow-md' : 'text-gray-500 hover:text-sap-primary hover:bg-sap-highlight/20'}`}
                     title="الآلة الحاسبة"
                 >
                     <Calculator size={20}/>
                 </button>
 
+                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
                 <button 
                     onClick={handlePrintLastReceipt}
                     disabled={!lastReceiptId}
-                    className="p-2 text-gray-500 hover:text-sap-primary hover:bg-gray-100 rounded-lg disabled:opacity-30 transition-colors"
+                    className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500 transition-all font-bold group"
                     title="طباعة آخر فاتورة"
                 >
-                    <Printer size={20}/>
+                    <Printer size={20} className="group-active:scale-95"/>
                 </button>
 
                  <button 
                     onClick={() => setIsRefundMode(!isRefundMode)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${isRefundMode ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm border ${isRefundMode ? 'bg-red-50 text-red-600 border-red-200 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-sap-primary/30'}`}
                 >
-                    <RefreshCcw size={16}/> {isRefundMode ? 'وضع المرتجع مفعل' : 'وضع المرتجع'}
+                    <RefreshCcw size={18} className={isRefundMode ? 'animate-spin-slow' : ''}/> {isRefundMode ? 'وضع المرتجع مفعل' : 'وضع المرتجع'}
                 </button>
 
                 <button 
                     onClick={() => setShowHeldModal(true)}
-                    className="relative p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors"
+                    className="relative p-2.5 bg-amber-50 border border-amber-200/50 text-amber-600 rounded-xl hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm"
                     title="الطلبات المعلقة"
                 >
                     <PauseCircle size={20}/>
-                    {heldOrders.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold">{heldOrders.length}</span>}
+                    {heldOrders.length > 0 && <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-black shadow-sm ring-2 ring-white">{heldOrders.length}</span>}
                 </button>
 
                 <button 
                     onClick={() => setShowQuickAddModal(true)}
-                    className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    className="p-2.5 bg-sap-primary/10 border border-sap-primary/20 text-sap-primary rounded-xl hover:bg-sap-primary hover:text-white transition-all shadow-sm active:scale-95"
                     title="إضافة منتج سريع"
                 >
-                    <Plus size={20}/>
+                    <Plus size={20} strokeWidth={2.5}/>
                 </button>
             </div>
         </div>
@@ -838,24 +840,32 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                             key={product.id}
                             onClick={() => addToCart(product)}
                             onContextMenu={(e) => handleRightClickProduct(e, product)}
-                            className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col justify-between hover:border-sap-primary hover:shadow-lg transition-all group text-right h-28 relative overflow-hidden"
+                            className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col justify-between hover:border-sap-primary/40 hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 transition-all duration-300 group text-right h-32 relative overflow-hidden"
                         >
-                            <div className="flex justify-between items-start w-full gap-2">
+                            <div className="absolute inset-0 bg-gradient-to-br from-sap-primary/0 to-transparent group-hover:from-sap-primary/5 transition-colors duration-300"></div>
+
+                            <div className="flex justify-between items-start w-full gap-2 relative z-10">
                                 <div className="flex-1">
                                     <h3 className="font-bold text-sm text-gray-800 line-clamp-2 leading-tight group-hover:text-sap-primary transition-colors">{product.name}</h3>
-                                    <p className="text-[10px] text-gray-400 font-mono mt-1">{product.code}</p>
+                                    <p className="text-[11px] text-gray-400 font-mono mt-1 opacity-80">{product.code}</p>
                                 </div>
-                                <span className="font-black text-sm text-sap-secondary bg-sap-secondary/10 px-2 py-1 rounded-lg shrink-0">{parseFloat(product.price || '0').toLocaleString()}</span>
+                                <span className="font-black text-sm text-sap-secondary bg-sap-secondary/10 px-2.5 py-1 rounded-xl shrink-0 group-hover:scale-105 transition-transform">{parseFloat(product.price || '0').toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-end w-full mt-auto">
-                                <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-sap-primary group-hover:text-white transition-colors">
-                                    <Plus size={14}/>
+                            <div className="flex justify-between items-end w-full mt-auto relative z-10">
+                                {/* Stock Indicator inside a pill format */}
+                                <div className="flex items-center gap-1.5 opacity-80">
+                                    {(product.stock || 0) <= (product.lowStockThreshold || 5) && (
+                                        <>
+                                            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span>
+                                            <span className="text-[10px] font-bold text-red-500">منخفض</span>
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="w-7 h-7 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-sap-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-[0_0_12px_rgba(128,0,32,0.3)]">
+                                    <Plus size={16} strokeWidth={2.5}/>
                                 </div>
                             </div>
-                            {/* Stock Indicator */}
-                            {(product.stock || 0) <= (product.lowStockThreshold || 5) && (
-                                <div className="absolute bottom-3 right-3 w-2 h-2 bg-red-500 rounded-full animate-pulse" title="مخزون منخفض"/>
-                            )}
                         </button>
                     ))}
                     {filteredProducts.length === 0 && (
@@ -868,115 +878,149 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
             </div>
 
             {/* Right: Cart */}
-            <div className={`w-96 bg-white flex flex-col shadow-xl z-10 transition-all duration-300 ${isRefundMode ? 'border-4 border-red-500 bg-red-50' : ''}`}>
+            <div className={`w-96 flex flex-col shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-10 transition-all duration-300 border-r border-gray-100 ${isRefundMode ? 'border-4 border-red-500 bg-red-50/80 backdrop-blur-xl' : 'bg-white/95 backdrop-blur-xl'}`}>
                 {/* Return Mode Banner */}
                 {isRefundMode && (
-                    <div className="bg-red-600 text-white text-center py-2 font-black text-sm animate-pulse">
+                    <div className="bg-red-600 text-white text-center py-2.5 font-bold text-sm shadow-md animate-pulse">
                         ⚠️ وضع المرتجع مفعل - جميع العناصر بالسالب
                     </div>
                 )}
 
                 {/* Customer Selector */}
-                <div className="p-3 border-b border-gray-100">
-                    <div className="relative">
+                <div className="p-4 border-b border-gray-100/80 bg-white/50">
+                    <div className="relative group">
                         <select 
                             value={selectedCustomerId}
                             onChange={e => setSelectedCustomerId(e.target.value)}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-10 pl-3 text-sm font-bold appearance-none outline-none focus:border-sap-primary"
+                            className="w-full bg-gray-50/80 border border-gray-200/60 rounded-xl py-2.5 pr-11 pl-4 text-sm font-bold appearance-none outline-none focus:border-sap-primary focus:bg-white focus:ring-2 focus:ring-sap-primary/10 transition-all shadow-sm group-hover:border-sap-primary/30"
                         >
-                            <option value="">عميل عام</option>
+                            <option value="">عميل نقدي عام</option>
                             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        <UserIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sap-primary bg-sap-primary/10 p-1.5 rounded-lg flex items-center justify-center">
+                            <UserIcon size={14} strokeWidth={2.5}/>
+                        </div>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <ChevronRight size={16} className="text-gray-400 rotate-90" />
+                        </div>
                     </div>
                 </div>
 
                 {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                     {cart.map((item, idx) => (
-                        <div key={`${item.productId}-${idx}`} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${item.quantity < 0 ? 'bg-red-100 border-red-200' : 'bg-gray-50 border-gray-100 group hover:border-gray-300'}`}>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-start gap-2">
-                                    <h4 className="font-bold text-sm text-gray-800 line-clamp-2">{item.name} {item.quantity < 0 && <span className="text-[10px] text-red-600 bg-white px-1 rounded border border-red-200 mr-1">مرتجع</span>}</h4>
-                                    <span className="font-black text-sm text-sap-secondary font-mono shrink-0">{item.price.toLocaleString()}</span>
+                        <div key={`${item.productId}-${idx}`} className={`flex flex-col gap-2 p-3.5 rounded-2xl border transition-all ${item.quantity < 0 ? 'bg-red-50 border-red-200/60 shadow-sm' : 'bg-white border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:border-sap-primary/30 hover:shadow-md group'}`}>
+                            <div className="flex justify-between items-start gap-3">
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-sm text-gray-800 leading-snug line-clamp-2">
+                                        {item.name} 
+                                        {item.quantity < 0 && <span className="text-[10px] text-red-600 bg-red-100 px-1.5 py-0.5 rounded-md font-black mr-2 inline-block shadow-sm">مرتجع</span>}
+                                    </h4>
+                                    <div className="text-xs text-gray-400 font-mono flex items-center gap-2 mt-1">
+                                        <span>السعر: {item.price.toLocaleString()}</span>
+                                    </div>
                                 </div>
-                                <div className="text-xs text-gray-500 font-mono flex items-center gap-2 mt-1">
-                                    <span>الكمية: {Math.abs(item.quantity)}</span>
-                                    {item.discount && item.discount > 0 && <span className="text-red-500 bg-red-50 px-1 rounded">خصم: {item.discount}</span>}
+                                <button onClick={() => removeFromCart(item.productId)} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-colors p-1 bg-gray-50 hover:bg-red-50 rounded-lg shrink-0">
+                                    <X size={16}/>
+                                </button>
+                            </div>
+                            
+                            <div className="flex justify-between items-end mt-1 gap-2">
+                                <div className="flex flex-col gap-2 w-1/2">
+                                    <div className="flex items-center gap-1 bg-gray-50/80 rounded-xl border border-gray-200/60 p-1 w-full justify-between focus-within:border-sap-primary/40 focus-within:bg-white transition-colors">
+                                        <button onClick={() => updateQty(item.productId, item.quantity < 0 ? -1 : 1)} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-emerald-600 transition-all bg-emerald-50/50"><Plus size={14} strokeWidth={2.5}/></button>
+                                        <span className={`w-6 text-center font-black text-sm font-mono ${item.quantity < 0 ? 'text-red-500' : 'text-gray-800'}`}>{Math.abs(item.quantity)}</span>
+                                        <button onClick={() => updateQty(item.productId, item.quantity < 0 ? 1 : -1)} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-red-500 transition-all bg-red-50/50"><Minus size={14} strokeWidth={2.5}/></button>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <div className="bg-gray-100 text-gray-400 p-1.5 rounded-lg shrink-0 flex items-center justify-center"><Tag size={12}/></div>
+                                        <input 
+                                            type="number" 
+                                            className="w-full h-7 text-[11px] border border-gray-200/60 bg-gray-50/50 rounded-lg px-2 focus:border-sap-primary focus:bg-white outline-none font-bold placeholder-gray-400 text-gray-700 transition-colors"
+                                            value={item.discount || ''}
+                                            placeholder="خصم بالريال..."
+                                            onChange={(e) => updateItemDiscount(item.productId, parseFloat(e.target.value) || 0)}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="mt-2 flex items-center gap-1">
-                                    <span className="text-[10px] text-gray-400">خصم:</span>
-                                    <input 
-                                        type="number" 
-                                        className="w-12 h-5 text-[10px] border border-gray-200 rounded px-1 text-center focus:border-sap-primary outline-none"
-                                        value={item.discount || ''}
-                                        placeholder="0"
-                                        onChange={(e) => updateItemDiscount(item.productId, parseFloat(e.target.value) || 0)}
-                                    />
-                                </div>
-                                <div className="mt-1">
-                                    <input 
-                                        type="text" 
-                                        className="w-full text-[10px] border border-gray-100 bg-white rounded px-1 py-0.5 focus:border-sap-primary outline-none placeholder-gray-300"
-                                        value={item.note || ''}
-                                        placeholder="ملاحظة..."
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setCart(prev => prev.map(i => i.productId === item.productId ? { ...i, note: val } : i));
-                                        }}
-                                    />
+
+                                <div className="flex flex-col items-end justify-center w-1/2">
+                                    {item.discount && item.discount > 0 ? (
+                                         <div className="flex flex-col items-end justify-center h-full">
+                                            <span className="text-[10px] text-gray-400 line-through decoration-red-400/50 decoration-2 font-mono">
+                                                {(item.price * Math.abs(item.quantity)).toLocaleString()}
+                                            </span>
+                                            <span className={`font-black text-lg font-mono ${item.quantity < 0 ? 'text-red-600' : 'text-sap-primary'} leading-tight`}>
+                                                {((item.price * item.quantity) - (item.discount || 0)).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className={`font-black text-lg font-mono flex items-center h-[52px] ${item.quantity < 0 ? 'text-red-600' : 'text-sap-primary'}`}>
+                                            {((item.price * item.quantity) - (item.discount || 0)).toLocaleString()}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
-                                    <button onClick={() => updateQty(item.productId, item.quantity < 0 ? -1 : 1)} className="p-1 hover:bg-gray-100 rounded text-green-600"><Plus size={14}/></button>
-                                    <span className={`w-6 text-center font-black text-sm ${item.quantity < 0 ? 'text-red-500' : ''}`}>{Math.abs(item.quantity)}</span>
-                                    <button onClick={() => updateQty(item.productId, item.quantity < 0 ? 1 : -1)} className="p-1 hover:bg-gray-100 rounded text-red-600"><Minus size={14}/></button>
-                                </div>
-                                <div className={`font-black text-sm ${item.quantity < 0 ? 'text-red-600' : 'text-sap-primary'}`}>
-                                    {((item.price * item.quantity) - (item.discount || 0)).toLocaleString()}
-                                </div>
-                            </div>
-                            <button onClick={() => removeFromCart(item.productId)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"><X size={16}/></button>
+
+                            <input 
+                                type="text" 
+                                className="w-full text-xs border border-transparent hover:border-gray-200/60 bg-transparent hover:bg-gray-50/50 focus:border-sap-primary/30 focus:bg-white rounded-lg px-2 py-1.5 outline-none placeholder-gray-300 text-gray-600 transition-all mt-1"
+                                value={item.note || ''}
+                                placeholder="إضافة ملاحظة للمنتج..."
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCart(prev => prev.map(i => i.productId === item.productId ? { ...i, note: val } : i));
+                                }}
+                            />
                         </div>
                     ))}
                     {cart.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4">
-                            <ShoppingCart size={48} strokeWidth={1}/>
-                            <p className="text-sm font-bold">السلة فارغة</p>
-                            <p className="text-xs text-center px-8">قم بمسح الباركود أو اختيار المنتجات من القائمة</p>
+                        <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-5 opacity-70">
+                            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center border-2 border-dashed border-gray-200">
+                                <ShoppingCart size={40} className="text-gray-300" />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-base font-black text-gray-400">سلة المشتريات فارغة</p>
+                                <p className="text-xs text-gray-400 font-bold mt-1 max-w-[200px] leading-relaxed">قم بمسح الباركود أو اختيار المنتجات لإضافتها للسلة</p>
+                            </div>
                         </div>
                     )}
                 </div>
 
                 {/* Totals & Actions */}
-                <div className="p-4 bg-gray-50 border-t border-gray-200">
-                    <div className="flex justify-between items-end mb-4">
-                        <span className="text-gray-500 font-bold text-sm">الإجمالي</span>
-                        <span className={`text-3xl font-black ${cartTotal < 0 ? 'text-red-600' : 'text-sap-shell'}`}>
-                            {cartTotal.toLocaleString()} <span className="text-sm text-gray-400 font-medium">SAR</span>
-                        </span>
+                <div className="p-5 bg-white border-t border-gray-100 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-3xl relative">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-gray-200 rounded-full mt-2"></div>
+                    
+                    <div className="flex justify-between items-end mb-5 mt-2">
+                        <span className="text-gray-500 font-bold text-sm">الإجمالي المستحق</span>
+                        <div className="flex items-end gap-1.5">
+                            <span className={`text-4xl font-black tracking-tight font-mono leading-none ${cartTotal < 0 ? 'text-red-600' : 'text-sap-shell'}`}>
+                                {cartTotal.toLocaleString()}
+                            </span>
+                            <span className="text-sm font-bold text-gray-400 mb-1">SAR</span>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 mb-2">
-                        <button onClick={handleHold} className="py-3 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm hover:bg-amber-200 transition-colors flex items-center justify-center gap-2" title="F8">
-                            <PauseCircle size={18}/> تعليق
+                    <div className="grid grid-cols-3 gap-2 mb-3 mt-1">
+                        <button onClick={handleHold} className="py-2.5 bg-amber-50 text-amber-600 border border-amber-200/50 rounded-xl font-bold text-xs hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm flex items-center justify-center gap-1.5" title="F8">
+                            <PauseCircle size={16}/> تعليق
                         </button>
                         <button onClick={() => {
                             if (cart.length === 0) return notify('السلة فارغة', 'warning');
                             if (!selectedCustomerId) return notify('يجب اختيار عميل لحفظ عرض السعر', 'error');
                             notify('تم حفظ عرض السعر بنجاح', 'success');
                             clearCart();
-                        }} className="py-3 bg-blue-100 text-blue-700 rounded-xl font-bold text-sm hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
-                            <FileText size={18}/> عرض سعر
+                        }} className="py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200/50 rounded-xl font-bold text-xs hover:bg-indigo-100 hover:border-indigo-300 transition-all shadow-sm flex items-center justify-center gap-1.5">
+                            <FileText size={16}/> عرض سعر
                         </button>
-                        <button onClick={clearCart} className="py-3 bg-red-100 text-red-700 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors flex items-center justify-center gap-2">
-                            <Trash2 size={18}/> مسح
+                        <button onClick={clearCart} className="py-2.5 bg-red-50 text-red-600 border border-red-200/50 rounded-xl font-bold text-xs hover:bg-red-100 hover:border-red-300 transition-all shadow-sm flex items-center justify-center gap-1.5">
+                            <Trash2 size={16}/> إفراغ
                         </button>
                     </div>
                     
                     {/* Quick Discounts */}
-                    <div className="flex gap-2 mb-2">
+                    <div className="flex gap-2 mb-4 bg-gray-50 p-1.5 rounded-xl border border-gray-100">
+                        <div className="flex items-center justify-center px-2 text-gray-400"><Tag size={12}/></div>
                         {[5, 10, 15].map(pct => (
                             <button 
                                 key={pct}
@@ -987,7 +1031,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                                     })));
                                     notify(`تم تطبيق خصم ${pct}%`, 'success');
                                 }}
-                                className="flex-1 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200"
+                                className="flex-1 py-1.5 bg-white text-gray-600 shadow-sm text-xs font-bold rounded-lg hover:text-sap-primary hover:border-sap-primary/30 border border-gray-200/50 transition-all"
                             >
                                 {pct}%
                             </button>
@@ -997,23 +1041,25 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                                 setCart(prev => prev.map(item => ({ ...item, discount: 0 })));
                                 notify('تم إلغاء الخصم', 'info');
                             }}
-                            className="px-2 py-1 bg-gray-100 text-red-500 text-xs font-bold rounded-lg hover:bg-red-50"
+                            className="px-3 py-1.5 bg-red-50 text-red-500 text-xs font-bold rounded-lg hover:bg-red-100 border border-red-100 transition-all flex items-center justify-center"
                             title="إلغاء الخصم"
                         >
-                            <X size={12}/>
+                            <X size={14}/>
                         </button>
                     </div>
 
                     <button 
                         onClick={handleOpenCheckout} 
                         disabled={cart.length === 0}
-                        className="w-full py-4 bg-sap-primary text-white rounded-xl font-black text-lg shadow-lg hover:bg-sap-primary-hover active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-4 bg-gradient-to-r from-sap-primary to-sap-primary-hover text-white rounded-2xl font-black text-lg shadow-[0_8px_20px_rgba(20,93,160,0.25)] hover:shadow-[0_12px_25px_rgba(20,93,160,0.35)] hover:-translate-y-0.5 active:scale-95 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none border border-sap-primary-hover border-b-4 active:border-b"
                         title="F4"
                     >
-                        <CheckCircle2 size={24}/> دفع {cartTotal.toLocaleString()}
+                        <CheckCircle2 size={24} strokeWidth={2.5}/> 
+                        <span>دفع <span className="font-mono bg-white/20 px-2 py-0.5 rounded-lg ml-1 border border-white/10">{cartTotal.toLocaleString()}</span></span>
                     </button>
                 </div>
             </div>
+
         </div>
 
         {/* --- Modals --- */}
