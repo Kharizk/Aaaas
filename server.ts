@@ -20,6 +20,71 @@ function getFriendlyErrorMessage(error: any): string {
   return error.message || "حدث خطأ غير متوقع أثناء معالجة الطلب بالذكاء الاصطناعي.";
 }
 
+async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const errorMsg = error?.message || "";
+    const errorStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
+    const combined = (errorMsg + " " + errorStr).toLowerCase();
+    
+    const isTransient = combined.includes("503") || 
+                        combined.includes("unavailable") || 
+                        combined.includes("high demand") || 
+                        combined.includes("service_unavailable") || 
+                        combined.includes("429") || 
+                        combined.includes("exhausted") || 
+                        combined.includes("quota") || 
+                        combined.includes("rate_limit");
+    
+    if (isTransient && retries > 0) {
+      console.log(`[Gemini Info] Server busy. Re-attempting connection in ${delay}ms... (${retries} retries remaining)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return callWithRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
+async function generateContentWithModelFallback(
+  getAi: () => any,
+  options: {
+    contents: any;
+    config?: any;
+    defaultModel?: string;
+  }
+): Promise<any> {
+  const modelsToTry = [
+    options.defaultModel || 'gemini-3.5-flash',
+    'gemini-flash-latest',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash'
+  ];
+
+  const uniqueModels = Array.from(new Set(modelsToTry));
+  let lastError: any = null;
+
+  for (const model of uniqueModels) {
+    try {
+      console.log(`[Gemini Info] Attempting generation with model: ${model}`);
+      const ai = getAi();
+      const response = await callWithRetry(() => ai.models.generateContent({
+        model,
+        contents: options.contents,
+        config: options.config
+      }), 2, 1000); // 2 retries per model
+
+      console.log(`[Gemini Success] Successfully completed generation using ${model}`);
+      return response;
+    } catch (error: any) {
+      console.warn(`[Gemini Warning] Model ${model} failed with error: ${error?.message || error}. Trying next fallback model if available...`);
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -62,8 +127,8 @@ async function startServer() {
         }
       `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+      const response = await generateContentWithModelFallback(getAi, {
+        defaultModel: 'gemini-3.5-flash',
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -104,8 +169,8 @@ async function startServer() {
 
 يرجى توليد 3 فئات رئيسية على الأقل، وفي كل فئة 4 منتجات منطقية لتخصص المتجر.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+      const response = await generateContentWithModelFallback(getAi, {
+        defaultModel: 'gemini-3.5-flash',
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -126,7 +191,7 @@ async function startServer() {
       const { prompt } = req.body;
       const ai = getAi();
 
-      const response = await ai.models.generateContent({
+      const response = await callWithRetry(() => ai.models.generateContent({
         model: 'gemini-3.1-flash-image-preview', 
         contents: prompt,
         config: {
@@ -135,7 +200,7 @@ async function startServer() {
               imageSize: "1K"
           }
         } as any
-      });
+      }));
 
       let base64Image = null;
       for (const part of response.candidates?.[0]?.content?.parts || []) {
@@ -160,35 +225,45 @@ async function startServer() {
       const ai = getAi();
 
       const inventorySchema = {
-          type: Type.ARRAY,
-          items: {
-              type: Type.OBJECT,
-              properties: {
-                  code: { type: Type.STRING, description: "The product code, SKU, or barcode if visible." },
-                  category: { type: Type.STRING, description: "The classification or category of the product (القسم / التصنيف)." },
-                  name: { type: Type.STRING, description: "The full name or description of the product/item (اسم الصنف / اسم المنتج / البيان). MUST NOT be empty." },
-                  cartonQty: { type: Type.NUMBER, description: "The quantity in cartons/boxes (الكمية كرتون / كرتون / الكرتون). NEVER put this value in the 'qty' field." },
-                  qty: { type: Type.NUMBER, description: "The quantity in individual pieces/units (الكمية حبة / حبة / الفردي / عدد). If cartonQty was set, qty handles the remaining pieces if available." },
-                  unit: { type: Type.STRING, description: "The unit of measure (e.g., PCS, KG, BOX) if available." },
-                  expiryDate: { type: Type.STRING, description: "Expiry date in YYYY-MM-DD format if available." },
-                  price: { type: Type.NUMBER, description: "Unit price if available." }
-              },
-              required: ["name"]
-          }
+          type: Type.OBJECT,
+          properties: {
+              items: {
+                  type: Type.ARRAY,
+                  description: "A complete list of ALL inventory items extracted from the document. You MUST extract every single row and item visible in the document. Do NOT skip any rows or items.",
+                  items: {
+                      type: Type.OBJECT,
+                      properties: {
+                          code: { type: Type.STRING, description: "The product code, SKU, or barcode if visible." },
+                          category: { type: Type.STRING, description: "The classification or category of the product (القسم / التصنيف)." },
+                          name: { type: Type.STRING, description: "The full name or description of the product/item (اسم الصنف / اسم المنتج / البيان). MUST NOT be empty." },
+                          cartonQty: { type: Type.NUMBER, description: "The quantity in cartons/boxes (الكمية كرتون / كرتون / الكرتون). NEVER put this value in the 'qty' field." },
+                          qty: { type: Type.NUMBER, description: "The quantity in individual pieces/units (الكمية حبة / حبة / الفردي / عدد). If cartonQty was set, qty handles the remaining pieces if available." },
+                          unit: { type: Type.STRING, description: "The unit of measure (e.g., PCS, KG, BOX) if available." },
+                          expiryDate: { type: Type.STRING, description: "Expiry date in YYYY-MM-DD format if available." },
+                          price: { type: Type.NUMBER, description: "Unit price if available." }
+                      },
+                      required: ["name"]
+                  }
+              }
+          },
+          required: ["items"]
       };
 
-      const promptInstruction = `Extract inventory items with high accuracy from the provided PDF or image.
-Pay close attention to quantities:
-- Identify if there is a "Carton Quantity" (الكمية كرتون، كرتون، كرتونة, Ctn, Carton, Box, صناديق) column or field.
-- Identify if there is a "Piece / Unit Quantity" (الكمية حبة، حبة، حبه، فردي، قطعة، العدد, Pcs, Qty, Pcs Qty, الكمية) column or field.
-- CRITICAL RULE: Set the extracted Carton quantity strictly in the "cartonQty" field. Keep individual pieces or general piece quantity in the "qty" field. Do NOT write carton quantities into the "qty" field. If the item's quantity represents cartons, it must go into "cartonQty".
-- Clean and map names and categories accurately. If names are in Arabic, keep them in Arabic.
-- If code, bar-code, or SKU is visible, capture it into the "code" field.
-- Exclude summary totals or headers; only extract row items of the inventory list.
-- Return strict JSON matching the schema.`;
+      const promptInstruction = `Extract ALL inventory items and products with 100% complete accuracy from the provided PDF or image.
+CRITICAL MANDATES:
+1. You MUST scan the ENTIRE document from top to bottom and extract EVERY SINGLE row/item.
+2. DO NOT stop after the first item. DO NOT limit extraction to one item. Include all products present in the document in the "items" array.
+3. Pay close attention to quantities:
+   - Identify if there is a "Carton Quantity" (الكمية كرتون، كرتون، كرتونة, Ctn, Carton, Box, صناديق) column or field.
+   - Identify if there is a "Piece / Unit Quantity" (الكمية حبة، حبة، حبه، فردي، قطعة، العدد, Pcs, Qty, Pcs Qty, الكمية) column or field.
+   - CRITICAL RULE: Set the extracted Carton quantity strictly in the "cartonQty" field. Keep individual pieces or general piece quantity in the "qty" field. Do NOT write carton quantities into the "qty" field. If the item's quantity represents cartons, it must go into "cartonQty".
+4. Clean and map names and categories accurately. If names are in Arabic, keep them in Arabic.
+5. If code, bar-code, or SKU is visible, capture it into the "code" field.
+6. Exclude summary totals or headers; only extract row items of the inventory list.
+7. Return strict JSON matching the schema.`;
 
-      const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+      const response = await generateContentWithModelFallback(getAi, {
+          defaultModel: 'gemini-3.5-flash',
           contents: [
               {
                   parts: [

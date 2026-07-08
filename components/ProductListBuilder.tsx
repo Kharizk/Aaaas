@@ -333,7 +333,18 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 try {
                     const textOutput = text || '[]';
                     // Try JSON.parse on the cleaned format
-                    extractedData = JSON.parse(textOutput.replace(/```json|```/g, '').trim());
+                    const parsed = JSON.parse(textOutput.replace(/```json|```/g, '').trim());
+                    if (Array.isArray(parsed)) {
+                        extractedData = parsed;
+                    } else if (parsed && Array.isArray(parsed.items)) {
+                        extractedData = parsed.items;
+                    } else if (parsed && typeof parsed === 'object') {
+                        // Fallback if wrapped under another key
+                        const possibleArray = Object.values(parsed).find(val => Array.isArray(val));
+                        if (possibleArray) {
+                            extractedData = possibleArray as any[];
+                        }
+                    }
                 } catch (e) {
                     console.error("Failed to parse JSON response:", e);
                 }

@@ -1471,6 +1471,31 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                             <span className="hidden sm:inline">{activeTagIds.length === selectedTags.length ? "إلغاء التحديد" : "تحديد الكل"}</span>
                         </button>
 
+                        {activeTagIds.length > 0 && (
+                            <>
+                                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                                <button 
+                                    onClick={() => {
+                                        setConfirmDialog({
+                                            isOpen: true,
+                                            message: `هل أنت متأكد من حذف الملصقات المحددة (${activeTagIds.length})؟`,
+                                            onConfirm: () => {
+                                                setSelectedTags(prev => prev.filter(t => !activeTagIds.includes(t.id)));
+                                                setActiveTagIds([]);
+                                                addToast("تم حذف الملصقات المحددة", "success");
+                                                setConfirmDialog(null);
+                                            }
+                                        });
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-200"
+                                    title="حذف الملصقات المحددة"
+                                >
+                                    <Trash2 size={16} />
+                                    <span>حذف المحدد ({activeTagIds.length})</span>
+                                </button>
+                            </>
+                        )}
+
                         <div className="w-px h-6 bg-gray-200 mx-1"></div>
 
                         <button 
@@ -1486,7 +1511,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     }
                                 });
                             }} 
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-red-600 hover:bg-red-50"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-red-500 hover:bg-red-50"
                         >
                             <Trash2 size={16}/>
                             <span className="hidden sm:inline">تفريغ الصفحة</span>
@@ -1627,6 +1652,26 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                         >
                             {tag ? (
                                 <>
+                                    {/* Selection/Deselection Deletion Dot */}
+                                    <div 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]);
+                                        }}
+                                        className="absolute top-2 right-2 z-30 transition-all duration-200 select-none print:hidden cursor-pointer"
+                                        title={isActive ? "إلغاء تحديد الملصق للحذف" : "تحديد الملصق للحذف"}
+                                    >
+                                        {isActive ? (
+                                            <div className="w-5.5 h-5.5 rounded-full bg-red-500 border-2 border-white text-white flex items-center justify-center shadow-md animate-in zoom-in-50 duration-150 ring-2 ring-red-500/30 hover:scale-110 transition-transform">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-5.5 h-5.5 rounded-full border-2 border-gray-300 bg-white hover:border-gray-400 flex items-center justify-center transition-all duration-150 shadow-sm hover:scale-110">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="w-full h-full pointer-events-none overflow-hidden">
                                         {renderTagLayout(tag, s)}
                                     </div>
