@@ -93,6 +93,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
 
   const [isMultipleAdd, setIsMultipleAdd] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'general' | 'item'>('general');
 
   // Accordion State
   const [openSections, setOpenSections] = useState({
@@ -101,8 +102,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
       itemProps: true,
       typography: false,
       offsets: false,
-      visibility: false,
-      actions: true
+      visibility: false
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -1005,423 +1005,420 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
             )}
         </div>
         
+        <div className="flex border-b border-gray-100 bg-gray-50/80 p-1 gap-1 sticky top-0 z-30 shrink-0">
+            <button 
+                onClick={() => setSidebarTab('general')}
+                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black flex flex-col items-center gap-1 transition-all ${sidebarTab === 'general' ? 'bg-sap-primary text-white shadow-md shadow-sap-primary/20' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+            >
+                <LayoutGrid size={15}/>
+                <span>تصميم القالب</span>
+            </button>
+            <button 
+                onClick={() => setSidebarTab('item')}
+                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black flex flex-col items-center gap-1 transition-all ${sidebarTab === 'item' ? 'bg-sap-primary text-white shadow-md shadow-sap-primary/20' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+            >
+                <Palette size={15}/>
+                <span>تنسيق العناصر</span>
+            </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/50">
-            
-            {/* 1. Structural Templates */}
-            <AccordionHeader title="هيكل وتصميم الملصق" isOpen={openSections.templates} onClick={() => toggleSection('templates')} icon={LayoutGrid} />
-            {openSections.templates && (
-                <div className="p-4 bg-white border-b border-gray-100">
-                    <div className="grid grid-cols-1 gap-3">
-                        {templatesList.map(t => (
-                            <button
-                                key={t.id}
-                                onClick={() => {
-                                    handleStyleChange('template', t.id);
-                                    if (t.id === 'yellow_shelf_label') {
-                                        handleStyleChange('backgroundColor', '#fde047');
-                                    } else if (t.id === 'big_impact') {
-                                        handleStyleChange('backgroundColor', '#1e293b'); // Dark Slate
-                                        handleStyleChange('nameBackgroundColor', '#1e293b');
-                                        handleStyleChange('priceColor', '#ffffff');
-                                        handleStyleChange('currencyColor', '#ffffff');
-                                    } else {
-                                        handleStyleChange('backgroundColor', '#ffffff');
-                                        handleStyleChange('nameBackgroundColor', '#ffffff');
-                                        handleStyleChange('priceColor', '#DC2626'); // Default Red
-                                        handleStyleChange('currencyColor', '#000000');
-                                    }
-                                }}
-                                className={`p-3 border rounded-xl flex items-center gap-3 transition-all duration-200 group ${currentScopeStyles.template === t.id ? 'bg-sap-primary/5 border-sap-primary ring-1 ring-sap-primary shadow-sm' : 'bg-white border-gray-200 hover:border-sap-primary/50 hover:bg-gray-50'}`}
-                            >
-                                <div className={`p-2.5 rounded-lg transition-colors ${currentScopeStyles.template === t.id ? 'bg-sap-primary text-white shadow-md shadow-sap-primary/20' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-sap-primary'}`}>
-                                    <t.icon size={20} />
-                                </div>
-                                <div className="text-right flex-1">
-                                    <div className={`font-bold text-sm mb-0.5 ${currentScopeStyles.template === t.id ? 'text-sap-primary' : 'text-gray-700'}`}>{t.name}</div>
-                                    <div className="text-[10px] text-gray-400 font-medium">{t.desc}</div>
-                                </div>
-                                {currentScopeStyles.template === t.id && <div className="w-2 h-2 rounded-full bg-sap-primary shadow-sm"></div>}
-                            </button>
-                        ))}
+            {sidebarTab === 'general' && (
+                <div className="animate-in fade-in duration-200">
+                    {/* Quick Add Product Button */}
+                    <div className="p-4 bg-white border-b border-gray-100">
+                        <button 
+                            onClick={() => { setActiveTagIds([]); setShowProductPicker(true); }} 
+                            className="w-full py-2.5 bg-sap-primary hover:bg-sap-primary-hover text-white font-black shadow-xs flex items-center justify-center gap-1.5 rounded-lg text-xs transition-all"
+                        >
+                            <Plus size={15}/> 
+                            <span>إضافة منتج جديد للملصقات</span>
+                        </button>
                     </div>
-                </div>
-            )}
 
-            {/* 2. Page Setup */}
-            <AccordionHeader title="إعدادات الهوامش والأبعاد" isOpen={openSections.pageSetup} onClick={() => toggleSection('pageSetup')} icon={AppWindow} />
-            {openSections.pageSetup && (
-                <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
-                    <div className="grid grid-cols-2 gap-4">
-                        <PropertyRow label="الهامش العلوي">
-                            <div className="relative">
-                                <input type="number" step="0.1" value={globalStyles.topMargin} onChange={e => setGlobalStyles({...globalStyles, topMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
-                            </div>
-                        </PropertyRow>
-                        <PropertyRow label="الهامش السفلي">
-                            <div className="relative">
-                                <input type="number" step="0.1" value={globalStyles.bottomMargin} onChange={e => setGlobalStyles({...globalStyles, bottomMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
-                            </div>
-                        </PropertyRow>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <PropertyRow label="الهامش الأيمن">
-                            <div className="relative">
-                                <input type="number" step="0.1" value={globalStyles.rightMargin} onChange={e => setGlobalStyles({...globalStyles, rightMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
-                            </div>
-                        </PropertyRow>
-                        <PropertyRow label="الهامش الأيسر">
-                            <div className="relative">
-                                <input type="number" step="0.1" value={globalStyles.leftMargin} onChange={e => setGlobalStyles({...globalStyles, leftMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
-                            </div>
-                        </PropertyRow>
-                    </div>
-                    <PropertyRow label="ارتفاع الملصق">
-                        <div className="relative">
-                            <input type="number" step="0.1" value={globalStyles.tagHeight} onChange={e => setGlobalStyles({...globalStyles, tagHeight: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                    {/* 1. Structural Templates */}
+                    <div className="p-4 bg-white border-b border-gray-100">
+                        <div className="text-xs font-black text-gray-800 mb-3 flex items-center gap-1.5">
+                            <LayoutTemplate size={14} className="text-sap-primary"/>
+                            <span>اختر تصميم وقالب الملصق</span>
                         </div>
-                    </PropertyRow>
-                    
-                    <div className="pt-3 border-t border-dashed border-gray-200">
-                        <div onClick={() => logoInputRef.current?.click()} className="h-20 border-2 border-dashed border-gray-300 bg-gray-50/50 flex flex-col items-center justify-center cursor-pointer hover:bg-sap-primary/5 hover:border-sap-primary transition-all rounded-xl group">
-                            {globalStyles.logoUrl ? (
-                                <img src={globalStyles.logoUrl} className="h-full object-contain p-2" />
-                            ) : (
-                                <>
-                                    <div className="p-2 bg-white rounded-full shadow-sm mb-1 group-hover:scale-110 transition-transform">
-                                        <ImageIcon size={16} className="text-gray-400 group-hover:text-sap-primary" />
+                        <div className="grid grid-cols-1 gap-3">
+                            {templatesList.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => {
+                                        handleStyleChange('template', t.id);
+                                        if (t.id === 'yellow_shelf_label') {
+                                            handleStyleChange('backgroundColor', '#fde047');
+                                        } else if (t.id === 'big_impact') {
+                                            handleStyleChange('backgroundColor', '#1e293b'); // Dark Slate
+                                            handleStyleChange('nameBackgroundColor', '#1e293b');
+                                            handleStyleChange('priceColor', '#ffffff');
+                                            handleStyleChange('currencyColor', '#ffffff');
+                                        } else {
+                                            handleStyleChange('backgroundColor', '#ffffff');
+                                            handleStyleChange('nameBackgroundColor', '#ffffff');
+                                            handleStyleChange('priceColor', '#DC2626'); // Default Red
+                                            handleStyleChange('currencyColor', '#000000');
+                                        }
+                                    }}
+                                    className={`p-3 border rounded-xl flex items-center gap-3 transition-all duration-200 group ${currentScopeStyles.template === t.id ? 'bg-sap-primary/5 border-sap-primary ring-1 ring-sap-primary shadow-sm' : 'bg-white border-gray-200 hover:border-sap-primary/50 hover:bg-gray-50'}`}
+                                >
+                                    <div className={`p-2.5 rounded-lg transition-colors ${currentScopeStyles.template === t.id ? 'bg-sap-primary text-white shadow-md shadow-sap-primary/20' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-sap-primary'}`}>
+                                        <t.icon size={20} />
                                     </div>
-                                    <span className="text-[10px] font-bold text-gray-500 group-hover:text-sap-primary">تغيير الشعار</span>
-                                </>
-                            )}
-                            <input type="file" ref={logoInputRef} className="hidden" onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) { const reader = new FileReader(); reader.onload = (re) => setGlobalStyles({...globalStyles, logoUrl: re.target?.result as string}); reader.readAsDataURL(file); }
-                            }} />
+                                    <div className="text-right flex-1">
+                                        <div className={`font-bold text-sm mb-0.5 ${currentScopeStyles.template === t.id ? 'text-sap-primary' : 'text-gray-700'}`}>{t.name}</div>
+                                        <div className="text-[10px] text-gray-400 font-medium">{t.desc}</div>
+                                    </div>
+                                    {currentScopeStyles.template === t.id && <div className="w-2 h-2 rounded-full bg-sap-primary shadow-sm"></div>}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* 3. Item Data */}
-            <AccordionHeader title="بيانات العنصر" isOpen={openSections.itemProps} onClick={() => toggleSection('itemProps')} icon={SlidersHorizontal} />
-            {openSections.itemProps && (
-                <div className="p-4 space-y-4 border-b border-gray-100 bg-white min-h-[150px]">
-                    {activeTagIds.length > 1 ? (
-                        <div className="text-center py-10 opacity-60 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
-                            <div className="p-3 bg-white rounded-full shadow-sm mb-3">
-                                <Layers size={20} className="text-gray-400"/>
-                            </div>
-                            <p className="font-bold text-gray-600 text-sm">تم تحديد {activeTagIds.length} ملصقات</p>
-                            <p className="text-[10px] text-gray-400 mt-1">يمكنك تعديل الألوان والخطوط لجميع الملصقات المحددة</p>
+                    {/* 2. Page Setup */}
+                    <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
+                        <div className="text-xs font-black text-gray-800 mb-1 flex items-center gap-1.5">
+                            <AppWindow size={14} className="text-sap-primary"/>
+                            <span>إعدادات الهوامش والأبعاد</span>
                         </div>
-                    ) : activeTag ? (
-                        <>
-                            <div className="mb-2">
-                                <div className="flex justify-between items-center mb-1.5">
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">اسم المنتج</label>
-                                    <button 
-                                        onClick={() => setShowProductPicker(true)}
-                                        className="text-[10px] font-bold text-sap-primary hover:bg-sap-primary/10 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
-                                    >
-                                        <RefreshCw size={10} /> تغيير المنتج
-                                    </button>
-                                </div>
-                                <textarea ref={nameInputRef} value={activeTag.name} onChange={e => updateTag(activeTag.id, { name: e.target.value })} className="w-full p-3 border border-gray-200 rounded-lg text-sm h-20 resize-none focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-bold transition-all" placeholder="أدخل اسم المنتج..." />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-sap-primary mb-1.5 uppercase tracking-wider">السعر الحالي</label>
-                                    <div className="relative">
-                                        <input type="text" value={activeTag.price} onChange={e => updateTag(activeTag.id, { price: e.target.value })} className="w-full p-2 border border-sap-primary/30 rounded-lg font-mono font-black text-sap-primary text-center bg-sap-primary/5 focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-red-500 mb-1.5 uppercase tracking-wider">السعر السابق</label>
-                                    <div className="relative">
-                                        <input type="text" value={activeTag.originalPrice || ''} onChange={e => updateTag(activeTag.id, { originalPrice: e.target.value })} className="w-full p-2 border border-red-200 rounded-lg font-mono font-bold text-red-500 text-center bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all" placeholder="0.00" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                <div className="flex items-center justify-between mb-2">
-                                    <label className="block text-[10px] font-bold text-blue-800 uppercase tracking-wider">سعر الكرتون (اختياري)</label>
-                                    <label className="flex items-center gap-1 cursor-pointer">
-                                        <input type="checkbox" checked={activeTag.showCartonPrice !== false} onChange={e => updateTag(activeTag.id, { showCartonPrice: e.target.checked })} className="w-3 h-3 accent-blue-600" />
-                                        <span className="text-[9px] font-bold text-blue-800">إظهار في الملصق</span>
-                                    </label>
-                                </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <PropertyRow label="الهامش العلوي">
                                 <div className="relative">
-                                    <input type="text" value={activeTag.cartonPrice || ''} onChange={e => updateTag(activeTag.id, { cartonPrice: e.target.value })} className="w-full p-2 border border-blue-200 rounded-lg font-mono font-bold text-blue-800 text-center bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" placeholder="أدخل سعر الكرتون هنا..." />
+                                    <input type="number" step="0.1" value={globalStyles.topMargin} onChange={e => setGlobalStyles({...globalStyles, topMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">الوحدة</label>
-                                <input type="text" value={activeTag.unitName || ''} onChange={e => updateTag(activeTag.id, { unitName: e.target.value })} className="w-full p-2 border border-gray-200 rounded-lg text-center font-bold text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" placeholder="مثال: حبة، كجم..." />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-10 opacity-60 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
-                            <div className="p-3 bg-white rounded-full shadow-sm mb-3">
-                                <MousePointer2 size={20} className="text-gray-400"/>
-                            </div>
-                            <p className="font-bold text-gray-600 text-sm">حدد ملصقاً لتعديل بياناته</p>
-                            <p className="text-[10px] text-gray-400 mt-1">اضغط على أي ملصق في المعاينة</p>
+                            </PropertyRow>
+                            <PropertyRow label="الهامش السفلي">
+                                <div className="relative">
+                                    <input type="number" step="0.1" value={globalStyles.bottomMargin} onChange={e => setGlobalStyles({...globalStyles, bottomMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                                </div>
+                            </PropertyRow>
                         </div>
-                    )}
+                        <div className="grid grid-cols-2 gap-4">
+                            <PropertyRow label="الهامش الأيمن">
+                                <div className="relative">
+                                    <input type="number" step="0.1" value={globalStyles.rightMargin} onChange={e => setGlobalStyles({...globalStyles, rightMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                                </div>
+                            </PropertyRow>
+                            <PropertyRow label="الهامش الأيسر">
+                                <div className="relative">
+                                    <input type="number" step="0.1" value={globalStyles.leftMargin} onChange={e => setGlobalStyles({...globalStyles, leftMargin: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                                </div>
+                            </PropertyRow>
+                        </div>
+                        <PropertyRow label="ارتفاع الملصق">
+                            <div className="relative">
+                                <input type="number" step="0.1" value={globalStyles.tagHeight} onChange={e => setGlobalStyles({...globalStyles, tagHeight: Number(e.target.value)})} className="w-full p-2 border border-gray-200 rounded-lg focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-mono text-center text-sm bg-gray-50/50 transition-all" />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold pointer-events-none">mm</span>
+                            </div>
+                        </PropertyRow>
+                        
+                        <div className="pt-3 border-t border-dashed border-gray-200">
+                            <div onClick={() => logoInputRef.current?.click()} className="h-20 border-2 border-dashed border-gray-300 bg-gray-50/50 flex flex-col items-center justify-center cursor-pointer hover:bg-sap-primary/5 hover:border-sap-primary transition-all rounded-xl group">
+                                {globalStyles.logoUrl ? (
+                                    <img src={globalStyles.logoUrl} className="h-full object-contain p-2" />
+                                ) : (
+                                    <>
+                                        <div className="p-2 bg-white rounded-full shadow-sm mb-1 group-hover:scale-110 transition-transform">
+                                            <ImageIcon size={16} className="text-gray-400 group-hover:text-sap-primary" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-gray-500 group-hover:text-sap-primary">تغيير الشعار</span>
+                                    </>
+                                )}
+                                <input type="file" ref={logoInputRef} className="hidden" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) { const reader = new FileReader(); reader.onload = (re) => setGlobalStyles({...globalStyles, logoUrl: re.target?.result as string}); reader.readAsDataURL(file); }
+                                }} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. Visibility */}
+                    <div className="p-4 space-y-2 border-b border-gray-100 bg-white">
+                        <div className="text-xs font-black text-gray-800 mb-2 flex items-center gap-1.5">
+                            <Eye size={14} className="text-sap-primary"/>
+                            <span>خيارات العرض (إظهار / إخفاء)</span>
+                        </div>
+                        <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
+                            <div className="relative flex items-center">
+                                <input type="checkbox" checked={currentScopeStyles.showLogo} onChange={e => handleStyleChange('showLogo', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                                <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="font-bold text-xs text-gray-700">إظهار الشعار</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
+                            <div className="relative flex items-center">
+                                <input type="checkbox" checked={currentScopeStyles.showUnit} onChange={e => handleStyleChange('showUnit', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                                <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="font-bold text-xs text-gray-700">إظهار الوحدة</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
+                            <div className="relative flex items-center">
+                                <input type="checkbox" checked={currentScopeStyles.showBorder} onChange={e => handleStyleChange('showBorder', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                                <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="font-bold text-xs text-gray-700">إطار الملصق</span>
+                        </label>
+                        <div className="border-t border-dashed border-gray-200 my-2"></div>
+                        <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100">
+                            <div className="relative flex items-center">
+                                <input type="checkbox" checked={currentScopeStyles.showOriginalPrice} onChange={e => handleStyleChange('showOriginalPrice', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-red-300 shadow-sm checked:border-red-500 checked:bg-red-500 focus:ring-2 focus:ring-red-500/20 transition-all" />
+                                <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="font-bold text-xs text-red-600">إظهار السعر السابق</span>
+                        </label>
+                    </div>
                 </div>
             )}
 
-            {/* 4. Colors & Fonts */}
-            <AccordionHeader title="الألوان والخطوط" isOpen={openSections.typography} onClick={() => toggleSection('typography')} icon={Palette} />
-            {openSections.typography && (
-                <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
-                    <PropertyRow label="حجم الاسم">
-                        <div className="flex items-center gap-2">
-                             <input type="range" min="8" max="72" value={currentScopeStyles.nameFontSize} onChange={e => handleStyleChange('nameFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.nameFontSize} onChange={e => handleStyleChange('nameFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+            {sidebarTab === 'item' && (
+                <div className="animate-in fade-in duration-200">
+                    {/* Item Props */}
+                    <div className="p-4 space-y-4 border-b border-gray-100 bg-white min-h-[150px]">
+                        <div className="text-xs font-black text-gray-800 mb-1 flex items-center gap-1.5">
+                            <SlidersHorizontal size={14} className="text-sap-primary"/>
+                            <span>بيانات العنصر المحدد</span>
                         </div>
-                    </PropertyRow>
-                    <PropertyRow label="حجم السعر">
-                        <div className="flex items-center gap-2">
-                             <input type="range" min="12" max="120" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
-                        </div>
-                    </PropertyRow>
-                    <PropertyRow label="حجم الوحدة">
-                        <div className="flex items-center gap-2">
-                             <input type="range" min="6" max="36" value={currentScopeStyles.unitFontSize || 12} onChange={e => handleStyleChange('unitFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.unitFontSize || 12} onChange={e => handleStyleChange('unitFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
-                        </div>
-                    </PropertyRow>
-                    <PropertyRow label="حجم سعر الكرتون">
-                        <div className="flex items-center gap-2">
-                             <input type="range" min="6" max="48" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
-                        </div>
-                    </PropertyRow>
-                    <PropertyRow label="حجم كود المنتج">
-                        <div className="flex items-center gap-2">
-                             <input type="range" min="4" max="48" value={currentScopeStyles.codeFontSize || 12} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.codeFontSize || 12} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
-                        </div>
-                    </PropertyRow>
-                    <PropertyRow label="حجم التاريخ">
-                        <div className="flex items-center gap-2">
-                             <input type="range" min="4" max="48" value={currentScopeStyles.dateFontSize || 12} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.dateFontSize || 12} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
-                        </div>
-                    </PropertyRow>
-                    <PropertyRow label="حجم كلمة للحبة">
-                        <div className="flex items-center gap-2">
-                             <input type="range" min="4" max="24" value={currentScopeStyles.pieceFontSize || 6} onChange={e => handleStyleChange('pieceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                             <input type="number" value={currentScopeStyles.pieceFontSize || 6} onChange={e => handleStyleChange('pieceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
-                        </div>
-                    </PropertyRow>
-                    
-                    <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">خصائص العملة</div>
-                        <PropertyRow label="حجم الرمز">
-                            <input type="number" value={currentScopeStyles.currencySymbolSize || 14} onChange={e => handleStyleChange('currencySymbolSize', Number(e.target.value))} className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" />
-                        </PropertyRow>
-                        <PropertyRow label="الموقع">
-                            <select 
-                                value={currentScopeStyles.currencySymbolPosition || 'after'} 
-                                onChange={e => handleStyleChange('currencySymbolPosition', e.target.value)}
-                                className="w-full p-2 border border-gray-200 rounded-lg text-xs font-bold focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all bg-white"
-                            >
-                                <option value="after">بعد السعر (يسار)</option>
-                                <option value="before">قبل السعر (يمين)</option>
-                                <option value="superscript_after">علوي بعد السعر</option>
-                                <option value="superscript_before">علوي قبل السعر</option>
-                            </select>
-                        </PropertyRow>
-                        <PropertyRow label="المسافة">
-                            <input type="number" value={currentScopeStyles.currencySymbolMargin || 4} onChange={e => handleStyleChange('currencySymbolMargin', Number(e.target.value))} className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" />
-                        </PropertyRow>
-                    </div>
-
-                    <div className="border-t border-dashed border-gray-200 pt-4 mt-2 space-y-3">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">نوع العملة</span>
-                            <select 
-                                value={currentScopeStyles.currencySymbolType} 
-                                onChange={e => handleStyleChange('currencySymbolType', e.target.value)}
-                                className="text-xs p-1.5 border border-gray-200 rounded-lg font-bold focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all bg-white"
-                            >
-                                <option value="icon">رمز (أيقونة)</option>
-                                <option value="text">نص (ر.س)</option>
-                                <option value="custom_image">صورة مخصصة</option>
-                            </select>
-                        </div>
-                        
-                        {currentScopeStyles.currencySymbolType === 'custom_image' && (
-                            <div className="flex items-center justify-between mb-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
-                                <span className="text-[10px] font-bold text-gray-500">صورة العملة</span>
-                                <div className="flex items-center gap-2">
-                                    {currentScopeStyles.currencySymbolImage && <img src={currentScopeStyles.currencySymbolImage} className="w-8 h-8 object-contain border border-gray-200 rounded bg-white" />}
-                                    <label className="cursor-pointer bg-white hover:bg-gray-50 px-3 py-1.5 rounded-md text-[10px] font-bold border border-gray-200 shadow-sm transition-all">
-                                        رفع صورة
-                                        <input type="file" className="hidden" onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) { const reader = new FileReader(); reader.onload = (re) => handleStyleChange('currencySymbolImage', re.target?.result as string); reader.readAsDataURL(file); }
-                                        }} />
-                                    </label>
+                        {activeTagIds.length > 1 ? (
+                            <div className="text-center py-10 opacity-60 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                                <div className="p-3 bg-white rounded-full shadow-sm mb-3">
+                                    <Layers size={20} className="text-gray-400"/>
                                 </div>
+                                <p className="font-bold text-gray-600 text-sm">تم تحديد {activeTagIds.length} ملصقات</p>
+                                <p className="text-[10px] text-gray-400 mt-1">يمكنك تعديل الألوان والخطوط لجميع الملصقات المحددة</p>
+                            </div>
+                        ) : activeTag ? (
+                            <>
+                                <div className="mb-2">
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">اسم المنتج</label>
+                                        <button 
+                                            onClick={() => setShowProductPicker(true)}
+                                            className="text-[10px] font-bold text-sap-primary hover:bg-sap-primary/10 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+                                        >
+                                            <RefreshCw size={10} /> تغيير المنتج
+                                        </button>
+                                    </div>
+                                    <textarea ref={nameInputRef} value={activeTag.name} onChange={e => updateTag(activeTag.id, { name: e.target.value })} className="w-full p-3 border border-gray-200 rounded-lg text-sm h-20 resize-none focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 font-bold transition-all" placeholder="أدخل اسم المنتج..." />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-sap-primary mb-1.5 uppercase tracking-wider">السعر الحالي</label>
+                                        <div className="relative">
+                                            <input type="text" value={activeTag.price} onChange={e => updateTag(activeTag.id, { price: e.target.value })} className="w-full p-2 border border-sap-primary/30 rounded-lg font-mono font-black text-sap-primary text-center bg-sap-primary/5 focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-red-500 mb-1.5 uppercase tracking-wider">السعر السابق</label>
+                                        <div className="relative">
+                                            <input type="text" value={activeTag.originalPrice || ''} onChange={e => updateTag(activeTag.id, { originalPrice: e.target.value })} className="w-full p-2 border border-red-200 rounded-lg font-mono font-bold text-red-500 text-center bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all" placeholder="0.00" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="block text-[10px] font-bold text-blue-800 uppercase tracking-wider">سعر الكرتون (اختياري)</label>
+                                        <label className="flex items-center gap-1 cursor-pointer">
+                                            <input type="checkbox" checked={activeTag.showCartonPrice !== false} onChange={e => updateTag(activeTag.id, { showCartonPrice: e.target.checked })} className="w-3 h-3 accent-blue-600" />
+                                            <span className="text-[9px] font-bold text-blue-800">إظهار في الملصق</span>
+                                        </label>
+                                    </div>
+                                    <div className="relative">
+                                        <input type="text" value={activeTag.cartonPrice || ''} onChange={e => updateTag(activeTag.id, { cartonPrice: e.target.value })} className="w-full p-2 border border-blue-200 rounded-lg font-mono font-bold text-blue-800 text-center bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" placeholder="أدخل سعر الكرتون هنا..." />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">الوحدة</label>
+                                    <input type="text" value={activeTag.unitName || ''} onChange={e => updateTag(activeTag.id, { unitName: e.target.value })} className="w-full p-2 border border-gray-200 rounded-lg text-center font-bold text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" placeholder="مثال: حبة، كجم..." />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-center py-10 opacity-60 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                                <div className="p-3 bg-white rounded-full shadow-sm mb-3 animate-bounce">
+                                    <MousePointer2 size={20} className="text-gray-400"/>
+                                </div>
+                                <p className="font-bold text-gray-600 text-sm">حدد ملصقاً في المعاينة لتعديله</p>
+                                <p className="text-[10px] text-gray-400 mt-1">انقر على أي ملصق نشط لتعديل محتوياته بدقة</p>
                             </div>
                         )}
+                    </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
-                                <span className="text-[10px] font-bold text-gray-600">العملة</span>
-                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
-                                    <input type="color" value={currentScopeStyles.currencyColor} onChange={e => handleStyleChange('currencyColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
-                                </div>
+                    {/* Colors & Typography */}
+                    <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
+                        <div className="text-xs font-black text-gray-800 mb-2 flex items-center gap-1.5">
+                            <Palette size={14} className="text-sap-primary"/>
+                            <span>الألوان والخطوط</span>
+                        </div>
+                        <PropertyRow label="حجم الاسم">
+                            <div className="flex items-center gap-2">
+                                 <input type="range" min="8" max="72" value={currentScopeStyles.nameFontSize} onChange={e => handleStyleChange('nameFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                                 <input type="number" value={currentScopeStyles.nameFontSize} onChange={e => handleStyleChange('nameFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                             </div>
-                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
-                                <span className="text-[10px] font-bold text-gray-600">المنتج</span>
-                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
-                                    <input type="color" value={currentScopeStyles.nameColor} onChange={e => handleStyleChange('nameColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
-                                </div>
+                        </PropertyRow>
+                        <PropertyRow label="حجم السعر">
+                            <div className="flex items-center gap-2">
+                                 <input type="range" min="12" max="120" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                                 <input type="number" value={currentScopeStyles.priceFontSize} onChange={e => handleStyleChange('priceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                             </div>
-                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
-                                <span className="text-[10px] font-bold text-gray-600">السعر</span>
-                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
-                                    <input type="color" value={currentScopeStyles.priceColor} onChange={e => handleStyleChange('priceColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
-                                </div>
+                        </PropertyRow>
+                        <PropertyRow label="حجم الوحدة">
+                            <div className="flex items-center gap-2">
+                                 <input type="range" min="6" max="36" value={currentScopeStyles.unitFontSize || 12} onChange={e => handleStyleChange('unitFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                                 <input type="number" value={currentScopeStyles.unitFontSize || 12} onChange={e => handleStyleChange('unitFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                             </div>
-                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
-                                <span className="text-[10px] font-bold text-gray-600">الوحدة</span>
-                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
-                                    <input type="color" value={currentScopeStyles.unitColor} onChange={e => handleStyleChange('unitColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
-                                </div>
+                        </PropertyRow>
+                        <PropertyRow label="حجم سعر الكرتون">
+                            <div className="flex items-center gap-2">
+                                 <input type="range" min="6" max="48" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                                 <input type="number" value={currentScopeStyles.cartonPriceFontSize || 10} onChange={e => handleStyleChange('cartonPriceFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                             </div>
-                            <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors col-span-2">
-                                <span className="text-[10px] font-bold text-gray-600">خلفية السعر</span>
-                                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
-                                    <input type="color" value={currentScopeStyles.backgroundColor} onChange={e => handleStyleChange('backgroundColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
-                                </div>
+                        </PropertyRow>
+                        <PropertyRow label="حجم كود المنتج">
+                            <div className="flex items-center gap-2">
+                                 <input type="range" min="4" max="48" value={currentScopeStyles.codeFontSize || 12} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                                 <input type="number" value={currentScopeStyles.codeFontSize || 12} onChange={e => handleStyleChange('codeFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
                             </div>
-                            {currentScopeStyles.template === 'big_impact' && (
-                                <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors col-span-2">
-                                    <span className="text-[10px] font-bold text-gray-600">خلفية الاسم</span>
-                                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
-                                        <input type="color" value={currentScopeStyles.nameBackgroundColor || currentScopeStyles.backgroundColor} onChange={e => handleStyleChange('nameBackgroundColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                        </PropertyRow>
+                        <PropertyRow label="حجم التاريخ">
+                            <div className="flex items-center gap-2">
+                                 <input type="range" min="4" max="48" value={currentScopeStyles.dateFontSize || 12} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                                 <input type="number" value={currentScopeStyles.dateFontSize || 12} onChange={e => handleStyleChange('dateFontSize', Number(e.target.value))} className="w-12 p-1 border border-gray-200 rounded-md text-center text-xs font-bold" />
+                            </div>
+                        </PropertyRow>
+                        
+                        <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">خصائص العملة</div>
+                            <PropertyRow label="حجم الرمز">
+                                <input type="number" value={currentScopeStyles.currencySymbolSize || 14} onChange={e => handleStyleChange('currencySymbolSize', Number(e.target.value))} className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" />
+                            </PropertyRow>
+                            <PropertyRow label="الموقع">
+                                <select 
+                                    value={currentScopeStyles.currencySymbolPosition || 'after'} 
+                                    onChange={e => handleStyleChange('currencySymbolPosition', e.target.value)}
+                                    className="w-full p-2 border border-gray-200 rounded-lg text-xs font-bold focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all bg-white"
+                                >
+                                    <option value="after">بعد السعر (يسار)</option>
+                                    <option value="before">قبل السعر (يمين)</option>
+                                    <option value="superscript_after">علوي بعد السعر</option>
+                                    <option value="superscript_before">علوي قبل السعر</option>
+                                </select>
+                            </PropertyRow>
+                            <PropertyRow label="المسافة">
+                                <input type="number" value={currentScopeStyles.currencySymbolMargin || 4} onChange={e => handleStyleChange('currencySymbolMargin', Number(e.target.value))} className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all" />
+                            </PropertyRow>
+                        </div>
+
+                        <div className="border-t border-dashed border-gray-200 pt-4 mt-2 space-y-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">نوع العملة</span>
+                                <select 
+                                    value={currentScopeStyles.currencySymbolType} 
+                                    onChange={e => handleStyleChange('currencySymbolType', e.target.value)}
+                                    className="text-xs p-1.5 border border-gray-200 rounded-lg font-bold focus:border-sap-primary focus:ring-2 focus:ring-sap-primary/10 transition-all bg-white"
+                                >
+                                    <option value="icon">رمز (أيقونة)</option>
+                                    <option value="text">نص (ر.س)</option>
+                                    <option value="custom_image">صورة مخصصة</option>
+                                </select>
+                            </div>
+                            
+                            {currentScopeStyles.currencySymbolType === 'custom_image' && (
+                                <div className="flex items-center justify-between mb-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[10px] font-bold text-gray-500">صورة العملة</span>
+                                    <div className="flex items-center gap-2">
+                                        {currentScopeStyles.currencySymbolImage && <img src={currentScopeStyles.currencySymbolImage} className="w-8 h-8 object-contain border border-gray-200 rounded bg-white" />}
+                                        <label className="cursor-pointer bg-white hover:bg-gray-50 px-3 py-1.5 rounded-md text-[10px] font-bold border border-gray-200 shadow-sm transition-all">
+                                            رفع صورة
+                                            <input type="file" className="hidden" onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) { const reader = new FileReader(); reader.onload = (re) => handleStyleChange('currencySymbolImage', re.target?.result as string); reader.readAsDataURL(file); }
+                                            }} />
+                                        </label>
                                     </div>
                                 </div>
                             )}
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                    <span className="text-[10px] font-bold text-gray-600">العملة</span>
+                                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                        <input type="color" value={currentScopeStyles.currencyColor} onChange={e => handleStyleChange('currencyColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                    <span className="text-[10px] font-bold text-gray-600">المنتج</span>
+                                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                        <input type="color" value={currentScopeStyles.nameColor} onChange={e => handleStyleChange('nameColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                    <span className="text-[10px] font-bold text-gray-600">السعر</span>
+                                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                        <input type="color" value={currentScopeStyles.priceColor} onChange={e => handleStyleChange('priceColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors">
+                                    <span className="text-[10px] font-bold text-gray-600">الوحدة</span>
+                                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                        <input type="color" value={currentScopeStyles.unitColor} onChange={e => handleStyleChange('unitColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors col-span-2">
+                                    <span className="text-[10px] font-bold text-gray-600">خلفية السعر</span>
+                                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+                                        <input type="color" value={currentScopeStyles.backgroundColor} onChange={e => handleStyleChange('backgroundColor', e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer p-0 border-0" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* 5. Offsets */}
-            <AccordionHeader title="التحكم اليدوي بالمواقع (الإزاحة)" isOpen={openSections.offsets} onClick={() => toggleSection('offsets')} icon={MousePointer2} />
-            {openSections.offsets && (
-                <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
-                    <div className="text-[10px] text-gray-500 mb-2 bg-blue-50 p-2 rounded border border-blue-100">
-                        استخدم هذه الأشرطة لتحريك العناصر يميناً/يساراً أو أعلى/أسفل بدقة.
-                    </div>
-                    
-                    <div className="border-t border-dashed border-gray-200 pt-3">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة الشعار</div>
-                        <PropertyRow label="أفقي (X)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.logoOffsetX || 0} onChange={e => handleStyleChange('logoOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                        <PropertyRow label="عمودي (Y)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.logoOffsetY || 0} onChange={e => handleStyleChange('logoOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                    </div>
-
-                    <div className="border-t border-dashed border-gray-200 pt-3">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة الاسم</div>
-                        <PropertyRow label="أفقي (X)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.nameOffsetX || 0} onChange={e => handleStyleChange('nameOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                        <PropertyRow label="عمودي (Y)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.nameOffsetY || 0} onChange={e => handleStyleChange('nameOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                    </div>
-
-                    <div className="border-t border-dashed border-gray-200 pt-3">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة السعر الرئيسي</div>
-                        <PropertyRow label="أفقي (X)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.priceOffsetX || 0} onChange={e => handleStyleChange('priceOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                        <PropertyRow label="عمودي (Y)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.priceOffsetY || 0} onChange={e => handleStyleChange('priceOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                    </div>
-
-                    <div className="border-t border-dashed border-gray-200 pt-3">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة سعر الكرتون</div>
-                        <PropertyRow label="أفقي (X)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.cartonPriceOffsetX || 0} onChange={e => handleStyleChange('cartonPriceOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                        <PropertyRow label="عمودي (Y)">
-                            <input type="range" min="-50" max="50" value={currentScopeStyles.cartonPriceOffsetY || 0} onChange={e => handleStyleChange('cartonPriceOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
-                        </PropertyRow>
-                    </div>
-                </div>
-            )}
-
-            {/* 6. Visibility */}
-            <AccordionHeader title="إظهار / إخفاء" isOpen={openSections.visibility} onClick={() => toggleSection('visibility')} icon={Eye} />
-            {openSections.visibility && (
-                <div className="p-4 space-y-2 border-b border-gray-100 bg-white">
-                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
-                        <div className="relative flex items-center">
-                            <input type="checkbox" checked={currentScopeStyles.showLogo} onChange={e => handleStyleChange('showLogo', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
-                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                    {/* Manual Offsets */}
+                    <div className="p-4 space-y-4 border-b border-gray-100 bg-white">
+                        <div className="text-xs font-black text-gray-800 mb-2 flex items-center gap-1.5">
+                            <MousePointer2 size={14} className="text-sap-primary"/>
+                            <span>التحكم اليدوي بالإزاحة</span>
                         </div>
-                        <span className="font-bold text-xs text-gray-700">إظهار الشعار</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
-                        <div className="relative flex items-center">
-                            <input type="checkbox" checked={currentScopeStyles.showUnit} onChange={e => handleStyleChange('showUnit', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
-                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        <div className="text-[10px] text-gray-500 mb-2 bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+                            استخدم هذه الأشرطة لتحريك العناصر يميناً/يساراً أو أعلى/أسفل بدقة.
                         </div>
-                        <span className="font-bold text-xs text-gray-700">إظهار الوحدة</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
-                        <div className="relative flex items-center">
-                            <input type="checkbox" checked={currentScopeStyles.showBorder} onChange={e => handleStyleChange('showBorder', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-sap-primary checked:bg-sap-primary focus:ring-2 focus:ring-sap-primary/20 transition-all" />
-                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        
+                        <div className="border-t border-dashed border-gray-200 pt-3">
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة الشعار</div>
+                            <PropertyRow label="أفقي (X)">
+                                <input type="range" min="-50" max="50" value={currentScopeStyles.logoOffsetX || 0} onChange={e => handleStyleChange('logoOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                            </PropertyRow>
+                            <PropertyRow label="عمودي (Y)">
+                                <input type="range" min="-50" max="50" value={currentScopeStyles.logoOffsetY || 0} onChange={e => handleStyleChange('logoOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                            </PropertyRow>
                         </div>
-                        <span className="font-bold text-xs text-gray-700">إطار الملصق</span>
-                    </label>
-                    <div className="border-t border-dashed border-gray-200 my-2"></div>
-                    <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100">
-                        <div className="relative flex items-center">
-                            <input type="checkbox" checked={currentScopeStyles.showOriginalPrice} onChange={e => handleStyleChange('showOriginalPrice', e.target.checked)} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-red-300 shadow-sm checked:border-red-500 checked:bg-red-500 focus:ring-2 focus:ring-red-500/20 transition-all" />
-                            <CheckCircle2 size={10} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
-                        </div>
-                        <span className="font-bold text-xs text-red-600">إظهار السعر السابق</span>
-                    </label>
-                </div>
-            )}
 
-            {/* 6. Actions */}
-            <AccordionHeader title="إجراءات" isOpen={openSections.actions} onClick={() => toggleSection('actions')} icon={Layers} />
-            {openSections.actions && (
-                <div className="p-4 space-y-3 bg-white">
-                    <button onClick={() => { setActiveTagIds([]); setShowProductPicker(true); }} className="w-full py-2.5 bg-sap-primary text-white font-bold shadow-md shadow-sap-primary/20 hover:bg-sap-primary-hover hover:shadow-lg hover:shadow-sap-primary/30 flex items-center justify-center gap-2 rounded-xl transition-all transform active:scale-[0.98]">
-                        <Plus size={18}/> إضافة منتج جديد
-                    </button>
-                    {activeTagIds.length > 0 && (
-                        <div className="flex gap-3">
-                            <button onClick={() => { setSelectedTags(prev => prev.filter(t => !activeTagIds.includes(t.id))); setActiveTagIds([]); }} className="flex-1 py-2.5 bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:border-red-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
-                                <Trash2 size={14} /> حذف ({activeTagIds.length})
-                            </button>
-                            <button onClick={() => setActiveTagIds([])} className="flex-1 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 font-bold rounded-xl text-xs transition-all shadow-sm">
-                                إلغاء التحديد
-                            </button>
+                        <div className="border-t border-dashed border-gray-200 pt-3">
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة الاسم</div>
+                            <PropertyRow label="أفقي (X)">
+                                <input type="range" min="-50" max="50" value={currentScopeStyles.nameOffsetX || 0} onChange={e => handleStyleChange('nameOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                            </PropertyRow>
+                            <PropertyRow label="عمودي (Y)">
+                                <input type="range" min="-50" max="50" value={currentScopeStyles.nameOffsetY || 0} onChange={e => handleStyleChange('nameOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                            </PropertyRow>
                         </div>
-                    )}
+
+                        <div className="border-t border-dashed border-gray-200 pt-3">
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">إزاحة السعر الرئيسي</div>
+                            <PropertyRow label="أفقي (X)">
+                                <input type="range" min="-50" max="50" value={currentScopeStyles.priceOffsetX || 0} onChange={e => handleStyleChange('priceOffsetX', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                            </PropertyRow>
+                            <PropertyRow label="عمودي (Y)">
+                                <input type="range" min="-50" max="50" value={currentScopeStyles.priceOffsetY || 0} onChange={e => handleStyleChange('priceOffsetY', Number(e.target.value))} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sap-primary" />
+                            </PropertyRow>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
@@ -1429,154 +1426,176 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
 
       {/* Main Canvas */}
       <main className="flex-1 flex flex-col overflow-hidden relative print:hidden">
-        <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 flex flex-wrap items-center justify-between px-6 py-4 shrink-0 z-20 shadow-sm relative gap-4 rounded-b-2xl mx-2">
+        <div className="bg-white border-b border-gray-150 flex flex-wrap items-center justify-between px-4 py-2 shrink-0 z-20 shadow-xs relative gap-2 rounded-b-xl mx-2 mt-1">
             
             {/* Left Group: Project Management */}
-            <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 bg-gray-50/80 p-2 rounded-xl border border-gray-200/60 focus-within:border-sap-primary/40 focus-within:bg-white focus-within:shadow-md transition-all group">
-                    <div className="bg-white shadow-sm border border-gray-100 p-2 rounded-lg text-gray-400 group-focus-within:text-sap-primary transition-colors">
-                        <LayoutGrid size={18}/>
-                    </div>
-                    <input type="text" value={listName} onChange={e => setListName(e.target.value)} className="bg-transparent border-none text-sm w-40 sm:w-64 focus:ring-0 font-bold text-gray-800 placeholder-gray-400 py-1" placeholder="اسم المشروع..." />
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-gray-50/60 px-2.5 py-1 rounded-lg border border-gray-200/60 focus-within:border-sap-primary/40 focus-within:bg-white transition-all">
+                    <FolderOpen size={14} className="text-gray-400" />
+                    <input 
+                        type="text" 
+                        value={listName} 
+                        onChange={e => setListName(e.target.value)} 
+                        className="bg-transparent border-none text-xs w-36 sm:w-48 focus:ring-0 focus:outline-none font-bold text-gray-800 placeholder-gray-400 p-0" 
+                        placeholder="اسم المشروع..." 
+                    />
                 </div>
                 
-                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
-                    <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-sap-primary hover:bg-sap-highlight/20 rounded-lg transition-all text-sm font-bold" title="حفظ المشروع">
-                        {isSaving ? <Loader2 size={18} className="animate-spin text-sap-primary" /> : <Save size={18} className="text-gray-500 hover:text-sap-primary"/>}
-                        <span className="hidden lg:inline">حفظ المشروع</span>
+                <div className="flex items-center gap-0.5 bg-gray-50 border border-gray-200/60 p-0.5 rounded-lg">
+                    <button 
+                        onClick={handleSaveProject} 
+                        disabled={isSaving} 
+                        className="flex items-center gap-1 px-2.5 py-1 text-gray-700 hover:text-sap-primary hover:bg-white rounded-md transition-all text-xs font-bold" 
+                        title="حفظ المشروع"
+                    >
+                        {isSaving ? <Loader2 size={13} className="animate-spin text-sap-primary" /> : <Save size={13} className="text-gray-500 hover:text-sap-primary"/>}
+                        <span className="hidden sm:inline">حفظ</span>
                     </button>
-                    <div className="w-px h-6 bg-gray-200 mx-1"></div>
-                    <button onClick={() => setShowSavedLists(true)} className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-sap-primary hover:bg-sap-highlight/20 rounded-lg transition-all text-sm font-bold" title="فتح مشروع">
-                        <FolderOpen size={18} className="text-gray-500 hover:text-sap-primary"/>
-                        <span className="hidden lg:inline">الأرشيف</span>
+                    <div className="w-px h-3.5 bg-gray-200 mx-0.5"></div>
+                    <button 
+                        onClick={() => setShowSavedLists(true)} 
+                        className="flex items-center gap-1 px-2.5 py-1 text-gray-700 hover:text-sap-primary hover:bg-white rounded-md transition-all text-xs font-bold" 
+                        title="الأرشيف"
+                    >
+                        <FolderOpen size={13} className="text-gray-500 hover:text-sap-primary"/>
+                        <span className="hidden sm:inline">الأرشيف</span>
                     </button>
                 </div>
             </div>
 
             {/* Center Group: Tag Actions */}
             {selectedTags.length > 0 && (
-                <div className="flex-1 flex justify-center order-last xl:order-none w-full xl:w-auto mt-2 xl:mt-0">
-                    <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm overflow-x-auto ring-1 ring-black/5">
-                        <button 
-                            onClick={() => {
-                                if (activeTagIds.length === selectedTags.length) {
-                                    setActiveTagIds([]);
-                                } else {
-                                    setActiveTagIds(selectedTags.map(t => t.id));
+                <div className="flex items-center gap-1 bg-gray-50/80 p-0.5 rounded-lg border border-gray-200/60 max-w-full overflow-x-auto custom-scrollbar">
+                    <button 
+                        onClick={() => {
+                            if (activeTagIds.length === selectedTags.length) {
+                                setActiveTagIds([]);
+                            } else {
+                                setActiveTagIds(selectedTags.map(t => t.id));
+                            }
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all text-xs font-bold ${activeTagIds.length === selectedTags.length ? 'bg-white text-indigo-700 shadow-xs border border-indigo-100' : 'text-gray-600 hover:text-gray-800 hover:bg-white'}`}
+                        title={activeTagIds.length === selectedTags.length ? "إلغاء التحديد" : "تحديد الكل"}
+                    >
+                        <CheckCircle2 size={13} className={activeTagIds.length === selectedTags.length ? "text-indigo-600" : "text-gray-400"}/>
+                        <span className="hidden sm:inline">{activeTagIds.length === selectedTags.length ? "إلغاء التحديد" : "تحديد الكل"}</span>
+                    </button>
+
+                    {activeTagIds.length > 0 && (
+                        <>
+                            <div className="w-px h-3.5 bg-gray-200 mx-0.5"></div>
+                            <button 
+                                onClick={() => {
+                                    setConfirmDialog({
+                                        isOpen: true,
+                                        message: `هل أنت متأكد من حذف الملصقات المحددة (${activeTagIds.length})؟`,
+                                        onConfirm: () => {
+                                            setSelectedTags(prev => prev.filter(t => !activeTagIds.includes(t.id)));
+                                            setActiveTagIds([]);
+                                            addToast("تم حذف الملصقات المحددة", "success");
+                                            setConfirmDialog(null);
+                                        }
+                                    });
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md text-red-600 hover:bg-red-50 text-xs font-bold transition-all"
+                                title="حذف المحددة"
+                            >
+                                <Trash2 size={13} />
+                                <span>حذف المحدد ({activeTagIds.length})</span>
+                            </button>
+                        </>
+                    )}
+
+                    <div className="w-px h-3.5 bg-gray-200 mx-0.5"></div>
+                    <button 
+                        onClick={() => {
+                            setConfirmDialog({
+                                isOpen: true,
+                                message: 'هل أنت متأكد من مسح جميع الملصقات؟',
+                                onConfirm: () => {
+                                    setSelectedTags([]); 
+                                    setActiveTagIds([]); 
+                                    addToast("تم مسح الصفحة", "info");
+                                    setConfirmDialog(null);
                                 }
-                            }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap ${activeTagIds.length === selectedTags.length ? 'bg-indigo-50 text-indigo-700 shadow-inner ring-1 ring-indigo-100' : 'hover:bg-gray-50 text-gray-600'}`}
-                        >
-                            <CheckCircle2 size={16} className={activeTagIds.length === selectedTags.length ? "text-indigo-600" : "text-gray-400"}/>
-                            <span className="hidden sm:inline">{activeTagIds.length === selectedTags.length ? "إلغاء التحديد" : "تحديد الكل"}</span>
-                        </button>
+                            });
+                        }} 
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-md text-red-500 hover:bg-red-50 text-xs font-bold transition-all"
+                        title="تفريغ الصفحة"
+                    >
+                        <Trash2 size={13}/>
+                        <span className="hidden sm:inline">تفريغ الصفحة</span>
+                    </button>
 
-                        {activeTagIds.length > 0 && (
-                            <>
-                                <div className="w-px h-6 bg-gray-200 mx-1"></div>
-                                <button 
-                                    onClick={() => {
-                                        setConfirmDialog({
-                                            isOpen: true,
-                                            message: `هل أنت متأكد من حذف الملصقات المحددة (${activeTagIds.length})؟`,
-                                            onConfirm: () => {
-                                                setSelectedTags(prev => prev.filter(t => !activeTagIds.includes(t.id)));
-                                                setActiveTagIds([]);
-                                                addToast("تم حذف الملصقات المحددة", "success");
-                                                setConfirmDialog(null);
-                                            }
-                                        });
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-200"
-                                    title="حذف الملصقات المحددة"
-                                >
-                                    <Trash2 size={16} />
-                                    <span>حذف المحدد ({activeTagIds.length})</span>
-                                </button>
-                            </>
-                        )}
-
-                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
-
-                        <button 
-                            onClick={() => {
-                                setConfirmDialog({
-                                    isOpen: true,
-                                    message: 'هل أنت متأكد من مسح جميع الملصقات؟',
-                                    onConfirm: () => {
-                                        setSelectedTags([]); 
-                                        setActiveTagIds([]); 
-                                        addToast("تم مسح الصفحة", "info");
-                                        setConfirmDialog(null);
+                    {activeTagIds.length === 1 && (
+                        <>
+                            <div className="w-px h-3.5 bg-gray-200 mx-0.5"></div>
+                            <button 
+                                onClick={() => {
+                                    const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
+                                    if (currentTag && selectedTags.length < 16) {
+                                        const newTag = { ...currentTag, id: generateId() };
+                                        setSelectedTags(prev => [...prev, newTag]);
+                                        addToast("تم تكرار الملصق", "success");
+                                    } else if (selectedTags.length >= 16) {
+                                        addToast("الصفحة ممتلئة", "warning");
                                     }
-                                });
-                            }} 
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-red-500 hover:bg-red-50"
-                        >
-                            <Trash2 size={16}/>
-                            <span className="hidden sm:inline">تفريغ الصفحة</span>
-                        </button>
-
-                        {activeTagIds.length === 1 && (
-                            <>
-                                <div className="w-px h-6 bg-gray-200 mx-1 animate-in zoom-in"></div>
-                                <button 
-                                    onClick={() => {
-                                        const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
-                                        if (currentTag && selectedTags.length < 16) {
-                                            const newTag = { ...currentTag, id: generateId() };
-                                            setSelectedTags(prev => [...prev, newTag]);
-                                            addToast("تم تكرار الملصق", "success");
-                                        } else if (selectedTags.length >= 16) {
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all"
+                                title="تكرار الملصق"
+                            >
+                                <Copy size={13}/>
+                                <span className="hidden sm:inline">نسخ الملصق</span>
+                            </button>
+                            <div className="w-px h-3.5 bg-gray-200 mx-0.5"></div>
+                            <button 
+                                onClick={() => {
+                                    const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
+                                    if (currentTag) {
+                                        const remainingSlots = 16 - selectedTags.length;
+                                        if (remainingSlots > 0) {
+                                            const newTags = Array.from({ length: remainingSlots }).map(() => ({ ...currentTag, id: generateId() }));
+                                            setSelectedTags(prev => [...prev, ...newTags]);
+                                            addToast(`تم تعبئة الصفحة بـ ${remainingSlots} ملصق`, "success");
+                                        } else {
                                             addToast("الصفحة ممتلئة", "warning");
                                         }
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-blue-600 hover:bg-blue-50 animate-in fade-in"
-                                >
-                                    <Copy size={16}/>
-                                    <span className="hidden sm:inline">نسخ الملصق</span>
-                                </button>
-                                <button 
-                                    onClick={() => {
-                                        const currentTag = selectedTags.find(t => t.id === activeTagIds[0]);
-                                        if (currentTag) {
-                                            const remainingSlots = 16 - selectedTags.length;
-                                            if (remainingSlots > 0) {
-                                                const newTags = Array.from({ length: remainingSlots }).map(() => ({ ...currentTag, id: generateId() }));
-                                                setSelectedTags(prev => [...prev, ...newTags]);
-                                                addToast(`تم تعبئة الصفحة بـ ${remainingSlots} ملصق`, "success");
-                                            } else {
-                                                addToast("الصفحة ممتلئة", "warning");
-                                            }
-                                        }
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-bold whitespace-nowrap text-emerald-600 hover:bg-emerald-50 animate-in fade-in"
-                                >
-                                    <LayoutGrid size={16}/>
-                                    <span className="hidden sm:inline">تعبئة الشواغر</span>
-                                </button>
-                            </>
-                        )}
-                    </div>
+                                    }
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-emerald-600 hover:bg-emerald-50 text-xs font-bold transition-all"
+                                title="تعبئة الشواغر"
+                            >
+                                <LayoutGrid size={13}/>
+                                <span className="hidden sm:inline">تعبئة الشواغر</span>
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
 
             {/* Right Group: View & Print Output */}
-            <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 bg-gray-50 border border-gray-200/60 p-1.5 rounded-xl shadow-sm">
-                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-gray-500 transition-all" title="تصغير"><ZoomOut size={16}/></button>
-                    <span className="text-sm font-black w-12 text-center font-mono text-gray-700">{globalStyles.previewZoom}%</span>
-                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-gray-500 transition-all" title="تكبير"><ZoomIn size={16}/></button>
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5 bg-gray-50 border border-gray-200/60 p-0.5 rounded-lg">
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.max(20, s.previewZoom - 10)}))} className="p-1 hover:bg-white hover:shadow-xs rounded text-gray-500 transition-all" title="تصغير"><ZoomOut size={13}/></button>
+                    <span className="text-[11px] font-bold w-9 text-center font-mono text-gray-600">{globalStyles.previewZoom}%</span>
+                    <button onClick={() => setGlobalStyles(s => ({...s, previewZoom: Math.min(200, s.previewZoom + 10)}))} className="p-1 hover:bg-white hover:shadow-xs rounded text-gray-500 transition-all" title="تكبير"><ZoomIn size={13}/></button>
                 </div>
                 
-                <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sap-primary to-sap-primary-hover text-white rounded-xl hover:shadow-lg hover:shadow-sap-primary/30 transition-all text-sm font-black tracking-wide shrink-0 border border-sap-primary-hover border-b-4 active:border-b-0 active:translate-y-1">
-                    <Printer size={20} strokeWidth={2.5}/> 
-                    <span className="hidden sm:inline">طباعة الصفحة</span>
+                <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-1.5 bg-sap-primary hover:bg-sap-primary-hover text-white rounded-lg hover:shadow-md hover:shadow-sap-primary/10 transition-all text-xs font-black shrink-0">
+                    <Printer size={13}/> 
+                    <span>طباعة الصفحة</span>
                 </button>
             </div>
         </div>
 
-        <div className="flex-1 bg-slate-100 overflow-auto p-8 relative flex justify-center custom-scrollbar">
+        <div 
+          className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 relative flex justify-center custom-scrollbar"
+          style={{
+            backgroundColor: '#f8fafc',
+            backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
+            backgroundSize: '20px 20px',
+          }}
+        >
             <style>{`
                 @media print {
                     .print-page {
@@ -1603,7 +1622,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 </div>
             )}
             <div 
-              className="bg-white shadow-2xl transition-all ring-1 ring-black/5 print-page"
+              className="bg-white shadow-[0_20px_50px_rgba(15,23,42,0.12)] hover:shadow-[0_25px_60px_rgba(15,23,42,0.18)] transition-all ring-1 ring-black/5 print-page relative"
               style={{
                 width: '210mm', height: '297mm', transform: `scale(${globalStyles.previewZoom / 100})`, transformOrigin: 'top center',
                 display: 'grid', 
@@ -1614,9 +1633,22 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                 paddingBottom: `${globalStyles.bottomMargin}mm`,
                 paddingLeft: `${globalStyles.leftMargin}mm`, 
                 paddingRight: `${globalStyles.rightMargin}mm`,
-                border: '1px solid #333'
+                border: '1px solid #111827'
               } as any}
             >
+                {/* Printable Margin Guideline (Visible Only on Workspace/Screen) */}
+                <div 
+                  className="absolute border border-dashed border-purple-400/40 pointer-events-none print:hidden flex items-start justify-end p-1 select-none" 
+                  style={{
+                    top: `${globalStyles.topMargin}mm`,
+                    bottom: `${globalStyles.bottomMargin}mm`,
+                    left: `${globalStyles.leftMargin}mm`,
+                    right: `${globalStyles.rightMargin}mm`,
+                    zIndex: 20
+                  }}
+                >
+                    <span className="text-[7px] font-bold bg-purple-100 text-purple-600 px-1 py-0.5 rounded leading-none">مساحة الطباعة</span>
+                </div>
                 {Array.from({ length: 16 }).map((_, i) => {
                     const tag = selectedTags[i];
                     const s = getEffectiveStyle(tag);
@@ -1631,23 +1663,38 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                   return;
                               }
                               if (e.ctrlKey || e.metaKey) {
-                                  setActiveTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]);
+                                  setActiveTagIds(prev => {
+                                      const next = prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id];
+                                      if (next.length > 0) setSidebarTab('item');
+                                      return next;
+                                  });
                               } else {
-                                  setActiveTagIds(prev => prev.includes(tag.id) && prev.length === 1 ? [] : [tag.id]);
+                                  setActiveTagIds(prev => {
+                                      const isUnselecting = prev.includes(tag.id) && prev.length === 1;
+                                      if (isUnselecting) {
+                                          return [];
+                                      } else {
+                                          setSidebarTab('item');
+                                          return [tag.id];
+                                      }
+                                  });
                               }
                           }}
                           onDoubleClick={() => {
                               if (!tag) return;
                               setActiveTagIds([tag.id]);
+                              setSidebarTab('item');
                               setShowProductPicker(true);
                           }}
-                          className={`relative transition-all ${tag ? 'cursor-pointer hover:shadow-md' : 'cursor-pointer hover:bg-gray-50 flex items-center justify-center'} ${isActive ? 'ring-2 ring-sap-primary z-10 shadow-lg' : ''}`}
+                          className={`relative transition-all duration-300 group overflow-hidden ${tag ? 'cursor-pointer hover:shadow-lg hover:-translate-y-[1px] border border-gray-100' : 'cursor-pointer'}`}
                           style={{ 
                               width: `${labelWidth}mm`, 
                               height: `${globalStyles.tagHeight}mm`, 
                               boxSizing: 'border-box', 
-                              border: s.showBorder ? '1px solid #e5e7eb' : '1px dashed #e5e7eb', 
-                              backgroundColor: tag ? s.backgroundColor : 'transparent' 
+                              border: tag ? (s.showBorder ? '1px solid #e5e7eb' : '1px dashed #e2e8f0') : 'none', 
+                              backgroundColor: tag ? s.backgroundColor : 'transparent',
+                              boxShadow: isActive ? '0 0 0 2px #5B21B6, 0 10px 25px -5px rgba(91, 33, 182, 0.25)' : undefined,
+                              zIndex: isActive ? 10 : 1
                           }}
                         >
                             {tag ? (
@@ -1656,9 +1703,13 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                     <div 
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setActiveTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]);
+                                            setActiveTagIds(prev => {
+                                                const next = prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id];
+                                                if (next.length > 0) setSidebarTab('item');
+                                                return next;
+                                            });
                                         }}
-                                        className="absolute top-2 right-2 z-30 transition-all duration-200 select-none print:hidden cursor-pointer"
+                                        className="absolute top-2.5 right-2.5 z-30 transition-all duration-200 select-none print:hidden cursor-pointer"
                                         title={isActive ? "إلغاء تحديد الملصق للحذف" : "تحديد الملصق للحذف"}
                                     >
                                         {isActive ? (
@@ -1666,7 +1717,7 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                                 <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                             </div>
                                         ) : (
-                                            <div className="w-5.5 h-5.5 rounded-full border-2 border-gray-300 bg-white hover:border-gray-400 flex items-center justify-center transition-all duration-150 shadow-sm hover:scale-110">
+                                            <div className="w-5.5 h-5.5 rounded-full border-2 border-gray-300 bg-white hover:border-gray-400 flex items-center justify-center transition-all duration-150 shadow-sm hover:scale-110 opacity-0 group-hover:opacity-100">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
                                             </div>
                                         )}
@@ -1676,29 +1727,32 @@ export const PriceTagGenerator: React.FC<PriceTagGeneratorProps> = ({ products, 
                                         {renderTagLayout(tag, s)}
                                     </div>
                                     {isActive && activeTagIds.length === 1 && (
-                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-2xl rounded-full flex items-center gap-1 p-1.5 border border-gray-200 z-50">
-                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicate(tag); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full" title="تكرار"><Copy size={16}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); setActiveTagIds([tag.id]); setShowProductPicker(true); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full" title="تغيير المنتج"><RefreshCw size={16}/></button>
+                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-2xl rounded-full flex items-center gap-1 p-1.5 border border-gray-200/80 z-50 animate-in slide-in-from-bottom-2 duration-200">
+                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicate(tag); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full transition-colors" title="تكرار"><Copy size={15}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); setActiveTagIds([tag.id]); setShowProductPicker(true); }} className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-full transition-colors" title="تغيير المنتج"><RefreshCw size={15}/></button>
                                             
-                                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                            <div className="w-px h-4 bg-gray-200 mx-1"></div>
                                             
-                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...(tag.styles || {}), cartonPriceFontSize: (s.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تكبير سعر الكرتون">
-                                                <span className="text-[10px] font-bold">A+</span>
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...(tag.styles || {}), cartonPriceFontSize: (s.cartonPriceFontSize || 10) + 1 }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1 transition-colors" title="تكبير سعر الكرتون">
+                                                <span className="text-[10px] font-black">A+</span>
                                             </button>
-                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...(tag.styles || {}), cartonPriceFontSize: Math.max(4, (s.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1" title="تصغير سعر الكرتون">
-                                                <span className="text-[10px] font-bold">A-</span>
+                                            <button onClick={(e) => { e.stopPropagation(); updateTag(tag.id, { styles: { ...(tag.styles || {}), cartonPriceFontSize: Math.max(4, (s.cartonPriceFontSize || 10) - 1) }}); }} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-full flex items-center gap-1 transition-colors" title="تصغير سعر الكرتون">
+                                                <span className="text-[10px] font-black">A-</span>
                                             </button>
 
-                                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                            <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
-                                            <button onClick={(e) => { e.stopPropagation(); handleRemove(tag.id); }} className="p-1.5 hover:bg-red-50 text-red-600 rounded-full" title="حذف"><Trash2 size={16}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleRemove(tag.id); }} className="p-1.5 hover:bg-red-50 text-red-600 rounded-full transition-colors" title="حذف"><Trash2 size={15}/></button>
                                         </div>
                                     )}
                                 </>
                             ) : (
-                                <div className="opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-gray-400 transition-opacity">
-                                    <Plus size={24} className="mb-1" />
-                                    <span className="text-[10px] font-bold">إضافة ملصق</span>
+                                <div className="w-full h-full border border-dashed border-gray-200 bg-gray-50/40 p-4 flex flex-col items-center justify-center text-gray-400 group-hover:bg-sap-primary/5 group-hover:border-sap-primary/30 group-hover:text-sap-primary transition-all duration-300 print:hidden select-none">
+                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100 mb-1 group-hover:scale-110 transition-transform">
+                                        <Plus size={16} className="text-gray-400 group-hover:text-sap-primary" />
+                                    </div>
+                                    <span className="text-[9px] font-bold text-gray-400 group-hover:text-sap-primary transition-colors">موضع فارغ #{i + 1}</span>
+                                    <span className="text-[8px] text-gray-300 group-hover:text-sap-primary/60 mt-0.5 transition-colors">انقر لإضافة منتج</span>
                                 </div>
                             )}
                         </div>
