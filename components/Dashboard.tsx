@@ -9,7 +9,7 @@ import {
   Package, Ruler, FileText, Clock, 
   ArrowUpRight, AlertCircle, ShoppingBag, Plus, DollarSign, Crown,
   AlertTriangle, CheckCircle, Trash2, Calendar, Zap, Layout, Printer, Wallet, ExternalLink, TrendingUp, TrendingDown, Truck,
-  LogOut, LogIn, Copy, Share2, X, User as UserIcon
+  LogOut, LogIn, Copy, Share2, X, User as UserIcon, Bell, BellRing, BellOff
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -51,6 +51,88 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [cashDrawerAction, setCashDrawerAction] = useState<'deposit' | 'withdraw'>('deposit');
   const [cashDrawerAmount, setCashDrawerAmount] = useState('');
   const [showExtraColumns, setShowExtraColumns] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<string>('default');
+  const [hasNotifiedThisSession, setHasNotifiedThisSession] = useState<boolean>(false);
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (expiryAlerts.length > 0 && 'Notification' in window && Notification.permission === 'granted' && !hasNotifiedThisSession) {
+      const criticalAlerts = expiryAlerts.filter(a => a.daysLeft <= 15);
+      if (criticalAlerts.length > 0) {
+        const expiredCount = criticalAlerts.filter(a => a.daysLeft <= 0).length;
+        const nearCount = criticalAlerts.filter(a => a.daysLeft > 0 && a.daysLeft <= 15).length;
+        
+        let bodyText = '';
+        if (expiredCount > 0 && nearCount > 0) {
+          bodyText = `تنبيه: يوجد عدد ${expiredCount} منتج منتهي الصلاحية و ${nearCount} منتج قريب من الانتهاء!`;
+        } else if (expiredCount > 0) {
+          bodyText = `تنبيه: يوجد عدد ${expiredCount} منتج منتهي الصلاحية يجب اتخاذ إجراء بشأنها!`;
+        } else if (nearCount > 0) {
+          bodyText = `تنبيه: يوجد عدد ${nearCount} منتج قريبة من الانتهاء (أقل من 15 يوم).`;
+        }
+        
+        try {
+          new Notification('تنبيه صلاحية المنتجات ⚠️', {
+            body: bodyText,
+            dir: 'rtl'
+          });
+          setHasNotifiedThisSession(true);
+        } catch (e) {
+          console.error('Failed to trigger notification:', e);
+        }
+      }
+    }
+  }, [expiryAlerts, hasNotifiedThisSession]);
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      notify('متصفحك لا يدعم إشعارات سطح المكتب.', 'warning');
+      return;
+    }
+    
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
+        notify('تم تفعيل إشعارات سطح المكتب بنجاح!', 'success');
+        new Notification('نظام StoreFlow', {
+          body: 'تم تفعيل إشعارات الصلاحية لسطح المكتب بنجاح! 🎉',
+          dir: 'rtl'
+        });
+      } else if (permission === 'denied') {
+        notify('تم رفض صلاحية الإشعارات. يرجى تفعيلها يدوياً من إعدادات المتصفح بجوار شريط العنوان.', 'warning');
+      }
+    } catch (err) {
+      console.error(err);
+      notify('تعذر طلب صلاحية الإشعارات من داخل هذا الإطار. يرجى فتح التطبيق في علامة تبويب جديدة.', 'error');
+    }
+  };
+
+  const testDesktopNotification = () => {
+    if (!('Notification' in window)) {
+      notify('متصفحك لا يدعم إشعارات سطح المكتب.', 'warning');
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      requestNotificationPermission();
+      return;
+    }
+    try {
+      new Notification('تجربة إشعارات StoreFlow 🔔', {
+        body: 'نظام إدارة صلاحية المنتجات يعمل بنجاح على سطح المكتب الخاص بك!',
+        dir: 'rtl'
+      });
+      notify('تم إرسال إشعار تجريبي لسطح المكتب بنجاح.', 'success');
+    } catch (err) {
+      console.error(err);
+      notify('حدث خطأ أثناء إرسال الإشعار التجريبي.', 'error');
+    }
+  };
 
   const filteredExpiryAlerts = useMemo(() => {
     return expiryAlerts.filter(alert => {
@@ -429,6 +511,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                               title="إظهار/إخفاء التفاصيل"
                           >
                               {showExtraColumns ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}
+                          </button>
+
+                          <button 
+                              onClick={notificationPermission === 'granted' ? testDesktopNotification : requestNotificationPermission} 
+                              className={`p-2 rounded-xl border text-xs font-bold transition-all ${
+                                  notificationPermission === 'granted' 
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                                      : notificationPermission === 'denied'
+                                      ? 'bg-red-50 text-red-500 border-red-200 hover:bg-red-100'
+                                      : 'bg-white text-gray-500 hover:text-sap-primary hover:bg-sap-primary/5 border-gray-200'
+                              }`} 
+                              title={
+                                  notificationPermission === 'granted' 
+                                      ? 'إرسال إشعار تجريبي لسطح المكتب 🔔' 
+                                      : notificationPermission === 'denied'
+                                      ? 'الإشعارات مرفوضة بالمتصفح. انقر لإعادة طلب الصلاحية'
+                                      : 'تفعيل إشعارات سطح المكتب لانتهاء الصلاحية'
+                              }
+                          >
+                              {notificationPermission === 'granted' ? (
+                                  <BellRing size={16} className="text-emerald-600 animate-wiggle" />
+                              ) : notificationPermission === 'denied' ? (
+                                  <BellOff size={16} />
+                              ) : (
+                                  <Bell size={16} />
+                              )}
                           </button>
                           
                           <button onClick={handlePrintExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-colors" title="طباعة تقرير">
