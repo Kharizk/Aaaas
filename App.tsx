@@ -45,6 +45,9 @@ import {
   Calculator, Truck, BarChart4, Receipt, CreditCard, AlertTriangle, Star, Trash2, History, RotateCcw, Archive, Palette, CheckCircle2
 } from 'lucide-react';
 import { THEMES, AppTheme, applyTheme } from './utils/themes';
+import { KeyboardShortcuts } from './components/KeyboardShortcuts';
+import { Calculator as CalculatorComponent } from './components/Calculator';
+import { Languages } from 'lucide-react';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {
@@ -85,11 +88,6 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
     return this.props.children;
   }
 }
-
-import { KeyboardShortcuts } from './components/KeyboardShortcuts';
-
-import { Calculator as CalculatorComponent } from './components/Calculator';
-import { Languages } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();

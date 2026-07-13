@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Product, Unit, ListRow, DailySales, Expense, Shift } from '../types';
 import { db } from '../services/supabase';
@@ -37,6 +37,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [stats, setStats] = useState({ lists: 0, sales: 0, expenses: 0 });
   const [recentLists, setRecentLists] = useState<any[]>([]);
   const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlert[]>([]);
+  const [expiryFilter, setExpiryFilter] = useState<'7' | '30' | '60' | 'all'>('30');
   const [lowStockAlerts, setLowStockAlerts] = useState<Product[]>([]);
   const [isUpdatingAlert, setIsUpdatingAlert] = useState<string | null>(null);
   const [alertDaysThreshold, setAlertDaysThreshold] = useState(60);
@@ -50,6 +51,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   const [cashDrawerAction, setCashDrawerAction] = useState<'deposit' | 'withdraw'>('deposit');
   const [cashDrawerAmount, setCashDrawerAmount] = useState('');
   const [showExtraColumns, setShowExtraColumns] = useState(false);
+
+  const filteredExpiryAlerts = useMemo(() => {
+    return expiryAlerts.filter(alert => {
+      if (expiryFilter === 'all') return true;
+      const days = parseInt(expiryFilter, 10);
+      return alert.daysLeft <= days;
+    });
+  }, [expiryAlerts, expiryFilter]);
 
   const handlePrintExpiry = () => {
       setShowExpiryPrint(true);
@@ -65,7 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
 
   const handleCopyExpiry = () => {
       const header = "المنتج\tالكود\tتاريخ الانتهاء\tالأيام المتبقية\tالكمية\n";
-      const text = expiryAlerts.map(a => 
+      const text = filteredExpiryAlerts.map(a => 
           `${a.productName}\t${a.productCode}\t${a.expiryDate}\t${a.daysLeft}\t${a.qty}`
       ).join('\n');
       navigator.clipboard.writeText(header + text);
@@ -73,7 +82,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
   };
 
   const handleShareExpiry = async () => {
-      const text = expiryAlerts.map(a => 
+      const text = filteredExpiryAlerts.map(a => 
           `- ${a.productName} (${a.expiryDate}) [باقي ${a.daysLeft} يوم]`
       ).join('\n');
       
@@ -212,7 +221,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                       const exp = new Date(row.expiryDate);
                       const timeDiff = exp.getTime() - today.getTime();
                       const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                      if (daysDiff <= threshold) {
+                      const maxThreshold = Math.max(threshold, 180);
+                      if (daysDiff <= maxThreshold) {
                           alerts.push({
                               listId: list.id, rowId: row.id, productName: row.name, productCode: row.code, expiryDate: row.expiryDate, daysLeft: daysDiff, qty: Number(row.qty) || 0, cartonQty: row.cartonQty, unitId: row.unitId, listType: list.type || 'inventory'
                           });
@@ -362,6 +372,135 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
             {currentShift ? 'إغلاق الوردية' : 'بدء وردية جديدة'}
         </button>
       </div>
+
+      {/* Expiry Alerts Section at the Top */}
+      {expiryAlerts.length > 0 && (
+          <div className="bg-white border border-red-100 rounded-[2rem] overflow-hidden shadow-xs hover:shadow-md transition-all duration-300">
+              <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-red-50/10">
+                  <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-red-500 text-white rounded-xl shadow-xs animate-pulse">
+                          <AlertTriangle size={18} />
+                      </div>
+                      <div>
+                          <h2 className="font-black text-gray-900 text-base flex items-center gap-2">
+                              تنبيهات صلاحية المنتجات
+                          </h2>
+                          <p className="text-[11px] text-gray-400 font-bold">متابعة المنتجات منتهية الصلاحية أو القريبة من الانتهاء</p>
+                      </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                      {/* Segmented Filter */}
+                      <div className="flex p-1 bg-gray-100 rounded-xl text-xs font-bold shrink-0 self-stretch sm:self-auto" dir="rtl">
+                          <button 
+                              onClick={() => setExpiryFilter('7')} 
+                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === '7' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                          >
+                              خلال أسبوع
+                          </button>
+                          <button 
+                              onClick={() => setExpiryFilter('30')} 
+                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === '30' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                          >
+                              خلال 30 يوم
+                          </button>
+                          <button 
+                              onClick={() => setExpiryFilter('60')} 
+                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === '60' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                          >
+                              خلال 60 يوم
+                          </button>
+                          <button 
+                              onClick={() => setExpiryFilter('all')} 
+                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === 'all' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                          >
+                              الكل
+                          </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                          <span className="bg-red-50 text-red-700 text-[11px] font-black px-2.5 py-1.5 rounded-xl border border-red-100/50">
+                              {filteredExpiryAlerts.length} تنبيهات نشطة
+                          </span>
+                          
+                          <button 
+                              onClick={() => setShowExtraColumns(!showExtraColumns)} 
+                              className={`p-2 rounded-xl border text-xs font-bold transition-all ${showExtraColumns ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'}`} 
+                              title="إظهار/إخفاء التفاصيل"
+                          >
+                              {showExtraColumns ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}
+                          </button>
+                          
+                          <button onClick={handlePrintExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-colors" title="طباعة تقرير">
+                              <Printer size={16} />
+                          </button>
+                          <button onClick={handleCopyExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-colors" title="نسخ">
+                              <Copy size={16} />
+                          </button>
+                          <button onClick={handleShareExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-colors" title="مشاركة">
+                              <Share2 size={16} />
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              {filteredExpiryAlerts.length === 0 ? (
+                  <div className="p-10 text-center text-gray-400 font-bold flex flex-col items-center justify-center gap-2">
+                      <CheckCircle className="text-emerald-500" size={32} />
+                      <span className="text-xs">رائع! لا توجد منتجات منتهية أو قريبة من الانتهاء في هذه الفترة المحددة.</span>
+                  </div>
+              ) : (
+                  <div className="max-h-[250px] overflow-y-auto custom-scrollbar p-2">
+                      <table className="w-full text-right text-xs">
+                          <thead className="text-gray-400 font-bold sticky top-0 bg-white z-10 border-b border-gray-50">
+                              <tr>
+                                  <th className="p-3">كود الصنف</th>
+                                  <th className="p-3">اسم المنتج</th>
+                                  {showExtraColumns && <th className="p-3">الكمية كرتون</th>}
+                                  {showExtraColumns && <th className="p-3">كمية الجرد</th>}
+                                  {showExtraColumns && <th className="p-3">الوحدة</th>}
+                                  <th className="p-3">تاريخ الانتهاء</th>
+                                  <th className="p-3">المتبقي يوم</th>
+                                  <th className="p-3 text-center">إجراء</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                              {filteredExpiryAlerts.map((alert, idx) => (
+                                  <tr key={`${alert.listId}-${alert.rowId || alert.productCode}-${alert.expiryDate}-${idx}`} onClick={() => onNavigateToList?.(alert.listId, alert.rowId)} className="hover:bg-red-50/40 transition-colors cursor-pointer group rounded-xl">
+                                      <td className="p-3 font-mono text-gray-500">{alert.productCode}</td>
+                                      <td className="p-3">
+                                          <div className="font-black text-gray-800 group-hover:text-red-900 text-xs whitespace-normal transition-colors">{alert.productName}</div>
+                                      </td>
+                                      {showExtraColumns && <td className="p-3 font-mono text-gray-600">{alert.cartonQty || '-'}</td>}
+                                      {showExtraColumns && <td className="p-3 font-mono text-gray-600">{alert.qty || '-'}</td>}
+                                      {showExtraColumns && <td className="p-3 text-gray-500">{units.find(u => u.id === alert.unitId)?.name || '-'}</td>}
+                                      <td className="p-3 font-mono font-bold text-red-600">{alert.expiryDate}</td>
+                                      <td className="p-3">
+                                          {alert.daysLeft <= 0 ? (
+                                              <span className="bg-red-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-black">منتهي الصلاحية</span>
+                                          ) : (
+                                              <span className={`font-bold px-2.5 py-1 rounded-lg text-[10px] ${alert.daysLeft <= 7 ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-amber-100 text-amber-700'}`}>
+                                                  باقي {alert.daysLeft} يوم
+                                              </span>
+                                          )}
+                                      </td>
+                                      <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                                          <button 
+                                              onClick={(e) => handleDismissAlert(e, alert)} 
+                                              disabled={isUpdatingAlert === (alert.rowId || alert.productCode)} 
+                                              className="text-[10px] font-bold text-gray-400 hover:text-red-600 transition-colors px-2.5 py-1.5 rounded-xl hover:bg-red-50 border border-transparent hover:border-red-100 shadow-xs"
+                                          >
+                                              تجاهل
+                                          </button>
+                                      </td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
+              )}
+          </div>
+      )}
 
       {/* Stats Tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -618,67 +757,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
             </div>
         </div>
 
-      {/* Alerts Section */}
-      {expiryAlerts.length > 0 && (
-          <div className="bg-red-50 border border-red-100 rounded-[2rem] overflow-hidden shadow-sm animate-in slide-in-from-bottom-4">
-              <div className="px-8 py-5 border-b border-red-100/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-red-100/30">
-                  <div className="flex items-center gap-3 text-red-700 font-black text-lg">
-                      <AlertTriangle size={24} /> 
-                      تنبيهات الصلاحية 
-                      <span className="text-sm font-normal text-red-600 opacity-80">(أقل من {alertDaysThreshold} يوم)</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                      <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-xs font-black ml-2">{expiryAlerts.length} تنبيه</span>
-                      
-                      <button onClick={() => setShowExtraColumns(!showExtraColumns)} className={`p-2 rounded-lg border shadow-sm transition-colors text-xs font-bold ${showExtraColumns ? 'bg-red-100 text-red-700 border-red-200' : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'}`} title="إظهار/إخفاء التفاصيل">
-                          {showExtraColumns ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}
-                      </button>
-                      <button onClick={handlePrintExpiry} className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50 border border-red-100 shadow-sm transition-colors" title="طباعة تقرير">
-                          <Printer size={18} />
-                      </button>
-                      <button onClick={handleCopyExpiry} className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50 border border-red-100 shadow-sm transition-colors" title="نسخ">
-                          <Copy size={18} />
-                      </button>
-                      <button onClick={handleShareExpiry} className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50 border border-red-100 shadow-sm transition-colors" title="مشاركة">
-                          <Share2 size={18} />
-                      </button>
-                  </div>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
-                  <table className="w-full text-right text-xs">
-                      <thead className="text-red-400 font-bold sticky top-0 bg-red-50 z-10">
-                          <tr>
-                              <th className="p-4">كود الصنف</th>
-                              <th className="p-4">اسم المنتج</th>
-                              {showExtraColumns && <th className="p-4">الكمية كرتون</th>}
-                              {showExtraColumns && <th className="p-4">كمية الجرد</th>}
-                              {showExtraColumns && <th className="p-4">الوحدة</th>}
-                              <th className="p-4">تاريخ الانتهاء</th>
-                              <th className="p-4">المتبقي يوم</th>
-                              <th className="p-4 text-center">إجراء</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-red-100/50">
-                          {expiryAlerts.map(alert => (
-                              <tr key={alert.rowId || `${alert.productCode}-${alert.expiryDate}`} onClick={() => onNavigateToList?.(alert.listId, alert.rowId)} className="hover:bg-red-100/40 transition-colors cursor-pointer group rounded-xl">
-                                  <td className="p-4 font-mono text-gray-500">{alert.productCode}</td>
-                                  <td className="p-4 group-hover:text-red-800 transition-colors">
-                                      <div className="font-black text-gray-800 group-hover:text-red-900 text-sm whitespace-normal">{alert.productName}</div>
-                                  </td>
-                                  {showExtraColumns && <td className="p-4 font-mono">{alert.cartonQty || '-'}</td>}
-                                  {showExtraColumns && <td className="p-4 font-mono">{alert.qty || '-'}</td>}
-                                  {showExtraColumns && <td className="p-4 text-gray-600">{units.find(u => u.id === alert.unitId)?.name || '-'}</td>}
-                                  <td className="p-4 font-mono font-bold text-red-600">{alert.expiryDate}</td>
-                                  <td className="p-4">{alert.daysLeft <= 0 ? <span className="bg-red-600 text-white px-2 py-1 rounded text-[10px] font-black">منتهي الصلاحية</span> : <span className="text-red-600 font-bold bg-red-100 px-2 py-1 rounded text-[10px]">باقي {alert.daysLeft} يوم</span>}</td>
-                                  <td className="p-4 text-center"><button onClick={(e) => handleDismissAlert(e, alert)} disabled={isUpdatingAlert === (alert.rowId || alert.productCode)} className="text-[10px] font-bold text-gray-400 hover:text-sap-primary transition-colors px-3 py-1.5 rounded hover:bg-white border border-transparent hover:border-gray-200 shadow-sm">تجاهل</button></td>
-                              </tr>
-                          ))}
-                      </tbody>
-                  </table>
-              </div>
-          </div>
-      )}
+
 
       {/* Shift Modal */}
       {showShiftModal && (
