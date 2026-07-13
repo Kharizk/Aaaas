@@ -473,28 +473,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                   
                   <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                       {/* Segmented Filter */}
-                      <div className="flex p-1 bg-gray-100 rounded-xl text-xs font-bold shrink-0 self-stretch sm:self-auto" dir="rtl">
+                      <div className="flex p-1 bg-gray-100 rounded-xl text-xs font-bold shrink-0 self-stretch sm:self-auto border border-gray-200/50" dir="rtl">
                           <button 
                               onClick={() => setExpiryFilter('7')} 
-                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === '7' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                              className={`px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer ${expiryFilter === '7' ? 'bg-white text-red-700 shadow-xs font-black border border-red-100/50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'}`}
                           >
                               خلال أسبوع
                           </button>
                           <button 
                               onClick={() => setExpiryFilter('30')} 
-                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === '30' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                              className={`px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer ${expiryFilter === '30' ? 'bg-white text-red-700 shadow-xs font-black border border-red-100/50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'}`}
                           >
                               خلال 30 يوم
                           </button>
                           <button 
                               onClick={() => setExpiryFilter('60')} 
-                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === '60' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                              className={`px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer ${expiryFilter === '60' ? 'bg-white text-red-700 shadow-xs font-black border border-red-100/50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'}`}
                           >
                               خلال 60 يوم
                           </button>
                           <button 
                               onClick={() => setExpiryFilter('all')} 
-                              className={`px-3 py-1.5 rounded-lg transition-all ${expiryFilter === 'all' ? 'bg-white text-red-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+                              className={`px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer ${expiryFilter === 'all' ? 'bg-white text-red-700 shadow-xs font-black border border-red-100/50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'}`}
                           >
                               الكل
                           </button>
@@ -507,7 +507,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                           
                           <button 
                               onClick={() => setShowExtraColumns(!showExtraColumns)} 
-                              className={`p-2 rounded-xl border text-xs font-bold transition-all ${showExtraColumns ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'}`} 
+                              className={`p-2 rounded-xl border text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer ${showExtraColumns ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'}`} 
                               title="إظهار/إخفاء التفاصيل"
                           >
                               {showExtraColumns ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}
@@ -515,7 +515,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
 
                           <button 
                               onClick={notificationPermission === 'granted' ? testDesktopNotification : requestNotificationPermission} 
-                              className={`p-2 rounded-xl border text-xs font-bold transition-all ${
+                              className={`p-2 rounded-xl border text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer ${
                                   notificationPermission === 'granted' 
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
                                       : notificationPermission === 'denied'
@@ -531,7 +531,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                               }
                           >
                               {notificationPermission === 'granted' ? (
-                                  <BellRing size={16} className="text-emerald-600 animate-wiggle" />
+                                  <BellRing size={16} className="text-emerald-600 animate-pulse" />
                               ) : notificationPermission === 'denied' ? (
                                   <BellOff size={16} />
                               ) : (
@@ -539,13 +539,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                               )}
                           </button>
                           
-                          <button onClick={handlePrintExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-colors" title="طباعة تقرير">
+                          <button onClick={handlePrintExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer" title="طباعة تقرير">
                               <Printer size={16} />
                           </button>
-                          <button onClick={handleCopyExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-colors" title="نسخ">
+                          <button onClick={handleCopyExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer" title="نسخ">
                               <Copy size={16} />
                           </button>
-                          <button onClick={handleShareExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-colors" title="مشاركة">
+                          <button onClick={handleShareExpiry} className="p-2 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-100 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer" title="مشاركة">
                               <Share2 size={16} />
                           </button>
                       </div>
@@ -558,8 +558,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                       <span className="text-xs">رائع! لا توجد منتجات منتهية أو قريبة من الانتهاء في هذه الفترة المحددة.</span>
                   </div>
               ) : (
-                  <div className="max-h-[250px] overflow-y-auto custom-scrollbar p-2">
-                      <table className="w-full text-right text-xs">
+                  <div className="max-h-[250px] overflow-y-auto overflow-x-auto custom-scrollbar p-2">
+                      <table className="w-full text-right text-xs min-w-[600px] sm:min-w-0">
                           <thead className="text-gray-400 font-bold sticky top-0 bg-white z-10 border-b border-gray-50">
                               <tr>
                                   <th className="p-3">كود الصنف</th>

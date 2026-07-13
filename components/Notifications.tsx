@@ -18,13 +18,55 @@ export const useNotification = () => {
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  const playSound = useCallback((type: 'success' | 'error' | 'info' | 'warning') => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const playTone = (freq: number, duration: number, startTime: number, typeOsc: 'sine' | 'triangle' = 'sine') => {
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        osc.type = typeOsc;
+        osc.frequency.setValueAtTime(freq, startTime);
+        
+        gainNode.gain.setValueAtTime(0.04, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      const now = ctx.currentTime;
+      if (type === 'success') {
+        playTone(523.25, 0.15, now); // C5
+        playTone(659.25, 0.3, now + 0.08); // E5
+      } else if (type === 'error') {
+        playTone(220, 0.25, now, 'triangle'); // A3
+        playTone(207.65, 0.3, now + 0.05, 'triangle'); // G#3
+      } else if (type === 'warning') {
+        playTone(440, 0.15, now); // A4
+        playTone(440, 0.15, now + 0.15); // A4
+      } else {
+        playTone(392, 0.2, now); // G4
+      }
+    } catch (e) {
+      console.warn('Audio feedback failed:', e);
+    }
+  }, []);
+
   const notify = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
     const id = crypto.randomUUID();
     setToasts(prev => [...prev, { id, message, type }]);
+    playSound(type);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000); // Auto close after 4s
-  }, []);
+  }, [playSound]);
 
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
