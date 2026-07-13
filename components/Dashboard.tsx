@@ -326,7 +326,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                           </tr>
                       </thead>
                       <tbody>
-                          {expiryAlerts.map((alert, idx) => (
+                          {filteredExpiryAlerts.map((alert, idx) => (
                               <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                   <td className="p-3 border border-gray-200 font-bold">{alert.productName}</td>
                                   <td className="p-3 border border-gray-200 font-mono">{alert.productCode}</td>
@@ -338,7 +338,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, units, switchToT
                       </tbody>
                   </table>
                   <div className="mt-8 pt-4 border-t border-gray-200 flex justify-between text-sm text-gray-500">
-                      <span>عدد التنبيهات: {expiryAlerts.length}</span>
+                      <span>عدد التنبيهات: {filteredExpiryAlerts.length}</span>
                       <span>تم الاستخراج من نظام StoreFlow</span>
                   </div>
               </div>
