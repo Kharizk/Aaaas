@@ -1,16 +1,18 @@
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Product, Unit, CatalogProject, CatalogItem, CatalogStyleConfig, CatalogLayoutType, CatalogBadgeType } from '../types';
 import { db } from '../services/supabase';
 import { useSystemSettings } from './SystemSettingsContext';
 import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
+import { toPng, toJpeg } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import { 
   Plus, Image as ImageIcon, Trash2, Search, X, Palette, Upload, 
   ShoppingCart, Sparkles, Save, FolderOpen, Loader2, Printer, 
   ChevronRight, ArrowRight, Layers, Tag as TagIcon, LayoutGrid,
   Zap, MousePointer2, ZoomIn, ZoomOut, Box, Clock, ScanLine, 
   Maximize2, MoreHorizontal, Square, Hash, Ruler, MessageCircle,
-  QrCode, ShoppingBag, Send, Minus, Share2, Download, ExternalLink, Info, AlertCircle, MapPin,
+  QrCode, ShoppingBag, Send, Minus, Share2, Download, ExternalLink, Info, AlertCircle, MapPin, Building, FileText,
   Smartphone, Layout, Type, Grid, Coffee, Gem, Flame, CheckCircle2, Eye, PaintBucket, Moon, Package
 } from 'lucide-react';
 
@@ -43,7 +45,18 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     layoutType: 'app_modern',
     showHeader: true,
     currencySymbolType: 'icon',
-    currencySymbolImage: null
+    currencySymbolImage: null,
+    cardSize: 'normal',
+    columnsCount: 2,
+    companyName: 'مؤسسة مسارات التجارية',
+    companyLogo: null,
+    companyPhone: '966500000000',
+    companyEmail: 'info@masarat.sa',
+    companyAddress: 'الرياض، المملكة العربية السعودية',
+    companyTaxNumber: '310123456700003',
+    showCompanyFooter: true,
+    isQuotationMode: false,
+    footerTerms: 'هذا العرض ساري لمدة 15 يوماً من تاريخ الإصدار أو حتى نفاد الكمية. الأسعار تشمل ضريبة القيمة المضافة.'
   });
 
   // Sync styleConfig with global settings
@@ -72,6 +85,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
   const [showCart, setShowCart] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
 
   // URL Handling for Sharing
   const shareableUrl = useMemo(() => {
@@ -255,6 +269,79 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  const downloadAsImage = async () => {
+    if (!canvasRef.current) return;
+    setIsGenerating(true);
+    try {
+      const originalTransform = canvasRef.current.style.transform;
+      canvasRef.current.style.transform = 'none';
+      
+      const dataUrl = await toPng(canvasRef.current, {
+        quality: 1,
+        pixelRatio: 3,
+        style: {
+          transform: 'none',
+          margin: '0',
+        }
+      });
+      
+      canvasRef.current.style.transform = originalTransform;
+      
+      const link = document.createElement('a');
+      link.download = `${projectName || 'catalog'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error('Error downloading image:', e);
+      alert('فشل تصدير الصورة. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const downloadAsPdf = async () => {
+    if (!canvasRef.current) return;
+    setIsGenerating(true);
+    try {
+      const originalTransform = canvasRef.current.style.transform;
+      canvasRef.current.style.transform = 'none';
+      
+      const dataUrl = await toJpeg(canvasRef.current, {
+        quality: 1,
+        pixelRatio: 3,
+        style: {
+          transform: 'none',
+          margin: '0',
+        }
+      });
+      
+      canvasRef.current.style.transform = originalTransform;
+      
+      const rect = canvasRef.current.getBoundingClientRect();
+      const imgWidth = 375;
+      const imgHeight = (rect.height / rect.width) * imgWidth;
+      
+      const pdfWidthMm = 100;
+      const pdfHeightMm = (imgHeight / imgWidth) * pdfWidthMm;
+      
+      const pdf = new jsPDF({
+        orientation: pdfHeightMm > pdfWidthMm ? 'p' : 'l',
+        unit: 'mm',
+        format: [pdfWidthMm, pdfHeightMm]
+      });
+      
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm, undefined, 'FAST');
+      pdf.save(`${projectName || 'catalog'}.pdf`);
+    } catch (e) {
+      console.error('Error downloading PDF:', e);
+      alert('فشل تصدير ملف PDF. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const activeItem = items.find(i => i.id === activeItemId);
   const filteredProducts = useMemo(() => products.filter(p => p.name.includes(searchTerm) || p.code.includes(searchTerm)).slice(0, 20), [searchTerm, products]);
 
@@ -299,110 +386,168 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     const isGrid = styleConfig.layoutType === 'geometric_grid';
     const isLux = styleConfig.layoutType === 'luxury_cards';
     const isRamadan = styleConfig.layoutType === 'ramadan_special';
+    const isCompact = styleConfig.cardSize === 'compact';
     
     if (isRamadan) {
+        const [cartonInt, cartonDec] = (item.cartonPrice || '').split('.');
         return (
             <div 
                 onClick={() => !isViewerMode && setActiveItemId(item.id)}
-                className={`relative group bg-white rounded-[2rem] overflow-hidden transition-all duration-300 cursor-pointer
+                className={`relative group bg-white overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full
+                  ${isCompact ? 'rounded-2xl border' : 'rounded-[2rem] border-2'}
                   ${isViewerMode ? '' : isActive ? 'ring-4 ring-[#C5A059] z-10 scale-[1.02]' : 'hover:shadow-[0_0_20px_rgba(197,160,89,0.3)] hover:-translate-y-1'}
-                  border-2 border-white/10 shadow-lg h-full flex flex-col
+                  border-white/10 shadow-lg
                 `}
             >
                 {/* Image Area */}
-                <div className="h-40 w-full flex items-center justify-center p-6 bg-white relative">
+                <div className={`${isCompact ? 'h-24 p-3' : 'h-36 p-5'} w-full flex items-center justify-center bg-white relative`}>
                     {item.image ? (
-                        <img src={item.image} className="w-full h-full object-contain hover:scale-110 transition-transform duration-500" alt={item.name} />
+                        <img src={item.image} className="w-full h-full object-contain hover:scale-110 transition-transform duration-500" alt={item.name} referrerPolicy="no-referrer" />
                     ) : (
-                        <div className="flex flex-col items-center opacity-20"><ImageIcon size={32}/><span className="text-[8px] font-black mt-1">NO IMAGE</span></div>
+                        <div className="flex flex-col items-center opacity-20"><ImageIcon size={isCompact ? 20 : 32}/><span className="text-[7px] font-black mt-1">NO IMAGE</span></div>
                     )}
                     
-                    {/* Unique Price Tag Shape */}
-                    <div className="absolute top-4 left-4 z-10">
-                        <div className="bg-[#FFD700] text-red-600 px-3 py-1.5 rounded-tl-xl rounded-br-xl shadow-md transform -rotate-2 border border-red-600/10">
-                            <div className="flex flex-col leading-none text-center">
-                                <div className="flex items-center gap-0.5 justify-center">
-                                    <span className="text-2xl font-black tracking-tighter">{int}</span>
-                                    <div className="flex flex-col items-start leading-none -mt-1">
-                                        <span className="text-[10px] font-bold">.{dec||'00'}</span>
-                                        <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="black" className="w-3 h-3" />
-                                    </div>
-                                </div>
-                                {item.originalPrice && (
-                                    <span className="text-[10px] line-through text-gray-500 font-bold decoration-red-500">{item.originalPrice}</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                    {/* Floating Badge for Discount / Sale */}
+                    <Badge type={item.badge || 'none'} text={item.discountPercent ? `خصم ${item.discountPercent}%` : undefined} />
 
-                    {/* Add Button */}
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); addToCart(item, item.unitName || 'قطعة'); }}
-                        className={`absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg bg-[#002b49] hover:bg-[#C5A059] transition-colors`}
-                    >
-                        <Plus size={16} strokeWidth={3} />
-                    </button>
+                    {/* Add Buttons */}
+                    <div className="absolute bottom-1.5 right-1.5 flex gap-1 z-10">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); addToCart(item, 'حبة'); }}
+                            className={`rounded-full flex items-center justify-center text-white shadow-md bg-[#002b49] hover:bg-[#C5A059] transition-colors ${isCompact ? 'w-5 h-5 text-[9px] font-black' : 'w-8 h-8'}`}
+                            title="إضافة حبة لسلة التسوق"
+                        >
+                            {isCompact ? 'ح' : <Plus size={16} strokeWidth={3} />}
+                        </button>
+                        {item.cartonPrice && (
+                           <button 
+                               onClick={(e) => { e.stopPropagation(); addToCart(item, 'كرتون'); }}
+                               className={`rounded-full flex items-center justify-center text-white shadow-md bg-emerald-700 hover:bg-emerald-600 transition-colors ${isCompact ? 'w-5 h-5 text-[9px] font-black' : 'w-8 h-8'}`}
+                               title="إضافة كرتون لسلة التسوق"
+                           >
+                               {isCompact ? 'ك' : 'ك'}
+                           </button>
+                        )}
+                    </div>
                 </div>
 
-                {/* Info Area */}
-                <div className="p-3 text-center flex-1 flex flex-col justify-center bg-white border-t border-gray-100 relative">
-                    <h3 className="font-black text-sm text-[#002b49] leading-tight line-clamp-2">{item.name}</h3>
-                    <div className="text-[10px] text-gray-400 font-bold mt-1 font-sans">{item.description || item.name}</div>
-                    {item.unitName && <span className="text-[8px] text-[#C5A059] font-black mt-1 uppercase tracking-widest">{item.unitName}</span>}
+                {/* Info & Dual Prices Area */}
+                <div className={`${isCompact ? 'p-1.5' : 'p-3'} text-center flex-1 flex flex-col justify-between bg-white border-t border-gray-50 relative`}>
+                    <div>
+                        <h3 className={`font-black text-[#002b49] leading-tight line-clamp-2 ${isCompact ? 'text-[9px] min-h-[2em]' : 'text-sm font-bold'}`}>{item.name}</h3>
+                        {!isCompact && item.description && <div className="text-[10px] text-gray-400 font-bold mt-1 font-sans line-clamp-1">{item.description}</div>}
+                    </div>
+
+                    <div className="mt-2 space-y-1">
+                        {/* Piece Price Tag */}
+                        <div className="flex justify-between items-center bg-[#FFD700]/10 border border-[#FFD700]/20 px-1.5 py-0.5 rounded-lg">
+                           <span className="text-[8px] font-black text-[#002b49]">الحبة:</span>
+                           <div className="flex items-center gap-1">
+                              {item.originalPrice && <span className="text-[7px] text-gray-400 line-through decoration-red-500 font-bold">{item.originalPrice}</span>}
+                              <div className="flex items-start text-red-600 leading-none">
+                                 <span className={`${isCompact ? 'text-[11px]' : 'text-xs'} font-black`}>{int}</span>
+                                 <span className="text-[7px] font-black mt-0.5">.{dec||'00'}</span>
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* Carton Price Tag */}
+                        {item.cartonPrice && (
+                           <div className="flex justify-between items-center bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-lg">
+                              <span className="text-[8px] font-black text-emerald-800">الكرتون:</span>
+                              <div className="flex items-center gap-1">
+                                 {item.originalCartonPrice && <span className="text-[7px] text-gray-400 line-through decoration-red-500 font-bold">{item.originalCartonPrice}</span>}
+                                 <div className="flex items-start text-emerald-700 leading-none">
+                                    <span className={`${isCompact ? 'text-[11px]' : 'text-xs'} font-black`}>{cartonInt}</span>
+                                    <span className="text-[7px] font-black mt-0.5">.{cartonDec||'00'}</span>
+                                 </div>
+                              </div>
+                           </div>
+                        )}
+                    </div>
                 </div>
             </div>
         );
     }
 
     // Default Rendering
+    const [cartonInt, cartonDec] = (item.cartonPrice || '').split('.');
     return (
       <div 
         onClick={() => !isViewerMode && setActiveItemId(item.id)}
-        className={`relative group bg-white overflow-hidden transition-all duration-300 cursor-pointer
+        className={`relative group bg-white overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full
           ${isViewerMode ? '' : isActive ? 'ring-4 ring-sap-secondary z-10 scale-[1.02]' : 'hover:shadow-xl hover:-translate-y-1'}
           ${isGrid ? 'border-2 border-black rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)]' : ''}
-          ${isLux ? 'rounded-tl-[2rem] rounded-br-[2rem] border-none shadow-lg' : 'rounded-[1.5rem] border border-gray-100 shadow-sm'}
+          ${isLux ? 'rounded-tl-[2rem] rounded-br-[2rem] border-none shadow-lg' : isCompact ? 'rounded-xl border border-gray-100 shadow-sm' : 'rounded-[1.5rem] border border-gray-100 shadow-sm'}
         `}
       >
         <Badge type={item.badge || 'none'} text={item.discountPercent ? `خصم ${item.discountPercent}%` : undefined} />
         
         {/* Image */}
-        <div className={`h-48 w-full flex items-center justify-center p-4 bg-white relative overflow-hidden ${isGrid ? 'border-b-2 border-black' : ''}`}>
+        <div className={`${isCompact ? 'h-24 p-3' : 'h-40 p-4'} w-full flex items-center justify-center bg-white relative overflow-hidden ${isGrid ? 'border-b-2 border-black' : ''}`}>
            {item.image ? (
-             <img src={item.image} className="w-full h-full object-contain hover:scale-110 transition-transform duration-500 mix-blend-multiply" alt={item.name} />
+             <img src={item.image} className="w-full h-full object-contain hover:scale-110 transition-transform duration-500 mix-blend-multiply" alt={item.name} referrerPolicy="no-referrer" />
            ) : (
-             <div className="flex flex-col items-center opacity-20"><ImageIcon size={40}/><span className="text-[9px] font-black mt-2">NO IMAGE</span></div>
+             <div className="flex flex-col items-center opacity-20"><ImageIcon size={isCompact ? 20 : 40}/><span className="text-[8px] font-black mt-1">NO IMAGE</span></div>
            )}
            
-           {/* Add To Cart Overlay Button (Visible on Hover or Mobile) */}
-           <button 
-             onClick={(e) => { e.stopPropagation(); addToCart(item, item.unitName || 'قطعة'); }}
-             className={`absolute bottom-3 left-3 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${isViewerMode ? 'bg-sap-primary' : 'bg-black translate-y-10 group-hover:translate-y-0 opacity-0 group-hover:opacity-100'}`}
-           >
-             <Plus size={20} strokeWidth={3} />
-           </button>
+           {/* Add To Cart Overlay Buttons */}
+           <div className="absolute bottom-2 left-2 flex gap-1 z-10">
+              <button 
+                onClick={(e) => { e.stopPropagation(); addToCart(item, 'حبة'); }}
+                className={`rounded-full flex items-center justify-center text-white shadow-lg transition-all bg-black hover:bg-sap-primary ${isCompact ? 'w-5 h-5 text-[8px] font-bold' : 'w-8 h-8 text-xs'}`}
+                title="إضافة حبة"
+              >
+                {isCompact ? 'ح' : <Plus size={14} strokeWidth={3} />}
+              </button>
+              {item.cartonPrice && (
+                 <button 
+                   onClick={(e) => { e.stopPropagation(); addToCart(item, 'كرتون'); }}
+                   className={`rounded-full flex items-center justify-center text-white shadow-lg transition-all bg-emerald-700 hover:bg-emerald-600 ${isCompact ? 'w-5 h-5 text-[8px] font-bold' : 'w-8 h-8 text-xs'}`}
+                   title="إضافة كرتون"
+                 >
+                   {isCompact ? 'ك' : 'ك'}
+                 </button>
+              )}
+           </div>
         </div>
 
         {/* Content */}
-        <div className="p-4">
-           <div className="flex justify-between items-start mb-2">
-              <h3 className="font-black text-sm text-gray-800 leading-tight line-clamp-2 min-h-[2.5em]">{item.name}</h3>
+        <div className={`${isCompact ? 'p-1.5' : 'p-4'} flex-1 flex flex-col justify-between bg-white`}>
+           <div className="mb-2">
+              <h3 className={`font-black text-gray-800 leading-tight line-clamp-2 ${isCompact ? 'text-[9px] min-h-[2em]' : 'text-sm font-bold'}`}>{item.name}</h3>
            </div>
            
-           <div className="flex items-end justify-between">
-              <div>
-                 {item.originalPrice && <div className="text-[10px] text-gray-400 line-through decoration-red-500 font-bold mb-0.5">{item.originalPrice}</div>}
+           <div className="space-y-1">
+              {/* Piece Price Row */}
+              <div className="flex items-center justify-between border-b border-gray-50 pb-0.5">
+                 <div className="flex items-center gap-1">
+                    <span className="text-[8px] font-bold text-gray-400 bg-gray-100 px-1 py-0.5 rounded">حبة</span>
+                    {item.originalPrice && <span className="text-[8px] text-gray-400 line-through decoration-red-500 font-bold">{item.originalPrice}</span>}
+                 </div>
                  <div className="flex items-start leading-none" style={{ color: styleConfig.primaryColor }}>
-                    <span className="text-2xl font-black">{int}</span>
+                    <span className={`${isCompact ? 'text-[11px]' : 'text-sm'} font-black`}>{int}</span>
                     <div className="flex flex-col items-start ml-0.5">
-                       <span className="text-[9px] font-black mt-0.5">.{dec||'00'}</span>
-                       <CurrencySymbolRenderer type={settings.currencySymbolType} imageUrl={settings.currencySymbolImage} color="gray" className="w-3 h-3 opacity-50" />
+                       <span className="text-[7px] font-black">.{dec||'00'}</span>
                     </div>
                  </div>
               </div>
-              <div className="text-right">
-                 <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">{item.unitName || 'قطعة'}</span>
-              </div>
+
+              {/* Carton Price Row */}
+              {item.cartonPrice && (
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                       <span className="text-[8px] font-bold text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded">كرتون</span>
+                       {item.originalCartonPrice && <span className="text-[8px] text-gray-400 line-through decoration-red-500 font-bold">{item.originalCartonPrice}</span>}
+                    </div>
+                    <div className="flex items-start leading-none text-emerald-700">
+                       <span className={`${isCompact ? 'text-[11px]' : 'text-sm'} font-black`}>{cartonInt}</span>
+                       <div className="flex flex-col items-start ml-0.5">
+                          <span className="text-[7px] font-black font-mono">.{cartonDec||'00'}</span>
+                       </div>
+                    </div>
+                 </div>
+              )}
            </div>
         </div>
       </div>
@@ -414,7 +559,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     const isRamadan = styleConfig.layoutType === 'ramadan_special';
     
     return (
-      <div className={`min-h-screen font-sans ${isRamadan ? 'bg-[#002b49]' : 'bg-gray-100'}`} dir="rtl" style={{ fontFamily: styleConfig.fontFamily }}>
+      <div className={`min-h-screen font-sans ${isRamadan ? 'bg-[#002b49]' : 'bg-gray-100'} pb-24`} dir="rtl" style={{ fontFamily: styleConfig.fontFamily }}>
          {/* Mobile Header */}
          <div className={`sticky top-0 z-50 shadow-sm border-b px-4 py-3 flex justify-between items-center backdrop-blur-md ${isRamadan ? 'bg-[#001f35]/90 border-[#C5A059]/30 text-white' : 'bg-white/90 border-gray-200'}`}>
             <div>
@@ -429,19 +574,101 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
             )}
          </div>
 
-         {/* Content */}
-         <div className="p-4 space-y-8 max-w-lg mx-auto pb-24">
-            {(Object.entries(groupedItems) as [string, CatalogItem[]][]).map(([section, sectionItems]) => (
-               <div key={section} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                     <div className={`h-8 w-1 rounded-full ${isRamadan ? 'bg-[#C5A059]' : 'bg-sap-secondary'}`}></div>
-                     <h2 className={`text-lg font-black ${isRamadan ? 'text-white' : 'text-gray-800'}`}>{section}</h2>
+         <div className={`mx-auto bg-white shadow-md ${styleConfig.isQuotationMode ? 'max-w-4xl rounded-2xl overflow-hidden my-6 border border-gray-200' : 'max-w-lg rounded-none'}`} style={{ backgroundColor: styleConfig.backgroundColor }}>
+            {/* Company & Quotation Formal Header */}
+            {styleConfig.isQuotationMode && (
+               <div className="p-6 bg-white border-b-2 border-slate-200 text-slate-800 space-y-4">
+                  <div className="flex justify-between items-start">
+                     <div className="flex items-center gap-3">
+                        {styleConfig.companyLogo ? (
+                           <img src={styleConfig.companyLogo} className="w-16 h-16 object-contain" alt="Logo" />
+                        ) : (
+                           <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
+                              <Building size={32} className="text-sap-primary" />
+                           </div>
+                        )}
+                        <div>
+                           <h1 className="text-xl font-black text-slate-900">{styleConfig.companyName || 'اسم الشركة'}</h1>
+                           {styleConfig.companyTaxNumber && (
+                              <p className="text-[10px] text-slate-400 font-bold mt-1">الالرقم الضريبي: {styleConfig.companyTaxNumber}</p>
+                           )}
+                        </div>
+                     </div>
+                     <div className="text-left bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
+                        <div className="font-black text-sap-primary text-sm mb-1">عرض سعر رسمي</div>
+                        <div className="text-[10px] text-slate-400 font-bold">التاريخ: {new Date().toLocaleDateString('ar-SA')}</div>
+                        <div className="text-[10px] text-slate-400 font-bold">الرقم: #{projectId.substring(0, 8).toUpperCase()}</div>
+                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                     {Array.isArray(sectionItems) && sectionItems.map(item => <ItemCard key={item.id} item={item} />)}
+                  <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-500 pt-2 border-t border-dashed border-slate-100">
+                     {styleConfig.companyPhone && (
+                        <div className="flex items-center gap-1.5 font-bold">
+                           <span className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center text-slate-400">📞</span>
+                           <span>{styleConfig.companyPhone}</span>
+                        </div>
+                     )}
+                     {styleConfig.companyEmail && (
+                        <div className="flex items-center gap-1.5 font-bold">
+                           <span className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center text-slate-400">✉️</span>
+                           <span>{styleConfig.companyEmail}</span>
+                        </div>
+                     )}
+                     {styleConfig.companyAddress && (
+                        <div className="flex items-center gap-1.5 font-bold">
+                           <span className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center text-slate-400">📍</span>
+                           <span>{styleConfig.companyAddress}</span>
+                        </div>
+                     )}
                   </div>
                </div>
-            ))}
+            )}
+
+            {/* Content */}
+            <div className="p-6 space-y-8">
+               {(Object.entries(groupedItems) as [string, CatalogItem[]][]).map(([section, sectionItems]) => {
+                  const cols = styleConfig.columnsCount || (styleConfig.cardSize === 'compact' ? 3 : 2);
+                  const gridColsClass = 
+                     cols === 1 ? 'grid-cols-1 gap-4' : 
+                     cols === 3 ? 'grid-cols-3 gap-2' : 
+                     cols === 4 ? 'grid-cols-4 gap-1.5' : 
+                     'grid-cols-2 gap-3';
+                  
+                  return (
+                     <div key={section} className="space-y-4">
+                        <div className="flex items-center gap-3">
+                           <div className={`h-6 w-1 rounded-full ${isRamadan ? 'bg-[#C5A059]' : 'bg-sap-secondary'}`}></div>
+                           <h2 className={`text-base font-black ${isRamadan ? 'text-white' : 'text-gray-800'}`}>{section}</h2>
+                        </div>
+                        <div className={`grid ${gridColsClass}`}>
+                           {Array.isArray(sectionItems) && sectionItems.map(item => <ItemCard key={item.id} item={item} />)}
+                        </div>
+                     </div>
+                  );
+               })}
+            </div>
+
+            {/* Official Footer with Terms, Signature, and Contact */}
+            {styleConfig.showCompanyFooter !== false && (
+               <div className="p-6 bg-slate-50 border-t border-slate-200 text-slate-700 text-xs space-y-4">
+                  {styleConfig.footerTerms && (
+                     <div className="space-y-1.5">
+                        <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-wider">شروط وتفاصيل العرض:</h4>
+                        <p className="text-[10px] text-slate-500 whitespace-pre-line leading-relaxed bg-white p-3 rounded-xl border border-slate-100">{styleConfig.footerTerms}</p>
+                     </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center pt-4 border-t border-dashed border-slate-200">
+                     <div className="space-y-1">
+                        <div className="font-black text-[10px] text-slate-400 uppercase tracking-wider">توقيع واعتماد المؤسسة:</div>
+                        <div className="w-32 h-12 border border-slate-200 bg-white/50 rounded-xl border-dashed flex items-center justify-center text-[10px] text-slate-300">الختم والتوقيع الرسمي</div>
+                     </div>
+                     <div className="text-left">
+                        <div className="font-black text-slate-800">{styleConfig.companyName || 'اسم الشركة'}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">نشكركم على ثقتكم الغالية بمنتجاتنا</div>
+                     </div>
+                  </div>
+               </div>
+            )}
          </div>
 
          {/* Cart Sheet */}
@@ -453,30 +680,36 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                      <button onClick={() => setShowCart(false)} className="bg-white p-2 rounded-full shadow-sm"><X size={18}/></button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                     {cart.map((c, i) => (
-                        <div key={i} className="flex gap-4 items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                           <div className="w-14 h-14 bg-gray-50 rounded-lg flex items-center justify-center">
-                              {c.item.image ? <img src={c.item.image} className="w-full h-full object-contain"/> : <Box size={20} className="opacity-20"/>}
-                           </div>
-                           <div className="flex-1">
-                              <div className="text-xs font-black line-clamp-1">{c.item.name}</div>
-                              <div className="text-[10px] text-gray-500 mt-1">سعر الوحدة: {c.item.price} ريال</div>
-                           </div>
-                           <div className="flex flex-col items-end gap-1">
-                              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                                 <button onClick={() => setCart(prev => prev.map((x, idx) => idx === i ? {...x, qty: x.qty+1} : x))}><Plus size={14}/></button>
-                                 <span className="text-xs font-black w-4 text-center">{c.qty}</span>
-                                 <button onClick={() => { if(c.qty>1) setCart(prev => prev.map((x, idx) => idx === i ? {...x, qty: x.qty-1} : x)); else setCart(prev => prev.filter((_, idx) => idx !== i)); }}><Minus size={14}/></button>
+                     {cart.map((c, i) => {
+                        const price = c.unit === 'كرتون' && c.item.cartonPrice ? parseFloat(c.item.cartonPrice) : parseFloat(c.item.price);
+                        return (
+                           <div key={i} className="flex gap-4 items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                              <div className="w-14 h-14 bg-gray-50 rounded-lg flex items-center justify-center">
+                                 {c.item.image ? <img src={c.item.image} className="w-full h-full object-contain"/> : <Box size={20} className="opacity-20"/>}
                               </div>
-                              <div className="text-xs font-black text-sap-primary">{(parseFloat(c.item.price)*c.qty).toFixed(2)}</div>
+                              <div className="flex-1">
+                                 <div className="text-xs font-black line-clamp-1">{c.item.name}</div>
+                                 <div className="text-[10px] text-gray-500 mt-1">الكمية: {c.qty} × {c.unit} | السعر: {price.toFixed(2)} ريال</div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                 <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                                    <button onClick={() => setCart(prev => prev.map((x, idx) => idx === i ? {...x, qty: x.qty+1} : x))}><Plus size={14}/></button>
+                                    <span className="text-xs font-black w-4 text-center">{c.qty}</span>
+                                    <button onClick={() => { if(c.qty>1) setCart(prev => prev.map((x, idx) => idx === i ? {...x, qty: x.qty-1} : x)); else setCart(prev => prev.filter((_, idx) => idx !== i)); }}><Minus size={14}/></button>
+                                 </div>
+                                 <div className="text-xs font-black text-sap-primary">{(price*c.qty).toFixed(2)}</div>
+                              </div>
                            </div>
-                        </div>
-                     ))}
+                        );
+                     })}
                   </div>
                   <div className="p-5 border-t bg-white space-y-4">
                      <div className="flex justify-between items-end">
                         <span className="text-xs font-bold text-gray-500">الإجمالي التقريبي</span>
-                        <span className="text-2xl font-black font-mono">{cart.reduce((a, b) => a + (parseFloat(b.item.price)*b.qty), 0).toFixed(2)} <span className="text-xs">SAR</span></span>
+                        <span className="text-2xl font-black font-mono">{cart.reduce((a, b) => {
+                           const price = b.unit === 'كرتون' && b.item.cartonPrice ? parseFloat(b.item.cartonPrice) : parseFloat(b.item.price);
+                           return a + (price * b.qty);
+                        }, 0).toFixed(2)} <span className="text-xs">SAR</span></span>
                      </div>
                      <button onClick={sendOrderToWhatsapp} className="w-full py-4 bg-[#25D366] text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
                         <Send size={18}/> إرسال الطلب عبر واتساب
@@ -552,12 +785,20 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                               <textarea value={activeItem.description || ''} onChange={e => updateItem(activeItem.id, { description: e.target.value })} rows={2} className="w-full p-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all resize-none" placeholder="وصف المنتج..." />
                            </div>
                            <div>
-                              <label className="text-[10px] font-bold text-slate-500 block mb-1">السعر (شامل الضريبة)</label>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">سعر الحبة (شامل الضريبة)</label>
                               <input type="text" value={activeItem.price} onChange={e => updateItem(activeItem.id, { price: e.target.value })} className="w-full p-2.5 text-sm font-black text-sap-primary border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all bg-sap-highlight/5" />
                            </div>
                            <div>
-                              <label className="text-[10px] font-bold text-slate-500 block mb-1">السعر السابق (يشطب)</label>
-                              <input type="text" value={activeItem.originalPrice} onChange={e => updateItem(activeItem.id, { originalPrice: e.target.value })} className="w-full p-2.5 text-sm font-bold text-red-500 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all line-through bg-red-50/50" />
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">السعر السابق للحبة</label>
+                              <input type="text" value={activeItem.originalPrice || ''} onChange={e => updateItem(activeItem.id, { originalPrice: e.target.value })} className="w-full p-2.5 text-sm font-bold text-red-500 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all line-through bg-red-50/50" />
+                           </div>
+                           <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">سعر الكرتون</label>
+                              <input type="text" value={activeItem.cartonPrice || ''} onChange={e => updateItem(activeItem.id, { cartonPrice: e.target.value })} className="w-full p-2.5 text-sm font-black text-emerald-700 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all bg-emerald-50/30" placeholder="مثال: 45.00" />
+                           </div>
+                           <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">السعر السابق للكرتون</label>
+                              <input type="text" value={activeItem.originalCartonPrice || ''} onChange={e => updateItem(activeItem.id, { originalCartonPrice: e.target.value })} className="w-full p-2.5 text-sm font-bold text-red-500 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all line-through bg-red-50/50" placeholder="مثال: 55.00" />
                            </div>
                            <div>
                               <label className="text-[10px] font-bold text-slate-500 block mb-1">القسم الأب</label>
@@ -644,46 +885,216 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
 
             {activeTab === 'design' && (
                <div className="space-y-6 animate-in slide-in-from-right-4">
+                  {/* Presentation Mode */}
                   <div className="space-y-3 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
-                     <h4 className="text-xs font-black text-slate-500 flex items-center gap-2 mb-2"><Smartphone size={16} strokeWidth={2.5}/> هيكل التصميم (Layout)</h4>
+                     <h4 className="text-xs font-black text-slate-500 flex items-center gap-2 mb-2"><Smartphone size={16} strokeWidth={2.5}/> حجم العرض والمعاينة</h4>
                      <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'app_modern'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'app_modern' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
-                           <Smartphone size={20}/> <span className="text-[10px] font-bold">تطبيق عصري</span>
+                        <button 
+                           onClick={() => setStyleConfig({...styleConfig, isQuotationMode: false})} 
+                           className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${!styleConfig.isQuotationMode ? 'bg-sap-primary text-white border-sap-primary shadow-md' : 'bg-white hover:border-slate-300 text-slate-600'}`}
+                        >
+                           <span className="text-[11px] font-black">جوال (375px)</span>
                         </button>
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'geometric_grid'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'geometric_grid' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
-                           <Grid size={20}/> <span className="text-[10px] font-bold">شبكة هندسية</span>
+                        <button 
+                           onClick={() => setStyleConfig({...styleConfig, isQuotationMode: true})} 
+                           className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${styleConfig.isQuotationMode ? 'bg-sap-primary text-white border-sap-primary shadow-md' : 'bg-white hover:border-slate-300 text-slate-600'}`}
+                        >
+                           <span className="text-[11px] font-black">صفحة A4 (800px)</span>
                         </button>
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'restaurant_menu'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'restaurant_menu' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
-                           <Coffee size={20}/> <span className="text-[10px] font-bold">قائمة مطعم</span>
+                     </div>
+                     <p className="text-[10px] text-gray-400 mt-1">يتحكم نمط A4 في العرض الكلي للمجلة ويهيئها للطباعة كعرض سعر رسمي ومجلة حقيقية.</p>
+                  </div>
+
+                  {/* Columns Count Control */}
+                  <div className="space-y-3 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <h4 className="text-xs font-black text-slate-500 flex items-center gap-2 mb-2"><Grid size={16} strokeWidth={2.5}/> عدد المنتجات بالعرض (أعمدة)</h4>
+                     <div className="grid grid-cols-4 gap-2">
+                        {[1, 2, 3, 4].map(cols => (
+                           <button 
+                              key={cols}
+                              onClick={() => setStyleConfig({...styleConfig, columnsCount: cols})} 
+                              className={`py-2 px-1 border rounded-xl text-center font-black text-xs transition-all ${styleConfig.columnsCount === cols || (!styleConfig.columnsCount && cols === 2) ? 'bg-sap-primary text-white border-sap-primary shadow-sm' : 'bg-white text-slate-600'}`}
+                           >
+                              {cols === 1 ? '1 عمود' : cols === 2 ? '2 عمود' : cols === 3 ? '3 أعمدة' : '4 أعمدة'}
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Layout Style Templates */}
+                  <div className="space-y-3 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <h4 className="text-xs font-black text-slate-500 flex items-center gap-2 mb-2"><Smartphone size={16} strokeWidth={2.5}/> تصميم الكروت ونمط العرض</h4>
+                     <div className="grid grid-cols-2 gap-3">
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'app_modern'})} className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${styleConfig.layoutType === 'app_modern' ? 'bg-sap-primary text-white border-sap-primary' : 'bg-white text-slate-600'}`}>
+                           <span className="text-[10px] font-bold">تطبيق عصري</span>
                         </button>
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'luxury_cards'})} className={`p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'luxury_cards' ? 'bg-sap-primary text-white border-sap-primary shadow-[0_4px_12px_rgba(0,160,157,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
-                           <Gem size={20}/> <span className="text-[10px] font-bold">نمط فاخر</span>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'geometric_grid'})} className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${styleConfig.layoutType === 'geometric_grid' ? 'bg-sap-primary text-white border-sap-primary' : 'bg-white text-slate-600'}`}>
+                           <span className="text-[10px] font-bold">شبكة هندسية</span>
                         </button>
-                        {/* New Ramadan Template */}
-                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'ramadan_special', backgroundColor: '#002b49', primaryColor: '#C5A059'})} className={`col-span-2 p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all ${styleConfig.layoutType === 'ramadan_special' ? 'bg-[#002b49] text-[#C5A059] border-[#C5A059] shadow-[0_4px_12px_rgba(197,160,89,0.3)]' : 'bg-white hover:border-slate-300 text-slate-600'}`}>
-                           <div className="flex items-center gap-2"><Moon size={20}/> <span className="text-[11px] font-black">الموسم الاحتفالي (رمضان)</span></div>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'restaurant_menu'})} className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${styleConfig.layoutType === 'restaurant_menu' ? 'bg-sap-primary text-white border-sap-primary' : 'bg-white text-slate-600'}`}>
+                           <span className="text-[10px] font-bold">قائمة مطعم</span>
+                        </button>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'luxury_cards'})} className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${styleConfig.layoutType === 'luxury_cards' ? 'bg-sap-primary text-white border-sap-primary' : 'bg-white text-slate-600'}`}>
+                           <span className="text-[10px] font-bold">نمط فاخر</span>
+                        </button>
+                        <button onClick={() => setStyleConfig({...styleConfig, layoutType: 'ramadan_special', backgroundColor: '#002b49', primaryColor: '#C5A059'})} className={`col-span-2 p-3 border rounded-xl flex items-center justify-center gap-2 transition-all ${styleConfig.layoutType === 'ramadan_special' ? 'bg-[#002b49] text-[#C5A059] border-[#C5A059]' : 'bg-white text-slate-600'}`}>
+                           <Moon size={14}/> <span className="text-[10px] font-black">تصميم رمضاني خاص</span>
                         </button>
                      </div>
                   </div>
-                  
+
+                  {/* Card Border Radius */}
                   <div className="space-y-4 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-black text-slate-500">زوايا الكروت (انحناء)</label>
+                        <label className="text-xs font-black text-slate-500">انحناء زوايا الكروت</label>
                         <span className="text-xs font-bold bg-slate-200 px-2 py-0.5 rounded-full text-slate-600">{styleConfig.borderRadius}px</span>
                      </div>
                      <input type="range" min="0" max="32" value={styleConfig.borderRadius} onChange={e => setStyleConfig({...styleConfig, borderRadius: Number(e.target.value)})} className="w-full accent-sap-primary" />
-                     <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
-                        <span>حادة</span>
-                        <span>دائرية</span>
-                     </div>
                   </div>
                </div>
             )}
 
             {activeTab === 'style' && (
                <div className="space-y-6 animate-in slide-in-from-right-4">
+                  {/* Company Info */}
                   <div className="space-y-4 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
-                     <label className="text-[11px] font-black text-slate-500 flex items-center gap-2 uppercase tracking-widest"><Palette size={14}/> الألوان والهوية</label>
+                     <label className="text-[11px] font-black text-slate-500 flex items-center gap-2 uppercase tracking-widest"><Building size={14}/> بيانات ومعلومات الشركة</label>
+                     
+                     {/* Company Logo Upload */}
+                     <div className="space-y-2 pt-2">
+                        <label className="text-[10px] font-bold text-slate-400 block">شعار الشركة (Logo)</label>
+                        <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-inner">
+                           <div className="w-14 h-14 bg-slate-50 rounded-xl border flex items-center justify-center overflow-hidden">
+                              {styleConfig.companyLogo ? (
+                                 <img src={styleConfig.companyLogo} className="w-full h-full object-contain" alt="Logo" />
+                              ) : (
+                                 <Building size={24} className="text-slate-300" />
+                              )}
+                           </div>
+                           <div className="flex-1 space-y-1">
+                              <input 
+                                 type="file" 
+                                 ref={logoFileInputRef} 
+                                 className="hidden" 
+                                 accept="image/*"
+                                 onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if(file) {
+                                       const reader = new FileReader();
+                                       reader.onload = async(re) => {
+                                          const compressed = await compressImage(re.target?.result as string);
+                                          setStyleConfig(prev => ({ ...prev, companyLogo: compressed }));
+                                       }
+                                       reader.readAsDataURL(file);
+                                    }
+                                 }} 
+                              />
+                              <button 
+                                 onClick={() => logoFileInputRef.current?.click()} 
+                                 className="px-3 py-1.5 bg-sap-primary text-white rounded-lg text-[10px] font-black shadow-sm hover:bg-sap-primary-hover transition-colors"
+                              >
+                                 رفع الشعار
+                              </button>
+                              {styleConfig.companyLogo && (
+                                 <button 
+                                    onClick={() => setStyleConfig(prev => ({ ...prev, companyLogo: null }))} 
+                                    className="px-2 py-1.5 text-red-500 text-[10px] font-bold block"
+                                 >
+                                    إزالة الشعار
+                                 </button>
+                              )}
+                           </div>
+                        </div>
+                     </div>
+
+                     {/* Company Name */}
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">اسم الشركة / المؤسسة</label>
+                        <input 
+                           type="text" 
+                           value={styleConfig.companyName || ''} 
+                           onChange={e => setStyleConfig({ ...styleConfig, companyName: e.target.value })} 
+                           className="w-full p-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary bg-white" 
+                           placeholder="مؤسسة مسارات التجارية" 
+                        />
+                     </div>
+
+                     {/* Tax Number */}
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">الرقم الضريبي (VAT)</label>
+                        <input 
+                           type="text" 
+                           value={styleConfig.companyTaxNumber || ''} 
+                           onChange={e => setStyleConfig({ ...styleConfig, companyTaxNumber: e.target.value })} 
+                           className="w-full p-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary bg-white font-mono" 
+                           placeholder="310123456700003" 
+                        />
+                     </div>
+
+                     {/* Phone & Email */}
+                     <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-400 block">الهاتف / الجوال</label>
+                           <input 
+                              type="text" 
+                              value={styleConfig.companyPhone || ''} 
+                              onChange={e => setStyleConfig({ ...styleConfig, companyPhone: e.target.value })} 
+                              className="w-full p-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary bg-white font-mono" 
+                              placeholder="966500000000" 
+                           />
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-400 block">البريد الإلكتروني</label>
+                           <input 
+                              type="text" 
+                              value={styleConfig.companyEmail || ''} 
+                              onChange={e => setStyleConfig({ ...styleConfig, companyEmail: e.target.value })} 
+                              className="w-full p-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary bg-white" 
+                              placeholder="info@company.com" 
+                           />
+                        </div>
+                     </div>
+
+                     {/* Address */}
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">العنوان الجغرافي</label>
+                        <input 
+                           type="text" 
+                           value={styleConfig.companyAddress || ''} 
+                           onChange={e => setStyleConfig({ ...styleConfig, companyAddress: e.target.value })} 
+                           className="w-full p-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary bg-white" 
+                           placeholder="الرياض، المملكة العربية السعودية" 
+                        />
+                     </div>
+                  </div>
+
+                  {/* Document Footer Terms */}
+                  <div className="space-y-4 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <label className="text-[11px] font-black text-slate-500 flex items-center gap-2 uppercase tracking-widest"><FileText size={14}/> الشروط والتذييل (Footer)</label>
+                     <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-400">إظهار تذييل المستند</label>
+                        <input 
+                           type="checkbox" 
+                           checked={styleConfig.showCompanyFooter !== false} 
+                           onChange={e => setStyleConfig({ ...styleConfig, showCompanyFooter: e.target.checked })} 
+                           className="w-4 h-4 rounded text-sap-primary focus:ring-sap-primary" 
+                        />
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">ملاحظات وشروط العرض</label>
+                        <textarea 
+                           value={styleConfig.footerTerms || ''} 
+                           onChange={e => setStyleConfig({ ...styleConfig, footerTerms: e.target.value })} 
+                           rows={3} 
+                           className="w-full p-2.5 text-[10px] border border-slate-200 rounded-xl focus:ring-2 focus:ring-sap-primary bg-white resize-none" 
+                           placeholder="شروط وتفاصيل العرض..." 
+                        />
+                     </div>
+                  </div>
+
+                  {/* Colors and Fonts */}
+                  <div className="space-y-4 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
+                     <label className="text-[11px] font-black text-slate-500 flex items-center gap-2 uppercase tracking-widest"><Palette size={14}/> الألوان والخطوط</label>
                      <div className="space-y-2 pt-2">
                         <label className="text-[10px] font-bold text-slate-400">اللون الأساسي (Primary Color)</label>
                         <div className="flex flex-wrap gap-2">
@@ -696,23 +1107,14 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                            </div>
                         </div>
                      </div>
-                     <div className="space-y-2 pt-4 border-t border-slate-200">
-                        <label className="text-[10px] font-bold text-slate-400">لون الخلفية (Background)</label>
-                        <div className="flex gap-2">
-                           {['#F8FAFC', '#FFFFFF', '#FEF2F2', '#F0F9FF', '#1A1C1E', '#002b49'].map(c => (
-                              <button key={c} onClick={() => setStyleConfig({...styleConfig, backgroundColor: c})} className={`w-9 h-9 rounded-full border border-slate-300 shadow-sm transition-all ${styleConfig.backgroundColor === c ? 'ring-2 ring-offset-2 ring-sap-primary scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'}`} style={{ backgroundColor: c }} />
-                           ))}
-                        </div>
+                     <div className="space-y-2 pt-2 border-t">
+                        <label className="text-[10px] font-bold text-slate-400">نوع الخط (Typography)</label>
+                        <select value={styleConfig.fontFamily} onChange={e => setStyleConfig({...styleConfig, fontFamily: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold">
+                           <option value="Cairo">Cairo (عصري - موصى به)</option>
+                           <option value="Segoe UI">Segoe UI (رسمي)</option>
+                           <option value="Tahoma">Tahoma (كلاسيكي)</option>
+                        </select>
                      </div>
-                  </div>
-                  
-                  <div className="space-y-2 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
-                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2"><Type size={14}/> نوع الخط (Typography)</label>
-                     <select value={styleConfig.fontFamily} onChange={e => setStyleConfig({...styleConfig, fontFamily: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-sap-primary/20 focus:border-sap-primary transition-all">
-                        <option value="Cairo">Cairo (عصري - موصى به)</option>
-                        <option value="Segoe UI">Segoe UI (رسمي - نظام)</option>
-                        <option value="Tahoma">Tahoma (كلاسيكي)</option>
-                     </select>
                   </div>
                </div>
             )}
@@ -733,10 +1135,31 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
          
          {/* Toolbar */}
          <div className="h-14 bg-white border-b flex justify-between items-center px-6 shrink-0 shadow-sm z-10">
-            <div className="flex items-center gap-4">
-               <button onClick={() => setZoom(z => Math.max(50, z-10))} className="p-2 hover:bg-gray-100 rounded-lg"><ZoomOut size={18}/></button>
+            <div className="flex items-center gap-2">
+               <button onClick={() => setZoom(z => Math.max(50, z-10))} className="p-2 hover:bg-gray-100 rounded-lg" title="تصغير"><ZoomOut size={18}/></button>
                <span className="text-xs font-mono font-bold w-8 text-center">{zoom}%</span>
-               <button onClick={() => setZoom(z => Math.min(150, z+10))} className="p-2 hover:bg-gray-100 rounded-lg"><ZoomIn size={18}/></button>
+               <button onClick={() => setZoom(z => Math.min(150, z+10))} className="p-2 hover:bg-gray-100 rounded-lg" title="تكبير"><ZoomIn size={18}/></button>
+               
+               <div className="h-6 w-[1px] bg-gray-200 mx-2"></div>
+               
+               <button 
+                  onClick={downloadAsImage} 
+                  disabled={isGenerating} 
+                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-black flex items-center gap-1 transition-all"
+                  title="تحميل المجلة كصورة PNG عالية الدقة"
+               >
+                  {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+                  <span>تحميل كصورة</span>
+               </button>
+               <button 
+                  onClick={downloadAsPdf} 
+                  disabled={isGenerating} 
+                  className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-black flex items-center gap-1 transition-all"
+                  title="تحميل المجلة كملف PDF"
+               >
+                  {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  <span>تحميل PDF</span>
+               </button>
             </div>
             <div className="flex items-center gap-2">
                <button onClick={() => setShowShareModal(true)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold flex items-center gap-2"><QrCode size={16}/> نشر</button>
@@ -748,17 +1171,67 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
          {/* Canvas Area */}
          <div className="flex-1 overflow-auto bg-[#E5E7EB] flex justify-center items-start p-10 custom-scrollbar">
             <div 
+               ref={canvasRef}
                className="bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] transition-all origin-top relative overflow-hidden"
                style={{
-                  width: '375px', // Mobile Width Simulation
-                  minHeight: '812px',
+                  width: styleConfig.isQuotationMode ? '800px' : '375px',
+                  minHeight: styleConfig.isQuotationMode ? '1130px' : '812px',
                   transform: `scale(${zoom / 100})`,
                   backgroundColor: styleConfig.backgroundColor,
                   fontFamily: styleConfig.fontFamily
                }}
             >
                {/* App Header Simulation */}
-               {styleConfig.showHeader && (
+                {/* Company & Quotation Formal Header */}
+                {styleConfig.isQuotationMode && (
+                   <div className="p-6 bg-white border-b-2 border-slate-200 text-slate-800 space-y-4 text-right" dir="rtl">
+                      <div className="flex justify-between items-start">
+                         <div className="flex items-center gap-3">
+                            {styleConfig.companyLogo ? (
+                               <img src={styleConfig.companyLogo} className="w-16 h-16 object-contain" alt="Logo" />
+                            ) : (
+                               <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
+                                  <Building size={32} className="text-sap-primary" />
+                                </div>
+                            )}
+                            <div>
+                               <h1 className="text-xl font-black text-slate-900">{styleConfig.companyName || 'اسم الشركة'}</h1>
+                               {styleConfig.companyTaxNumber && (
+                                  <p className="text-[10px] text-slate-400 font-bold mt-1">الرقم الضريبي: {styleConfig.companyTaxNumber}</p>
+                               )}
+                            </div>
+                         </div>
+                         <div className="text-left bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
+                            <div className="font-black text-sap-primary text-sm mb-1">عرض سعر رسمي</div>
+                            <div className="text-[10px] text-slate-400 font-bold">التاريخ: {new Date().toLocaleDateString('ar-SA')}</div>
+                            <div className="text-[10px] text-slate-400 font-bold">الرقم: #{projectId.substring(0, 8).toUpperCase()}</div>
+                         </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-500 pt-2 border-t border-dashed border-slate-100">
+                         {styleConfig.companyPhone && (
+                            <div className="flex items-center gap-1.5 font-bold">
+                               <span className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center text-slate-400">📞</span>
+                               <span>{styleConfig.companyPhone}</span>
+                            </div>
+                         )}
+                         {styleConfig.companyEmail && (
+                            <div className="flex items-center gap-1.5 font-bold">
+                               <span className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center text-slate-400">✉️</span>
+                               <span>{styleConfig.companyEmail}</span>
+                            </div>
+                         )}
+                         {styleConfig.companyAddress && (
+                            <div className="flex items-center gap-1.5 font-bold">
+                               <span className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center text-slate-400">📍</span>
+                               <span>{styleConfig.companyAddress}</span>
+                            </div>
+                         )}
+                      </div>
+                   </div>
+                )}
+
+                {/* App Header Simulation */}
+                {!styleConfig.isQuotationMode && styleConfig.showHeader && (
                   <div className={`backdrop-blur-sm sticky top-0 z-20 px-4 py-4 border-b shadow-sm ${styleConfig.layoutType === 'ramadan_special' ? 'bg-[#002b49]/90 border-[#C5A059]/30 text-white' : 'bg-white/80 border-black/5 text-gray-800'}`}>
                      <div className="flex justify-between items-center">
                         <div>
@@ -780,23 +1253,56 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                         <p className={`text-xs font-bold ${styleConfig.layoutType === 'ramadan_special' ? 'text-white' : 'text-gray-600'}`}>أضف منتجات للبدء</p>
                      </div>
                   )}
-                  {Object.entries(groupedItems).map(([section, sectionItems]) => (
-                     <div key={section} className="space-y-3">
-                        <div className="flex items-center gap-2">
-                           <div className={`w-1 h-4 rounded-full ${styleConfig.layoutType === 'ramadan_special' ? 'bg-[#C5A059]' : ''}`} style={{ backgroundColor: styleConfig.layoutType !== 'ramadan_special' ? styleConfig.primaryColor : undefined }}></div>
-                           <h3 className={`font-black text-sm ${styleConfig.layoutType === 'ramadan_special' ? 'text-white' : 'text-gray-700'}`}>{section}</h3>
+                  {Object.entries(groupedItems).map(([section, sectionItems]) => {
+                     const cols = styleConfig.columnsCount || (styleConfig.cardSize === 'compact' ? 3 : 2);
+                     const gridColsClass = 
+                        cols === 1 ? 'grid-cols-1 gap-4' : 
+                        cols === 3 ? 'grid-cols-3 gap-2' : 
+                        cols === 4 ? 'grid-cols-4 gap-1.5' : 
+                        'grid-cols-2 gap-3';
+                     
+                     return (
+                        <div key={section} className="space-y-3">
+                           <div className="flex items-center gap-2">
+                              <div className={`w-1 h-4 rounded-full ${styleConfig.layoutType === 'ramadan_special' ? 'bg-[#C5A059]' : ''}`} style={{ backgroundColor: styleConfig.layoutType !== 'ramadan_special' ? styleConfig.primaryColor : undefined }}></div>
+                              <h3 className={`font-black text-sm ${styleConfig.layoutType === 'ramadan_special' ? 'text-white' : 'text-gray-700'}`}>{section}</h3>
+                           </div>
+                           <div className={`grid ${gridColsClass}`}>
+                              {Array.isArray(sectionItems) && sectionItems.map(item => <ItemCard key={item.id} item={item} />)}
+                           </div>
                         </div>
-                        <div className={`grid gap-3 ${styleConfig.layoutType === 'geometric_grid' ? 'grid-cols-2' : 'grid-cols-2'}`}>
-                           {Array.isArray(sectionItems) && sectionItems.map(item => <ItemCard key={item.id} item={item} />)}
-                        </div>
-                     </div>
-                  ))}
+                     );
+                  })}
+                {/* Official Footer with Terms, Signature, and Contact */}
+                {styleConfig.showCompanyFooter !== false && (
+                   <div className="p-6 bg-slate-50 border-t border-slate-200 mt-8 text-slate-700 text-xs space-y-4 text-right" dir="rtl">
+                      {styleConfig.footerTerms && (
+                         <div className="space-y-1.5">
+                            <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-wider">شروط وتفاصيل العرض:</h4>
+                            <p className="text-[10px] text-slate-500 whitespace-pre-line leading-relaxed bg-white p-3 rounded-xl border border-slate-100">{styleConfig.footerTerms}</p>
+                         </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center pt-4 border-t border-dashed border-slate-200">
+                         <div className="space-y-1">
+                            <div className="font-black text-[10px] text-slate-400 uppercase tracking-wider">توقيع واعتماد المؤسسة:</div>
+                            <div className="w-32 h-12 border border-slate-200 bg-white/50 rounded-xl border-dashed flex items-center justify-center text-[10px] text-slate-300">الختم والتوقيع الرسمي</div>
+                         </div>
+                         <div className="text-left">
+                            <div className="font-black text-slate-800">{styleConfig.companyName || 'اسم الشركة'}</div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">نشكركم على ثقتكم الغالية بمنتجاتنا</div>
+                         </div>
+                      </div>
+                   </div>
+                )}
                </div>
 
                {/* Floating Cart Button Sim */}
-               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 text-xs font-black cursor-pointer hover:scale-105 transition-transform">
-                  <ShoppingBag size={16}/> <span>سلة الشراء</span>
-               </div>
+               {!styleConfig.isQuotationMode && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 text-xs font-black cursor-pointer hover:scale-105 transition-transform">
+                     <ShoppingBag size={16}/> <span>سلة الشراء</span>
+                  </div>
+               )}
             </div>
          </div>
       </main>

@@ -330,6 +330,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 setScanStep('معالجة البيانات...');
                 
                 let extractedData: any[] = [];
+                let parseError = null;
                 try {
                     const textOutput = text || '[]';
                     // Try JSON.parse on the cleaned format
@@ -345,11 +346,34 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                             extractedData = possibleArray as any[];
                         }
                     }
-                } catch (e) {
-                    console.error("Failed to parse JSON response:", e);
+                } catch (e: any) {
+                    console.warn("Failed to parse JSON response directly, attempting repair:", e);
+                    try {
+                        const repairedStr = tryRepairTruncatedJSON(text || '[]');
+                        const parsed = JSON.parse(repairedStr);
+                        if (Array.isArray(parsed)) {
+                            extractedData = parsed;
+                        } else if (parsed && Array.isArray(parsed.items)) {
+                            extractedData = parsed.items;
+                        } else if (parsed && typeof parsed === 'object') {
+                            const possibleArray = Object.values(parsed).find(val => Array.isArray(val));
+                            if (possibleArray) {
+                                extractedData = possibleArray as any[];
+                            }
+                        }
+                        if (extractedData.length > 0) {
+                            parseError = "تم استرجاع البيانات بنجاح بعد إصلاح الجزء المقطوع تلقائياً من استجابة الذكاء الاصطناعي.";
+                        }
+                    } catch (repairErr: any) {
+                        console.error("Repair also failed:", repairErr);
+                        parseError = "مخرجات الذكاء الاصطناعي كانت طويلة جداً وتم قطعها ولم يتمكن النظام من إصلاحها تلقائياً. يرجى استخدام صورة أو ملف يحتوي على قائمة أصغر.";
+                    }
                 }
                 
                 if (Array.isArray(extractedData) && extractedData.length > 0) {
+                    if (parseError) {
+                        alert(parseError);
+                    }
                     const foundNewProducts: Product[] = [];
                     const processedRows: ListRow[] = extractedData.map((item: any) => {
                         const extractedCode = item.code ? String(item.code).trim() : '';
@@ -413,7 +437,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                     alert(`تم استخراج ${processedRows.length} صنف.`);
                     
                 } else {
-                    alert("لم يتم العثور على بيانات في الصورة.");
+                    alert(parseError || "لم يتم العثور على بيانات في الصورة.");
                 }
             } catch (err: any) {
                 console.error("Smart Scan Error in onloadend:", err);
@@ -1098,3 +1122,121 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
     </div>
   );
 };
+
+function tryRepairTruncatedJSON(str: string): string {
+    const cleaned = str.replace(/```json|```/g, '').trim();
+    try {
+        JSON.parse(cleaned);
+        return cleaned;
+    } catch (_) {}
+
+    let output = '';
+    let inString = false;
+    let escape = false;
+    const stack: ('{' | '[')[] = [];
+    
+    for (let i = 0; i < cleaned.length; i++) {
+        const char = cleaned[i];
+        if (escape) {
+            output += char;
+            escape = false;
+            continue;
+        }
+        if (char === '\\') {
+            output += char;
+            escape = true;
+            continue;
+        }
+        if (char === '"') {
+            inString = !inString;
+            output += char;
+            continue;
+        }
+        if (inString) {
+            output += char;
+            continue;
+        }
+        
+        if (char === '{') {
+            stack.push('{');
+            output += char;
+        } else if (char === '[') {
+            stack.push('[');
+            output += char;
+        } else if (char === '}') {
+            if (stack[stack.length - 1] === '{') {
+                stack.pop();
+            }
+            output += char;
+        } else if (char === ']') {
+            if (stack[stack.length - 1] === '[') {
+                stack.pop();
+            }
+            output += char;
+        } else {
+            output += char;
+        }
+    }
+    
+    if (inString) {
+        const lastQuote = output.lastIndexOf('"');
+        if (lastQuote !== -1) {
+            output = output.substring(0, lastQuote);
+        }
+    }
+    
+    output = output.trim();
+    while (output.endsWith(',') || output.endsWith(':') || output.endsWith('[') || output.endsWith('{')) {
+        const lastChar = output[output.length - 1];
+        output = output.slice(0, -1).trim();
+        if (lastChar === '[') {
+            if (stack[stack.length - 1] === '[') stack.pop();
+        } else if (lastChar === '{') {
+            if (stack[stack.length - 1] === '{') stack.pop();
+        }
+    }
+    
+    const lastComma = output.lastIndexOf(',');
+    const lastOpenBrace = Math.max(output.lastIndexOf('{'), output.lastIndexOf('['));
+    if (lastComma > lastOpenBrace) {
+        let testOutput = output.substring(0, lastComma).trim();
+        if (testOutput.endsWith(',')) {
+            testOutput = testOutput.slice(0, -1).trim();
+        }
+        const testStack: ('{' | '[')[] = [];
+        let tInString = false;
+        let tEscape = false;
+        for (let i = 0; i < testOutput.length; i++) {
+            const char = testOutput[i];
+            if (tEscape) { tEscape = false; continue; }
+            if (char === '\\') { tEscape = true; continue; }
+            if (char === '"') { tInString = !tInString; continue; }
+            if (tInString) continue;
+            if (char === '{') testStack.push('{');
+            else if (char === '[') testStack.push('[');
+            else if (char === '}') { if (testStack[testStack.length - 1] === '{') testStack.pop(); }
+            else if (char === ']') { if (testStack[testStack.length - 1] === '[') testStack.pop(); }
+        }
+        
+        let testRep = testOutput;
+        for (let j = testStack.length - 1; j >= 0; j--) {
+            testRep += (testStack[j] === '{' ? '}' : ']');
+        }
+        try {
+            JSON.parse(testRep);
+            return testRep;
+        } catch (_) {}
+    }
+    
+    let repaired = output;
+    for (let j = stack.length - 1; j >= 0; j--) {
+        repaired += (stack[j] === '{' ? '}' : ']');
+    }
+    
+    try {
+        JSON.parse(repaired);
+        return repaired;
+    } catch (_) {
+        return cleaned;
+    }
+}

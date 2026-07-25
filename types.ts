@@ -384,6 +384,17 @@ export interface CatalogStyleConfig {
   showHeader: boolean;
   currencySymbolType?: CurrencySymbolType;
   currencySymbolImage?: string | null;
+  cardSize?: 'compact' | 'normal';
+  columnsCount?: number;
+  companyName?: string;
+  companyLogo?: string | null;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyAddress?: string;
+  companyTaxNumber?: string;
+  showCompanyFooter?: boolean;
+  isQuotationMode?: boolean;
+  footerTerms?: string;
 }
 
 export interface CatalogItem {
@@ -392,6 +403,8 @@ export interface CatalogItem {
   name: string;
   price: string;
   originalPrice?: string;
+  cartonPrice?: string;
+  originalCartonPrice?: string;
   sectionName: string;
   unitName: string;
   badge: CatalogBadgeType;

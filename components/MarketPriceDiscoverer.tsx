@@ -48,9 +48,10 @@ export const MarketPriceDiscoverer: React.FC<MarketPriceDiscovererProps> = ({ in
       }
 
       const data = await response.json();
-      const text = data.text;
+      const text = data.text || '{}';
       
-      const parsedData = JSON.parse(text);
+      const cleanedText = text.replace(/```json|```/g, '').trim();
+      const parsedData = JSON.parse(cleanedText);
       
       // Extract grounding sources if available
       const chunks = data.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
