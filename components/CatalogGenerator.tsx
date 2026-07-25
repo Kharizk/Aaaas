@@ -55,7 +55,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     companyAddress: 'الرياض، المملكة العربية السعودية',
     companyTaxNumber: '310123456700003',
     showCompanyFooter: true,
-    isQuotationMode: false,
+    isQuotationMode: true,
     footerTerms: 'هذا العرض ساري لمدة 15 يوماً من تاريخ الإصدار أو حتى نفاد الكمية. الأسعار تشمل ضريبة القيمة المضافة.'
   });
 
@@ -319,26 +319,57 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
       
       canvasRef.current.style.transform = originalTransform;
       
-      const rect = canvasRef.current.getBoundingClientRect();
-      const imgWidth = 375;
-      const imgHeight = (rect.height / rect.width) * imgWidth;
+      const isA4 = styleConfig.isQuotationMode;
       
-      const pdfWidthMm = 100;
-      const pdfHeightMm = (imgHeight / imgWidth) * pdfWidthMm;
-      
-      const pdf = new jsPDF({
-        orientation: pdfHeightMm > pdfWidthMm ? 'p' : 'l',
-        unit: 'mm',
-        format: [pdfWidthMm, pdfHeightMm]
-      });
-      
-      pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm, undefined, 'FAST');
-      pdf.save(`${projectName || 'catalog'}.pdf`);
+      if (isA4) {
+        const pdf = new jsPDF({
+          orientation: 'p',
+          unit: 'mm',
+          format: 'a4'
+        });
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.save(`${projectName || 'catalog'}.pdf`);
+      } else {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const imgWidth = 375;
+        const imgHeight = (rect.height / rect.width) * imgWidth;
+        
+        const pdfWidthMm = 100;
+        const pdfHeightMm = (imgHeight / imgWidth) * pdfWidthMm;
+        
+        const pdf = new jsPDF({
+          orientation: pdfHeightMm > pdfWidthMm ? 'p' : 'l',
+          unit: 'mm',
+          format: [pdfWidthMm, pdfHeightMm]
+        });
+        
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm, undefined, 'FAST');
+        pdf.save(`${projectName || 'catalog'}.pdf`);
+      }
     } catch (e) {
       console.error('Error downloading PDF:', e);
       alert('فشل تصدير ملف PDF. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const printCatalog = () => {
+    if (!canvasRef.current) return;
+    const printContainer = document.getElementById('print-container');
+    if (printContainer) {
+      printContainer.innerHTML = '';
+      const clone = canvasRef.current.cloneNode(true) as HTMLDivElement;
+      clone.style.transform = 'none';
+      clone.style.width = '100%';
+      clone.style.minHeight = '297mm';
+      clone.style.boxShadow = 'none';
+      clone.style.margin = '0';
+      clone.style.padding = '0';
+      printContainer.appendChild(clone);
+      window.print();
+    } else {
+      window.print();
     }
   };
 
@@ -574,7 +605,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
             )}
          </div>
 
-         <div className={`mx-auto bg-white shadow-md ${styleConfig.isQuotationMode ? 'max-w-4xl rounded-2xl overflow-hidden my-6 border border-gray-200' : 'max-w-lg rounded-none'}`} style={{ backgroundColor: styleConfig.backgroundColor }}>
+         <div className={`mx-auto bg-white shadow-md ${styleConfig.isQuotationMode ? 'max-w-[794px] w-full rounded-2xl overflow-hidden my-6 border border-gray-200 shadow-xl' : 'max-w-lg rounded-none'}`} style={{ backgroundColor: styleConfig.backgroundColor }}>
             {/* Company & Quotation Formal Header */}
             {styleConfig.isQuotationMode && (
                <div className="p-6 bg-white border-b-2 border-slate-200 text-slate-800 space-y-4">
@@ -887,22 +918,22 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                <div className="space-y-6 animate-in slide-in-from-right-4">
                   {/* Presentation Mode */}
                   <div className="space-y-3 bg-slate-50 p-5 rounded-3xl border border-slate-200/60 shadow-sm">
-                     <h4 className="text-xs font-black text-slate-500 flex items-center gap-2 mb-2"><Smartphone size={16} strokeWidth={2.5}/> حجم العرض والمعاينة</h4>
+                     <h4 className="text-xs font-black text-slate-500 flex items-center gap-2 mb-2"><Smartphone size={16} strokeWidth={2.5}/> مقاس وحجم التصميم</h4>
                      <div className="grid grid-cols-2 gap-3">
                         <button 
                            onClick={() => setStyleConfig({...styleConfig, isQuotationMode: false})} 
                            className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${!styleConfig.isQuotationMode ? 'bg-sap-primary text-white border-sap-primary shadow-md' : 'bg-white hover:border-slate-300 text-slate-600'}`}
                         >
-                           <span className="text-[11px] font-black">جوال (375px)</span>
+                           <span className="text-[11px] font-black">شاشة الجوال (375px)</span>
                         </button>
                         <button 
                            onClick={() => setStyleConfig({...styleConfig, isQuotationMode: true})} 
                            className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${styleConfig.isQuotationMode ? 'bg-sap-primary text-white border-sap-primary shadow-md' : 'bg-white hover:border-slate-300 text-slate-600'}`}
                         >
-                           <span className="text-[11px] font-black">صفحة A4 (800px)</span>
+                           <span className="text-[11px] font-black">مقاس ورقة A4 للطباعة</span>
                         </button>
                      </div>
-                     <p className="text-[10px] text-gray-400 mt-1">يتحكم نمط A4 في العرض الكلي للمجلة ويهيئها للطباعة كعرض سعر رسمي ومجلة حقيقية.</p>
+                     <p className="text-[10px] text-gray-400 mt-1">نمط ورقة A4 يضبط أبعاد التصميم لتطابق تماماً قياسات الطباعة الورقية (210mm x 297mm) مع الهوامش الرسمية.</p>
                   </div>
 
                   {/* Columns Count Control */}
@@ -1160,6 +1191,14 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                   {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                   <span>تحميل PDF</span>
                </button>
+               <button 
+                  onClick={printCatalog} 
+                  className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-black flex items-center gap-1 transition-all"
+                  title="طباعة العرض مباشرة بتنسيق A4"
+               >
+                  <Printer size={14} />
+                  <span>طباعة ورقة A4</span>
+               </button>
             </div>
             <div className="flex items-center gap-2">
                <button onClick={() => setShowShareModal(true)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold flex items-center gap-2"><QrCode size={16}/> نشر</button>
@@ -1174,8 +1213,8 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
                ref={canvasRef}
                className="bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] transition-all origin-top relative overflow-hidden"
                style={{
-                  width: styleConfig.isQuotationMode ? '800px' : '375px',
-                  minHeight: styleConfig.isQuotationMode ? '1130px' : '812px',
+                  width: styleConfig.isQuotationMode ? '794px' : '375px',
+                  minHeight: styleConfig.isQuotationMode ? '1123px' : '812px',
                   transform: `scale(${zoom / 100})`,
                   backgroundColor: styleConfig.backgroundColor,
                   fontFamily: styleConfig.fontFamily
