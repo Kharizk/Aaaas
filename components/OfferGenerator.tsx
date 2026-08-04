@@ -647,28 +647,45 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     <div className="flex-1 flex flex-col items-center justify-center my-auto py-2">
                         {/* Original Price (Crossed out) */}
                         {tag.originalPrice && tag.originalPrice !== '0.00' && !tag.hideOriginalPrice && (
-                            <div className="relative inline-flex items-center gap-1 mb-2">
+                            <div className="relative inline-flex items-center gap-1.5 mb-3">
                                 <span className="text-gray-400 font-black font-mono leading-none" style={{ fontSize: `${origFontSize * 1.3}px` }}>
-                                    {displayOriginalPrice} ريال
+                                    {displayOriginalPrice}
                                 </span>
-                                <div className="absolute inset-x-[-10px] h-[3.5px] bg-red-600 rounded-full transform -rotate-12 pointer-events-none shadow-sm"></div>
+                                <CurrencySymbolRenderer 
+                                    type={currencyType} 
+                                    imageUrl={currencyImage} 
+                                    color="#94a3b8" 
+                                    className="shrink-0" 
+                                    style={{ width: `${currencySize * 0.7}px`, height: `${currencySize * 0.7}px` }} 
+                                />
+                                <div className="absolute inset-x-[-12px] h-[3.5px] bg-red-600 rounded-full transform -rotate-12 pointer-events-none shadow-sm"></div>
                             </div>
                         )}
 
                         {/* Large Special Price */}
                         <div className="flex flex-col items-center justify-center">
-                            <div className="flex items-baseline justify-center font-black text-slate-950 leading-none">
-                                <span className="tracking-tighter" style={{ fontSize: `${pFontSize * 1.8}px` }}>{priceMain}</span>
-                                {priceDec && priceDec !== '00' && priceDec !== '٠٠' && (
-                                    <span className="align-super ml-1 text-slate-900" style={{ fontSize: `${dFontSize * 1.5}px` }}>
-                                        .{priceDec}
+                            <div className="flex items-center gap-2 flex-nowrap shrink-0 text-slate-950" dir="ltr">
+                                <CurrencySymbolRenderer 
+                                    type={currencyType} 
+                                    imageUrl={currencyImage} 
+                                    color="#006C35" 
+                                    className="shrink-0" 
+                                    style={{ width: `${currencySize * 1.3}px`, height: `${currencySize * 1.3}px` }} 
+                                />
+                                <div className="flex items-baseline gap-1">
+                                    <span className="font-black tracking-tighter shrink-0" style={{ fontSize: `${pFontSize * 1.8}px`, lineHeight: 0.8 }}>
+                                        {priceMain}
                                     </span>
-                                )}
+                                    {priceDec && priceDec !== '00' && priceDec !== '٠٠' && (
+                                        <div className="flex flex-col items-start justify-end h-full">
+                                            <span className="font-black shrink-0 text-slate-900" style={{ fontSize: `${dFontSize * 1.5}px`, lineHeight: 0.8 }}>
+                                                .{priceDec}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div className="text-slate-950 font-black text-center mt-1" style={{ fontSize: `${currencySize * 1.2}px` }}>
-                                ريال
-                            </div>
-                            <div className="text-slate-500 font-bold text-[9px] text-center tracking-wider leading-none mt-1">
+                            <div className="text-slate-500 font-bold text-[10px] text-center tracking-wider leading-none mt-3">
                                 ريال سعودي
                             </div>
                         </div>
