@@ -599,6 +599,99 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         );
     }
 
+    // --- DESIGN 5: SAUDI FIRE OFFER ---
+    if (tag.template === 'saudi_fire_offer') {
+        return (
+            <div 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${showCuttingBorders ? 'border-dashed' : ''}`} 
+                dir="rtl"
+                style={{ 
+                    backgroundColor: '#FFFFFF',
+                    border: `${globalBorderWidth}px solid ${globalBorderColor}`,
+                    borderStyle: showCuttingBorders ? 'dashed' : 'solid'
+                }}
+            >
+                {/* Black Premium Header with Flame Icons */}
+                <div className="bg-[#111111] text-white w-full py-3 px-4 flex flex-col items-center justify-center border-b-[4px] border-[#FFD700] relative z-10 shrink-0" style={{ minHeight: '90px' }}>
+                    <div className="flex items-center gap-2 justify-center">
+                        <span className="text-lg md:text-xl animate-pulse">🔥</span>
+                        <span className="font-black text-center leading-none tracking-wide text-white" style={{ fontSize: `${discFontSize * 1.1}px` }}>
+                            {tag.topBannerText || 'عرض خاص'}
+                        </span>
+                        <span className="text-lg md:text-xl animate-pulse">🔥</span>
+                    </div>
+                    <span className="font-black tracking-widest text-center leading-none mt-1.5 text-[#FFD700]" style={{ fontSize: `${discFontSize * 0.65}px` }}>
+                        {tag.discountText || 'SPECIAL OFFER'}
+                    </span>
+                </div>
+
+                {/* Body Content */}
+                <div className="flex-1 flex flex-col p-4 relative z-10 justify-between items-center bg-white">
+                    {/* Saudi Flag / Ribbon Badge */}
+                    <div className="absolute top-0 left-3 bg-[#006C35] text-white px-2.5 py-1.5 rounded-b-md text-[9px] font-black z-20 shadow-sm flex items-center gap-1">
+                        <span>🇸🇦</span>
+                        <span className="tracking-tighter">المملكة</span>
+                    </div>
+
+                    {/* Product Name (Explicit User Request) */}
+                    <div className="w-full text-center mt-2 px-2 shrink-0">
+                        <h2 className="font-black text-slate-900 leading-tight tracking-tight line-clamp-2" style={{ fontSize: `${nFontSize}px` }}>
+                            {tag.name}
+                        </h2>
+                        {tag.productId && (
+                            <span className="text-gray-400 text-[10px] font-mono font-bold tracking-widest block mt-0.5">CODE: {formatNum(tag.productId)}</span>
+                        )}
+                    </div>
+
+                    {/* Prices Area */}
+                    <div className="flex-1 flex flex-col items-center justify-center my-auto py-2">
+                        {/* Original Price (Crossed out) */}
+                        {tag.originalPrice && tag.originalPrice !== '0.00' && !tag.hideOriginalPrice && (
+                            <div className="relative inline-flex items-center gap-1 mb-2">
+                                <span className="text-gray-400 font-black font-mono leading-none" style={{ fontSize: `${origFontSize * 1.3}px` }}>
+                                    {displayOriginalPrice} ريال
+                                </span>
+                                <div className="absolute inset-x-[-10px] h-[3.5px] bg-red-600 rounded-full transform -rotate-12 pointer-events-none shadow-sm"></div>
+                            </div>
+                        )}
+
+                        {/* Large Special Price */}
+                        <div className="flex flex-col items-center justify-center">
+                            <div className="flex items-baseline justify-center font-black text-slate-950 leading-none">
+                                <span className="tracking-tighter" style={{ fontSize: `${pFontSize * 1.8}px` }}>{priceMain}</span>
+                                {priceDec && priceDec !== '00' && priceDec !== '٠٠' && (
+                                    <span className="align-super ml-1 text-slate-900" style={{ fontSize: `${dFontSize * 1.5}px` }}>
+                                        .{priceDec}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="text-slate-950 font-black text-center mt-1" style={{ fontSize: `${currencySize * 1.2}px` }}>
+                                ريال
+                            </div>
+                            <div className="text-slate-500 font-bold text-[9px] text-center tracking-wider leading-none mt-1">
+                                ريال سعودي
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Unit / Packing Details */}
+                    {unitText && (
+                        <div className="text-slate-800 font-black text-center pb-5 z-10 leading-none" style={{ fontSize: `${dFontSize * 0.7}px` }}>
+                            {unitText}
+                        </div>
+                    )}
+                </div>
+
+                {/* Curved Saudi Green Wave Bottom */}
+                <div className="absolute bottom-0 left-0 right-0 h-10 overflow-hidden pointer-events-none">
+                    <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="w-full h-full text-[#006C35] fill-current">
+                        <path d="M0 10 C 30 3, 70 3, 100 10 Z" />
+                    </svg>
+                </div>
+            </div>
+        );
+    }
+
     // --- DESIGN 1: CLASSIC (DEFAULT) ---
     return (
         <div 
@@ -777,6 +870,10 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <div className="w-8 h-8 bg-white rounded-sm border-t-[8px] border-black flex items-center justify-center text-black font-bold text-[8px] shadow-sm">OFFER</div>
                         <span className="text-[10px] font-black">بانر أبيض وأسود</span>
                     </button>
+                    <button onClick={() => updateTag(activeTag.id, { template: 'saudi_fire_offer' })} className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 transition-all ${activeTag.template === 'saudi_fire_offer' ? 'border-sap-primary bg-sap-highlight text-sap-primary' : 'border-gray-100 hover:border-gray-300'}`}>
+                        <div className="w-8 h-8 bg-black border-2 border-amber-400 rounded-sm flex items-center justify-center text-amber-400 font-bold text-[12px] shadow-sm">🔥</div>
+                        <span className="text-[10px] font-black">العرض الناري (سعودي)</span>
+                    </button>
                 </div>
             ) : openSections.template && <div className="p-4 text-center text-gray-400 italic">حدد ملصقاً لتغيير تصميمه</div>}
 
@@ -821,7 +918,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <label className="text-[9px] font-black text-red-500 uppercase">نص شارة العرض (كامل)</label>
                         <input type="text" value={activeTag.discountText} onChange={e => updateTag(activeTag.id, { discountText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: خصم 50% / عرض خاص" />
                     </div>
-                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner') && (
+                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner' || activeTag.template === 'saudi_fire_offer') && (
                         <div className="space-y-1">
                             <label className="text-[9px] font-black text-red-500 uppercase">نص البانر العلوي</label>
                             <input type="text" value={activeTag.topBannerText || ''} onChange={e => updateTag(activeTag.id, { topBannerText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: العروض معك تفرق" />
@@ -909,11 +1006,11 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <input type="range" min="10" max="200" value={(activeTag.customColors as any)?.discountFontSize} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, discountFontSize: Number(e.target.value) } })} className="w-full accent-red-600" />
                     </div>
 
-                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner') && (
+                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner' || activeTag.template === 'saudi_fire_offer') && (
                         <>
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center text-[9px] font-black text-gray-600 uppercase">
-                                    <span>حجم نص الضريبة</span>
+                                    <span>حجم نص الضريبة / التسمية التوضيحية</span>
                                     <span className="text-gray-600 font-mono">{(activeTag.customColors as any)?.taxFontSize || 12}px</span>
                                 </div>
                                 <input type="range" min="8" max="50" value={(activeTag.customColors as any)?.taxFontSize || 12} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, taxFontSize: Number(e.target.value) } })} className="w-full accent-gray-600" />

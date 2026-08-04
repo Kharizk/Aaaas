@@ -322,12 +322,32 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
       const isA4 = styleConfig.isQuotationMode;
       
       if (isA4) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const canvasWidth = rect.width || 794;
+        const canvasHeight = rect.height || 1123;
+        
         const pdf = new jsPDF({
           orientation: 'p',
           unit: 'mm',
           format: 'a4'
         });
-        pdf.addImage(dataUrl, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        
+        // At 794px width of A4, 1mm = 794 / 210 = 3.78 pixels.
+        // Full height of image in mm = (canvasHeight / 794) * 210
+        const imgHeightMm = (canvasHeight / canvasWidth) * 210;
+        const pageHeightMm = 297;
+        
+        // 1123px is the height of a single A4 page on the canvas
+        const numPages = Math.ceil(canvasHeight / 1123) || 1;
+        
+        for (let i = 0; i < numPages; i++) {
+          if (i > 0) {
+            pdf.addPage();
+          }
+          // Offset the image Y coordinate by -i * 297mm to render the corresponding slice on each page
+          pdf.addImage(dataUrl, 'JPEG', 0, -i * pageHeightMm, 210, imgHeightMm, undefined, 'FAST');
+        }
+        
         pdf.save(`${projectName || 'catalog'}.pdf`);
       } else {
         const rect = canvasRef.current.getBoundingClientRect();
@@ -361,11 +381,12 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
       printContainer.innerHTML = '';
       const clone = canvasRef.current.cloneNode(true) as HTMLDivElement;
       clone.style.transform = 'none';
-      clone.style.width = '100%';
+      clone.style.width = '210mm';
       clone.style.minHeight = '297mm';
       clone.style.boxShadow = 'none';
-      clone.style.margin = '0';
+      clone.style.margin = '0 auto';
       clone.style.padding = '0';
+      clone.style.backgroundColor = styleConfig.backgroundColor || '#ffffff';
       printContainer.appendChild(clone);
       window.print();
     } else {
@@ -424,7 +445,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
         return (
             <div 
                 onClick={() => !isViewerMode && setActiveItemId(item.id)}
-                className={`relative group bg-white overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full
+                className={`relative group bg-white overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full print:break-inside-avoid
                   ${isCompact ? 'rounded-2xl border' : 'rounded-[2rem] border-2'}
                   ${isViewerMode ? '' : isActive ? 'ring-4 ring-[#C5A059] z-10 scale-[1.02]' : 'hover:shadow-[0_0_20px_rgba(197,160,89,0.3)] hover:-translate-y-1'}
                   border-white/10 shadow-lg
@@ -506,7 +527,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
     return (
       <div 
         onClick={() => !isViewerMode && setActiveItemId(item.id)}
-        className={`relative group bg-white overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full
+        className={`relative group bg-white overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full print:break-inside-avoid
           ${isViewerMode ? '' : isActive ? 'ring-4 ring-sap-secondary z-10 scale-[1.02]' : 'hover:shadow-xl hover:-translate-y-1'}
           ${isGrid ? 'border-2 border-black rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)]' : ''}
           ${isLux ? 'rounded-tl-[2rem] rounded-br-[2rem] border-none shadow-lg' : isCompact ? 'rounded-xl border border-gray-100 shadow-sm' : 'rounded-[1.5rem] border border-gray-100 shadow-sm'}

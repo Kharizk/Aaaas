@@ -192,7 +192,7 @@ async function startServer() {
       const ai = getAi();
 
       const response = await callWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview', 
+        model: 'gemini-3.1-flash-image', 
         contents: prompt,
         config: {
           imageConfig: {
