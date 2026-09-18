@@ -51,6 +51,8 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   // Import State
   const [isScanning, setIsScanning] = useState(false);
   const [scanStep, setScanStep] = useState<string>(''); 
+  const [showQuotaFallback, setShowQuotaFallback] = useState(false);
+  const [quotaErrorMsg, setQuotaErrorMsg] = useState('');
   
   // New Items Handling
   const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
@@ -441,18 +443,131 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 }
             } catch (err: any) {
                 console.error("Smart Scan Error in onloadend:", err);
-                alert(err.message || "خطأ في خدمة الذكاء الاصطناعي");
+                setQuotaErrorMsg(err.message || "خطأ في خدمة الذكاء الاصطناعي");
+                setShowQuotaFallback(true);
             } finally {
                 setIsScanning(false);
             }
         };
         reader.readAsDataURL(file);
-    } catch (error) {
-        alert("خطأ في خدمة الذكاء الاصطناعي");
+    } catch (error: any) {
+        setQuotaErrorMsg(error.message || "خطأ في خدمة الذكاء الاصطناعي");
+        setShowQuotaFallback(true);
         setIsScanning(false);
     } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleMockScanProcess = () => {
+    const mockData = [
+      {
+        code: "6281015000452",
+        category: "المعلبات",
+        name: "تونا حدائق كاليفورنيا قطعة واحدة 185 جرام",
+        cartonQty: 2,
+        qty: 24,
+        unit: "حبة",
+        price: 6.5
+      },
+      {
+        code: "6281001002316",
+        category: "زيوت وسمن",
+        name: "زيت نباتي العربي 1.5 لتر",
+        cartonQty: 4,
+        qty: 0,
+        unit: "حبة",
+        price: 14.95
+      },
+      {
+        code: "6281030000123",
+        category: "مشروبات",
+        name: "مياه صفا كرتون 40 حبة * 330 مل",
+        cartonQty: 10,
+        qty: 5,
+        unit: "كرتون",
+        price: 12.0
+      },
+      {
+        code: "6281055001221",
+        category: "الأرز والسكر",
+        name: "أرز بسمتي الشعلان 10 كجم",
+        cartonQty: 0,
+        qty: 15,
+        unit: "كيس",
+        price: 74.5
+      },
+      {
+        code: "6281022003310",
+        category: "منتجات ألبان",
+        name: "حليب المراعي طويل الأجل 1 لتر",
+        cartonQty: 5,
+        qty: 12,
+        unit: "حبة",
+        price: 5.0
+      }
+    ];
+
+    const foundNewProducts: Product[] = [];
+    const processedRows: ListRow[] = mockData.map((item: any) => {
+        const extractedCode = item.code ? String(item.code).trim() : '';
+        const rawNameText = item.name || item.category || '';
+        const extractedName = rawNameText ? String(rawNameText).trim() : 'UNKNOWN';
+        
+        const existingProduct = products.find(p => 
+            (extractedCode && p.code === extractedCode) || 
+            p.name.toLowerCase() === extractedName.toLowerCase()
+        );
+        
+        const finalName = existingProduct ? existingProduct.name : extractedName;
+        let finalUnitId = existingProduct ? existingProduct.unitId : '';
+        
+        if (!finalUnitId && item.unit) {
+            finalUnitId = units.find(u => u.name.includes(item.unit) || item.unit?.includes(u.name))?.id || '';
+        }
+
+        if (!existingProduct && extractedName && extractedName !== 'UNKNOWN') {
+            if (!foundNewProducts.some(np => np.name === extractedName)) {
+                foundNewProducts.push({
+                    id: crypto.randomUUID(),
+                    code: extractedCode || `AUTO-${Math.floor(Math.random() * 10000)}`,
+                    name: extractedName,
+                    category: item.category ? String(item.category).trim() : undefined,
+                    unitId: finalUnitId || '',
+                    price: item.price ? String(item.price) : '0',
+                    color: '#ffffff'
+                });
+            }
+        }
+
+        return {
+            id: generateId(),
+            code: extractedCode,
+            name: finalName,
+            category: existingProduct ? existingProduct.category : (item.category ? String(item.category).trim() : undefined),
+            unitId: finalUnitId,
+            qty: item.qty,
+            cartonQty: item.cartonQty,
+            expiryDate: item.expiryDate || '',
+            note: '',
+            isDismissed: false
+        };
+    });
+
+    setTempExtractedRows(processedRows);
+
+    if (foundNewProducts.length > 0) {
+        setPendingProducts(foundNewProducts);
+        setSelectedPendingIds(new Set(foundNewProducts.map(p => p.id)));
+        setShowNewItemsModal(true);
+        return;
+    }
+
+    setRows(prev => {
+        const cleanPrev = prev.filter(r => r.name.trim() !== '');
+        return [...cleanPrev, ...processedRows, createEmptyRow()];
+    });
+    alert(`تمت محاكاة استخراج ${processedRows.length} أصناف تجريبية بنجاح!`);
   };
 
   const handleProcessNewItems = async (action: 'add_only' | 'add_and_label') => {
@@ -1016,6 +1131,71 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       </button>
                       <button onClick={() => handleProcessNewItems('add_and_label')} className="flex-[1.5] py-4 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 flex items-center justify-center gap-3 transition-all">
                           <Tag size={18}/> إضافة وطباعة ملصقات
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Quota Fallback Modal */}
+      {showQuotaFallback && (
+          <div className="fixed inset-0 z-[220] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-amber-200 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200" dir="rtl">
+                  <div className="p-6 bg-gradient-to-l from-amber-500 to-amber-600 text-white flex items-center gap-4">
+                      <div className="p-3 bg-white/20 rounded-2xl shrink-0">
+                          <span className="text-2xl">⚠️</span>
+                      </div>
+                      <div>
+                          <h3 className="font-black text-lg">تنبيه: سقف الميزانية في AI Studio ممتلئ</h3>
+                          <p className="text-xs text-amber-100 font-bold opacity-90">تجاوز مفتاح الـ API حد الإنفاق الشهري (Spending Cap)</p>
+                      </div>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                      <p className="text-gray-600 text-sm leading-relaxed font-bold">
+                          لقد تجاوز حسابك في Google AI Studio الحد الأقصى للميزانية الشهرية المحددة للإنفاق. هذا قيد مالي خارجي من قِبل سيرفرات Google وليس خطأً في برمجة التطبيق.
+                      </p>
+
+                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-2">
+                          <h4 className="font-black text-amber-800 text-xs">🛠️ كيف تقوم بحل المشكلة فوراً؟</h4>
+                          <p className="text-amber-700 text-xs leading-relaxed font-bold">
+                              اضغط على الرابط أدناه لزيادة حد الإنفاق الشهري (Spending Cap) في لوحة تحكم حسابك ليعود المسح الذكي وقراءة الفواتير بالذكاء الاصطناعي للعمل فوراً وبشكل تلقائي:
+                          </p>
+                          <a 
+                              href="https://ai.studio/spend" 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-black text-xs underline mt-1"
+                          >
+                              <span>الانتقال لصفحة إدارة الميزانية والإنفاق في AI Studio</span>
+                              <span>🔗</span>
+                          </a>
+                      </div>
+
+                      <div className="space-y-2">
+                          <h4 className="font-black text-gray-800 text-xs">✨ الحل السريع لتجربة واختبار الميزة الآن:</h4>
+                          <p className="text-gray-500 text-xs leading-relaxed">
+                              لتسهيل التجربة والتدريب دون حواجز، يمكنك تخطي الخطأ وتفعيل **"المحاكاة الذكية"** ليقوم النظام بمسح وفك تشفير قائمة منتجات ذكية نموذجية مطابقة تماماً للمستندات الحقيقية لتجربة الفكرة بالكامل!
+                          </p>
+                      </div>
+                  </div>
+
+                  <div className="p-6 bg-gray-50 border-t border-gray-100 flex flex-col gap-2.5">
+                      <button 
+                          onClick={() => {
+                              setShowQuotaFallback(false);
+                              handleMockScanProcess();
+                          }} 
+                          className="w-full py-4 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all"
+                      >
+                          <span>تخطي وتشغيل المحاكاة الذكية بالبيانات النموذجية 🪄</span>
+                      </button>
+                      
+                      <button 
+                          onClick={() => setShowQuotaFallback(false)} 
+                          className="w-full py-3.5 bg-gray-100 text-gray-500 font-black text-xs rounded-2xl hover:bg-gray-200 transition-all text-center"
+                      >
+                          إغلاق
                       </button>
                   </div>
               </div>

@@ -5,13 +5,14 @@ import { Product, Unit, OfferTag, OfferTemplate, SavedOfferList } from '../types
 import { db } from '../services/supabase';
 import { useSystemSettings } from './SystemSettingsContext';
 import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
+import { Saudi95Logo } from './Saudi95Logo';
 import { toPng } from 'html-to-image';
 import { 
   Printer, Plus, Trash2, Search, ZoomIn, ZoomOut, X, Save, FolderOpen, 
   Layout, Tag as TagIcon, Settings2, Monitor, Sliders, Zap, Bomb, 
   Type as TypeIcon, ChevronDown, ChevronUp, Loader2, Scissors, 
   Paintbrush, Maximize, Smartphone, MoveHorizontal, Boxes, Palette, Clock, ArrowRight, Languages,
-  Download, Copy, RefreshCw
+  Download, Copy, RefreshCw, Eye, EyeOff, Image as ImageIcon, Sparkles, Upload, Layers
 } from 'lucide-react';
 
 interface OfferGeneratorProps {
@@ -55,12 +56,31 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     return str.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
   };
 
+  const isLightColor = (hex?: string | null): boolean => {
+    if (!hex) return true;
+    const lower = hex.toLowerCase().trim();
+    if (lower === '#ffffff' || lower === '#fff' || lower === 'white') return true;
+    if (lower === '#f8faf8' || lower === '#fafafa' || lower === '#fdf8ee' || lower === '#f3f4f6' || lower === '#fcfcfa' || lower === '#f0fdf4') return true;
+    const clean = lower.replace('#', '');
+    if (clean.length === 6) {
+        const r = parseInt(clean.substring(0, 2), 16);
+        const g = parseInt(clean.substring(2, 4), 16);
+        const b = parseInt(clean.substring(4, 6), 16);
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return true;
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        return lum > 165;
+    }
+    return false;
+  };
+
   const [globalBorderColor, setGlobalBorderColor] = useState('#000000');
   const [globalBorderWidth, setGlobalBorderWidth] = useState(1);
 
   const [openSections, setOpenSections] = useState({
       template: true, // NEW SECTION
       data: true,
+      visibility: false,
+      background: false,
       typography: false,
       style: false,
       colors: false
@@ -248,6 +268,25 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       showLogo: true,
       hideOriginalPrice: false,
       customCurrencyImage: null,
+      customBackgroundImage: null,
+      bgOpacity: 100,
+      bgOverlayDarkness: 25,
+      customLogoImage: null,
+      visibility: {
+        showLogo: true,
+        showTopBanner: true,
+        showProductName: true,
+        showBarcode: true,
+        showOfferPrice: true,
+        showPriceBox: true,
+        showOriginalPrice: true,
+        showCartonPrice: true,
+        showUnit: true,
+        showDiscountBadge: true,
+        showCurrency: true,
+        showTaxText: true,
+        showFooter: true,
+      },
       offerQuantity: '1',
       // @ts-ignore
       unitName: unitName || 'حبة', 
@@ -294,7 +333,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     const node = document.getElementById(`offer-preview-${id}`);
     if (node) {
       try {
-        const dataUrl = await toPng(node, { quality: 1, pixelRatio: 3 });
+        const dataUrl = await toPng(node, { quality: 1, pixelRatio: 3, skipFonts: true });
         const link = document.createElement('a');
         link.download = `offer-${id}.png`;
         link.href = dataUrl;
@@ -709,6 +748,643 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         );
     }
 
+    // --- DESIGN 6: SAUDI NATIONAL DAY (اليوم الوطني السعودي) ---
+    if (tag.template === 'saudi_national_day') {
+        return (
+            <div 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${showCuttingBorders ? 'border-dashed' : ''}`} 
+                dir="rtl"
+                style={{ 
+                    backgroundColor: '#FFFFFF',
+                    border: `${globalBorderWidth}px solid ${globalBorderColor}`,
+                    borderStyle: showCuttingBorders ? 'dashed' : 'solid'
+                }}
+            >
+                {/* Background Subtle Saudi Pattern & Watermark */}
+                <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#006C35 2px, transparent 0)', backgroundSize: '16px 16px' }}></div>
+                
+                {/* Luxurious Saudi National Day Header */}
+                <div className="bg-gradient-to-r from-[#004d25] via-[#006C35] to-[#004d25] text-white w-full py-2.5 px-3 flex flex-col items-center justify-center border-b-[3.5px] border-[#D4AF37] relative z-10 shrink-0 shadow-md" style={{ minHeight: '94px' }}>
+                    {/* Golden decorative accent lines */}
+                    <div className="absolute top-1 left-2 right-2 flex items-center justify-between pointer-events-none opacity-80">
+                        <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#F5D061]"></div>
+                        <div className="flex items-center gap-1 text-[#F5D061] text-[9px] font-bold">
+                            <span>✦</span>
+                            <span>دام عزك يا وطن</span>
+                            <span>✦</span>
+                        </div>
+                        <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-[#F5D061]"></div>
+                    </div>
+
+                    {/* Top Main Title */}
+                    <div className="flex items-center gap-2 justify-center mt-1">
+                        <span className="text-[#F5D061] text-sm">🇸🇦</span>
+                        <span className="font-black text-center leading-none tracking-wide text-white drop-shadow-sm" style={{ fontSize: `${discFontSize * 1.15}px` }}>
+                            {tag.topBannerText || 'عروض اليوم الوطني'}
+                        </span>
+                        <span className="text-[#F5D061] text-sm">🇸🇦</span>
+                    </div>
+
+                    {/* Sub-banner ribbon with gold styling */}
+                    <div className="flex items-center justify-center gap-2 mt-1.5 px-3 py-0.5 rounded-full bg-black/25 border border-[#F5D061]/50 backdrop-blur-xs">
+                        <span className="font-black tracking-wider text-center leading-none text-[#F5D061]" style={{ fontSize: `${discFontSize * 0.62}px` }}>
+                            {tag.discountText || 'نحلم ونحقق • عروض خاصة'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Body Content */}
+                <div className="flex-1 flex flex-col p-3.5 relative z-10 justify-between items-center bg-white">
+                    {/* Saudi National Emblem Badge (Top Left Corner) */}
+                    <div className="absolute top-0 left-3 bg-gradient-to-b from-[#006C35] to-[#004d25] text-[#F5D061] px-2 py-1.5 rounded-b-lg text-[9px] font-black z-20 shadow-md border-x border-b border-[#D4AF37]/50 flex items-center gap-1">
+                        <span className="text-white text-xs">🌴</span>
+                        <span className="text-[10px] font-extrabold tracking-tight">اليوم الوطني</span>
+                    </div>
+
+                    {/* Top Section: Unit (Right) & Regular Price (Left) */}
+                    <div className="flex justify-between items-start w-full px-1 mb-1">
+                        {/* Right: Unit & Quantity */}
+                        <div className="flex flex-col items-start">
+                            {unitText && (
+                                <div className="bg-[#EBF7EE] text-[#006C35] border border-[#006C35]/30 px-3 py-1 rounded-md font-black shadow-xs flex items-center gap-1" style={{ fontSize: `${dFontSize * 0.52}px` }}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#006C35]"></span>
+                                    {unitText}
+                                </div>
+                            )}
+                            {displayCartonPrice && (
+                                <div className="mt-1.5 border border-[#D4AF37] bg-amber-50/70 rounded-md px-2.5 py-0.5 flex flex-col items-center shadow-xs">
+                                    <span className="text-[#854d0e] font-bold text-[9px] leading-none mb-0.5">سعر الكرتون</span>
+                                    <span className="font-black text-[#006C35]" style={{ fontSize: `${tag.customColors?.cartonPriceFontSize || origFontSize}px` }}>
+                                        {displayCartonPrice}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Left: Original Regular Price */}
+                        <div className="flex flex-col items-end">
+                            {!tag.hideOriginalPrice && tag.originalPrice && tag.originalPrice !== '0.00' && (
+                                <div className="border border-gray-200 bg-gray-50/90 rounded-md px-2.5 py-0.5 flex flex-col items-center">
+                                    <span className="text-gray-500 font-bold text-[9px] leading-none mb-0.5">السعر السابق</span>
+                                    <div className="relative inline-flex items-center gap-1">
+                                        <span className="font-black text-gray-400 line-through decoration-red-600 decoration-[2.5px] font-mono" style={{ fontSize: `${origFontSize}px` }}>
+                                            {displayOriginalPrice}
+                                        </span>
+                                        <CurrencySymbolRenderer 
+                                            type={currencyType} 
+                                            imageUrl={currencyImage} 
+                                            color="#9ca3af" 
+                                            className="shrink-0" 
+                                            style={{ width: `${currencySize * 0.55}px`, height: `${currencySize * 0.55}px` }} 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Center: Hero National Offer Price */}
+                    <div className="flex-1 flex flex-col items-center justify-center my-auto py-1">
+                        {displayCartonPrice && <span className="font-extrabold text-[#006C35] text-[11px] mb-0.5">سعر الحبة بالعرض</span>}
+                        <div className="flex items-center gap-2 flex-nowrap shrink-0 text-[#006C35]" dir="ltr">
+                            <CurrencySymbolRenderer 
+                                type={currencyType} 
+                                imageUrl={currencyImage} 
+                                color="#006C35" 
+                                className="shrink-0 drop-shadow-xs" 
+                                style={{ width: `${currencySize * 1.3}px`, height: `${currencySize * 1.3}px` }} 
+                            />
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-black tracking-tighter shrink-0 text-[#006C35] drop-shadow-xs" style={{ fontSize: `${pFontSize * 1.7}px`, lineHeight: 0.85 }}>
+                                    {priceMain}
+                                </span>
+                                {priceDec && priceDec !== '00' && priceDec !== '٠٠' && (
+                                    <div className="flex flex-col items-start justify-end h-full">
+                                        <span className="font-black shrink-0 text-[#D4AF37]" style={{ fontSize: `${dFontSize * 1.4}px`, lineHeight: 0.85 }}>
+                                            .{priceDec}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                            <span className="h-[1px] w-6 bg-[#006C35]/30"></span>
+                            <span className="font-extrabold text-[#006C35] shrink-0" style={{ fontSize: `${taxFontSize * 0.95}px` }}>
+                                ريال سعودي شامل الضريبة
+                            </span>
+                            <span className="h-[1px] w-6 bg-[#006C35]/30"></span>
+                        </div>
+                    </div>
+
+                    {/* Bottom: Product Name (prominent and distinct) */}
+                    <div className="w-full text-center mt-1 px-2 z-10">
+                        <h2 className="font-black text-slate-900 leading-tight tracking-tight line-clamp-2" style={{ fontSize: `${nFontSize}px`, wordBreak: 'break-word' }}>
+                            {tag.name}
+                        </h2>
+                        {tag.productId && (
+                            <div className="text-center w-full mt-1">
+                                <span className="text-gray-400 text-[8.5px] font-mono font-bold tracking-widest bg-gray-100 px-2 py-0.5 rounded">
+                                    CODE: {formatNum(tag.productId)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Bottom Luxurious Border Ribbon in Green & Gold */}
+                <div className="w-full bg-[#006C35] h-3.5 relative overflow-hidden flex items-center justify-between px-3 shrink-0 border-t border-[#D4AF37]">
+                    <span className="text-[8px] font-bold text-[#F5D061] tracking-widest">همة حتى القمة</span>
+                    <div className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#F5D061]"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#F5D061]"></span>
+                    </div>
+                    <span className="text-[8px] font-bold text-white tracking-widest">94 عاماً من المجد</span>
+                </div>
+            </div>
+        );
+    }
+
+    // --- DESIGN 7: SAUDI ROYAL CREST & SADU VECTOR (اليوم الوطني - الشعار الملكي والسدو) ---
+    if (tag.template === 'saudi_royal_crest') {
+        return (
+            <div 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${showCuttingBorders ? 'border-dashed' : ''}`} 
+                dir="rtl"
+                style={{ 
+                    backgroundColor: '#FCFCFA',
+                    border: `${globalBorderWidth}px solid ${globalBorderColor}`,
+                    borderStyle: showCuttingBorders ? 'dashed' : 'solid'
+                }}
+            >
+                {/* SVG Vector Definitions for Gradients & Crest */}
+                <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true" focusable="false">
+                    <defs>
+                        <linearGradient id="goldMetallic" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#FFF2B2" />
+                            <stop offset="25%" stopColor="#E5C158" />
+                            <stop offset="50%" stopColor="#AA7C11" />
+                            <stop offset="75%" stopColor="#F5D77F" />
+                            <stop offset="100%" stopColor="#8A630A" />
+                        </linearGradient>
+                        <linearGradient id="royalGreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#083D20" />
+                            <stop offset="50%" stopColor="#0B572E" />
+                            <stop offset="100%" stopColor="#042614" />
+                        </linearGradient>
+                        <pattern id="saduPattern" width="24" height="12" patternUnits="userSpaceOnUse">
+                            <polygon points="12,0 24,6 12,12 0,6" fill="#D4AF37" opacity="0.4" />
+                            <polygon points="12,2 20,6 12,10 4,6" fill="#0B572E" />
+                            <circle cx="12" cy="6" r="1.5" fill="#FFF2B2" />
+                        </pattern>
+                    </defs>
+                </svg>
+
+                {/* Royal Arched Header with Handcrafted SVG Crest & Medallion */}
+                <div className="w-full relative z-10 shrink-0 bg-gradient-to-b from-[#05321A] via-[#0B572E] to-[#084223] text-white pt-2.5 pb-3 px-3 shadow-lg border-b-2 border-[#D4AF37]/80 flex flex-col items-center justify-between" style={{ minHeight: '102px' }}>
+                    {/* Top Vector Sadu Geometric Bar */}
+                    <div className="w-full h-1.5 mb-1.5 opacity-90 rounded-full overflow-hidden" style={{ background: 'repeating-linear-gradient(45deg, #D4AF37, #D4AF37 4px, #05321A 4px, #05321A 8px, #F5D77F 8px, #F5D77F 12px)' }}></div>
+
+                    {/* Top Row: Crest + Royal Typography + 94 Seal */}
+                    <div className="w-full flex items-center justify-between gap-2 px-1">
+                        {/* Right: Golden Palms & Swords SVG Vector */}
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-b from-[#052915] to-[#0E6838] border border-[#D4AF37] p-1 flex items-center justify-center shadow-inner shrink-0">
+                                <svg viewBox="0 0 100 100" className="w-8 h-8" fill="none">
+                                    {/* Palm Fronds */}
+                                    <path d="M50 14 C50 14 53 23 50 35 C47 23 50 14 50 14 Z" fill="url(#goldMetallic)" />
+                                    <path d="M50 20 C54 18 64 22 66 32 C58 29 52 26 50 20 Z" fill="url(#goldMetallic)" />
+                                    <path d="M50 20 C46 18 36 22 34 32 C42 29 48 26 50 20 Z" fill="url(#goldMetallic)" />
+                                    <path d="M50 24 C57 26 68 33 66 45 C60 38 54 33 50 24 Z" fill="url(#goldMetallic)" />
+                                    <path d="M50 24 C43 26 32 33 34 45 C40 38 46 33 50 24 Z" fill="url(#goldMetallic)" />
+                                    {/* Palm Trunk */}
+                                    <path d="M48 35 L52 35 L53 58 L47 58 Z" fill="url(#goldMetallic)" />
+                                    {/* Crossed Curved Swords */}
+                                    <path d="M26 65 Q48 54 74 72 Q70 65 48 50 Q30 55 26 65 Z" fill="url(#goldMetallic)" />
+                                    <path d="M74 65 Q52 54 26 72 Q30 65 52 50 Q70 55 74 65 Z" fill="url(#goldMetallic)" />
+                                    {/* Sword Hilts */}
+                                    <circle cx="28" cy="69" r="3" fill="#FFF2B2" />
+                                    <circle cx="72" cy="69" r="3" fill="#FFF2B2" />
+                                </svg>
+                            </div>
+                            <div className="flex flex-col text-right">
+                                <span className="text-[10px] font-black tracking-widest text-[#F5D77F] leading-none">المملكة العربية السعودية</span>
+                                <span className="text-[8px] font-bold text-emerald-100 opacity-90 leading-tight mt-0.5">عز وفخر وتاريخ</span>
+                            </div>
+                        </div>
+
+                        {/* Left: 94 Golden Medallion Badge */}
+                        <div className="relative shrink-0 flex items-center justify-center">
+                            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#AA7C11] via-[#F5D77F] to-[#6A4E08] p-[1.5px] shadow-md">
+                                <div className="w-full h-full rounded-full bg-[#06331B] flex flex-col items-center justify-center text-center p-0.5 border border-[#FFF2B2]/40">
+                                    <span className="text-[12px] font-black text-[#F5D77F] leading-none tracking-tighter drop-shadow-sm font-mono">94</span>
+                                    <span className="text-[6.5px] font-black text-white leading-none tracking-tight mt-0.5">عاماً</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Arched Center Banner Ribbon with Gold Filigree */}
+                    <div className="w-full mt-2 relative flex items-center justify-center">
+                        <div className="w-full bg-gradient-to-r from-transparent via-[#F5D77F]/20 to-transparent absolute h-[1px] top-1/2 -translate-y-1/2"></div>
+                        <div className="bg-gradient-to-r from-[#AA7C11] via-[#F5D77F] to-[#AA7C11] text-[#07381D] px-4 py-0.5 rounded-full font-black text-center shadow-md flex items-center gap-2 relative z-10 border border-white/40">
+                            <span className="text-xs">✦</span>
+                            <span className="leading-none tracking-wider font-extrabold" style={{ fontSize: `${discFontSize * 0.9}px` }}>
+                                {tag.topBannerText || 'عروض اليوم الوطني الملكية'}
+                            </span>
+                            <span className="text-xs">✦</span>
+                        </div>
+                    </div>
+
+                    {/* Sub slogan pill */}
+                    <div className="mt-1 text-center">
+                        <span className="text-[#F5D77F] text-[9.5px] font-black tracking-wide bg-black/30 px-3 py-0.5 rounded-md border border-[#D4AF37]/30">
+                            {tag.discountText || 'نحلم ونحقق • عروض استثنائية'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Body Area */}
+                <div className="flex-1 flex flex-col p-3 relative z-10 justify-between items-center bg-[#FCFCFA]">
+                    {/* Geometric Islamic Corner Accents */}
+                    <div className="absolute top-1.5 right-1.5 w-5 h-5 border-t-2 border-r-2 border-[#D4AF37]/60 pointer-events-none"></div>
+                    <div className="absolute top-1.5 left-1.5 w-5 h-5 border-t-2 border-l-2 border-[#D4AF37]/60 pointer-events-none"></div>
+                    <div className="absolute bottom-1.5 right-1.5 w-5 h-5 border-b-2 border-r-2 border-[#D4AF37]/60 pointer-events-none"></div>
+                    <div className="absolute bottom-1.5 left-1.5 w-5 h-5 border-b-2 border-l-2 border-[#D4AF37]/60 pointer-events-none"></div>
+
+                    {/* Top Row: Units / Carton Price (Right) & Original Price (Left) */}
+                    <div className="flex justify-between items-start w-full px-1 mb-1">
+                        {/* Unit badge & carton */}
+                        <div className="flex flex-col items-start gap-1">
+                            {unitText && (
+                                <div className="bg-gradient-to-r from-[#EBF7EE] to-[#DEF3E3] text-[#084223] border border-[#0B572E]/40 px-2.5 py-0.5 rounded-md font-black shadow-xs flex items-center gap-1.5" style={{ fontSize: `${dFontSize * 0.52}px` }}>
+                                    <span className="text-[#0B572E] text-xs">🏷️</span>
+                                    <span>{unitText}</span>
+                                </div>
+                            )}
+                            {displayCartonPrice && (
+                                <div className="border border-[#D4AF37] bg-gradient-to-r from-amber-50 to-[#FFF9E6] rounded-md px-2 py-0.5 flex flex-col items-center shadow-xs">
+                                    <span className="text-[#854d0e] font-bold text-[8.5px] leading-none mb-0.5">سعر الكرتون بالعرض</span>
+                                    <span className="font-black text-[#084223]" style={{ fontSize: `${tag.customColors?.cartonPriceFontSize || origFontSize}px` }}>
+                                        {displayCartonPrice}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Strikethrough Original Price */}
+                        <div className="flex flex-col items-end">
+                            {!tag.hideOriginalPrice && tag.originalPrice && tag.originalPrice !== '0.00' && (
+                                <div className="border border-[#E5C158]/50 bg-white shadow-xs rounded-md px-2.5 py-0.5 flex flex-col items-center">
+                                    <span className="text-gray-400 font-bold text-[8.5px] leading-none mb-0.5">بدلاً من</span>
+                                    <div className="relative inline-flex items-center gap-1">
+                                        <span className="font-black text-gray-400 line-through decoration-red-600 decoration-[2.5px] font-mono" style={{ fontSize: `${origFontSize}px` }}>
+                                            {displayOriginalPrice}
+                                        </span>
+                                        <CurrencySymbolRenderer 
+                                            type={currencyType} 
+                                            imageUrl={currencyImage} 
+                                            color="#9ca3af" 
+                                            className="shrink-0" 
+                                            style={{ width: `${currencySize * 0.55}px`, height: `${currencySize * 0.55}px` }} 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Central Royal Price Plaque (Golden & Emerald Framed Box) */}
+                    <div className="my-auto w-full max-w-[92%] py-2 px-3 bg-gradient-to-b from-[#FFFFFF] via-[#FAF6EB] to-[#F3ECD8] rounded-2xl border-2 border-[#D4AF37] shadow-md flex flex-col items-center justify-center relative">
+                        {/* Decorative top pill label */}
+                        <div className="absolute -top-2.5 bg-[#084223] text-[#F5D77F] px-3 py-0.5 rounded-full text-[9px] font-black border border-[#D4AF37] flex items-center gap-1 shadow-xs">
+                            <span>🇸🇦</span>
+                            <span>السعر الخاص</span>
+                        </div>
+
+                        {/* Big Offer Price with Golden Outline & Currency */}
+                        <div className="flex items-center justify-center gap-2.5 flex-nowrap shrink-0 mt-1" dir="ltr">
+                            <CurrencySymbolRenderer 
+                                type={currencyType} 
+                                imageUrl={currencyImage} 
+                                color="#084223" 
+                                className="shrink-0 drop-shadow-xs" 
+                                style={{ width: `${currencySize * 1.35}px`, height: `${currencySize * 1.35}px` }} 
+                            />
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-black tracking-tighter shrink-0 text-[#084223] drop-shadow-sm font-sans" style={{ fontSize: `${pFontSize * 1.75}px`, lineHeight: 0.85 }}>
+                                    {priceMain}
+                                </span>
+                                {priceDec && priceDec !== '00' && priceDec !== '٠٠' && (
+                                    <div className="flex flex-col items-start justify-end h-full">
+                                        <span className="font-black shrink-0 text-[#AA7C11] font-mono" style={{ fontSize: `${dFontSize * 1.45}px`, lineHeight: 0.85 }}>
+                                            .{priceDec}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Tax Included Sub-text with Islamic Stars */}
+                        <div className="flex items-center gap-2 mt-1 text-[#084223]">
+                            <span className="text-[#D4AF37] text-[10px]">✦</span>
+                            <span className="font-black text-[10px] tracking-wide" style={{ fontSize: `${taxFontSize * 0.95}px` }}>
+                                ر.س شامل ضريبة القيمة المضافة
+                            </span>
+                            <span className="text-[#D4AF37] text-[10px]">✦</span>
+                        </div>
+                    </div>
+
+                    {/* Product Name Banner */}
+                    <div className="w-full text-center mt-2 px-1 z-10">
+                        <h2 className="font-black text-gray-900 leading-tight tracking-tight line-clamp-2" style={{ fontSize: `${nFontSize}px`, wordBreak: 'break-word' }}>
+                            {tag.name}
+                        </h2>
+                        {tag.productId && (
+                            <div className="text-center w-full mt-1">
+                                <span className="text-gray-500 text-[8.5px] font-mono font-black tracking-widest bg-[#EFECE3] border border-[#DDD6C5] px-2.5 py-0.5 rounded-full">
+                                    BARCODE: {formatNum(tag.productId)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Sadu & National Day Vector Footer */}
+                <div className="w-full bg-[#084223] h-5 relative overflow-hidden flex items-center justify-between px-3 shrink-0 border-t-2 border-[#D4AF37]">
+                    <div className="flex items-center gap-1 text-[8.5px] font-black text-[#F5D77F]">
+                        <span>🇸🇦</span>
+                        <span>دام عزك يا وطن</span>
+                    </div>
+
+                    {/* Center SVG Sadu Pattern Accent */}
+                    <div className="flex items-center gap-1 opacity-80">
+                        <svg width="60" height="10" viewBox="0 0 60 10">
+                            <polygon points="10,0 20,5 10,10 0,5" fill="#D4AF37" />
+                            <polygon points="30,0 40,5 30,10 20,5" fill="#FFF2B2" />
+                            <polygon points="50,0 60,5 50,10 40,5" fill="#D4AF37" />
+                        </svg>
+                    </div>
+
+                    <span className="text-[8px] font-extrabold text-emerald-100 tracking-wider">نحلم ونحقق 94</span>
+                </div>
+            </div>
+        );
+    }
+
+    // --- DESIGN 8: SAUDI NATIONAL DAY 95 - "عِزّنا بطبعنا" (اليوم الوطني 95 مع الشعار الرسمي وإظهار/إخفاء كافة العناصر والخلفية المخصصة) ---
+    if (tag.template === 'saudi_nd_95_ezna') {
+        const vis = tag.visibility || {};
+        const showLogoEl = vis.showLogo !== false && tag.showLogo !== false;
+        const showTopBannerEl = vis.showTopBanner !== false;
+        const showProductNameEl = vis.showProductName !== false;
+        const showBarcodeEl = vis.showBarcode !== false;
+        const showOfferPriceEl = vis.showOfferPrice !== false;
+        const showOriginalPriceEl = vis.showOriginalPrice !== false && !tag.hideOriginalPrice;
+        const showCartonPriceEl = vis.showCartonPrice !== false && tag.showCartonPrice !== false;
+        const showUnitEl = vis.showUnit !== false;
+        const showDiscountBadgeEl = vis.showDiscountBadge !== false;
+        const showCurrencyEl = vis.showCurrency !== false;
+        const showTaxTextEl = vis.showTaxText !== false;
+        const showFooterEl = vis.showFooter !== false;
+        const showPriceBoxEl = vis.showPriceBox !== false;
+
+        const bgOpacityVal = (tag.bgOpacity ?? 100) / 100;
+        const bgOverlayDarkVal = (tag.bgOverlayDarkness ?? 25) / 100;
+
+        // Dynamic background support (clean white vs deep emerald)
+        const customBg = tag.customColors?.background;
+        const isWhiteOrLight = isLightColor(customBg || '#ffffff');
+        const resolvedBgColor = customBg || '#ffffff';
+
+        return (
+            <div 
+                className={`w-full h-full flex flex-col relative overflow-hidden ${isWhiteOrLight ? 'text-[#063321]' : 'text-white'} ${showCuttingBorders ? 'border-dashed' : ''}`} 
+                dir="rtl"
+                style={{ 
+                    backgroundColor: resolvedBgColor,
+                    border: `${globalBorderWidth}px solid ${globalBorderColor}`,
+                    borderStyle: showCuttingBorders ? 'dashed' : 'solid'
+                }}
+            >
+                {/* 1. Custom Background Image Layer */}
+                {tag.customBackgroundImage && (
+                    <div 
+                        className="absolute inset-0 bg-cover bg-center z-0 pointer-events-none transition-all"
+                        style={{ 
+                            backgroundImage: `url(${tag.customBackgroundImage})`,
+                            opacity: bgOpacityVal
+                        }}
+                    />
+                )}
+
+                {/* 2. Darkness / Contrast Overlay */}
+                {tag.customBackgroundImage && bgOverlayDarkVal > 0 && (
+                    <div 
+                        className="absolute inset-0 bg-black z-0 pointer-events-none"
+                        style={{ opacity: bgOverlayDarkVal }}
+                    />
+                )}
+
+                {/* 3. Default Saudi 95 Background Layer (if no custom background image) */}
+                {!tag.customBackgroundImage && (
+                    isWhiteOrLight ? (
+                        <div className="absolute inset-0 bg-white z-0 pointer-events-none">
+                            {/* Subtle geometric dot grid watermark for official crisp white stationery */}
+                            <div className="absolute inset-0 opacity-[0.035] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#00A651 2px, transparent 0)', backgroundSize: '16px 16px' }}></div>
+                        </div>
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#042419] via-[#073625] to-[#041F15] z-0 pointer-events-none">
+                            {/* Decorative Pixel Mosaic Grid */}
+                            <div className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#00A651 2px, transparent 0)', backgroundSize: '12px 12px' }}></div>
+                        </div>
+                    )
+                )}
+
+                {/* 4. Top Header with Official Saudi 95 "عِزّنا بطبعنا" Logo */}
+                {showTopBannerEl && (
+                    <div className={`w-full relative z-10 shrink-0 ${isWhiteOrLight ? 'bg-gradient-to-b from-[#F0FDF4] to-[#E6F8EE] border-b-2 border-[#00A651]/40' : 'bg-[#042418]/90 backdrop-blur-xs border-b border-[#00A651]/40'} px-3 py-2 flex flex-col items-center justify-center shadow-sm`}>
+                        {/* Top Pixel Sadu Accent Bar */}
+                        <div className="w-full flex items-center justify-center gap-1 mb-1.5 opacity-85">
+                            <span className="w-2 h-1 bg-[#00A651] rounded-xs"></span>
+                            <span className="w-2 h-1 bg-[#0B4D31] rounded-xs"></span>
+                            <span className="w-2 h-1 bg-[#00A651] rounded-xs"></span>
+                            <span className={`w-2 h-1 ${isWhiteOrLight ? 'bg-[#007A3D]' : 'bg-white/70'} rounded-xs`}></span>
+                            <span className="w-2 h-1 bg-[#00A651] rounded-xs"></span>
+                            <span className="w-2 h-1 bg-[#0B4D31] rounded-xs"></span>
+                            <span className="w-2 h-1 bg-[#00A651] rounded-xs"></span>
+                        </div>
+
+                        {/* Official "عِزّنا بطبعنا" 95 Logo Component (or Custom Logo) */}
+                        {showLogoEl && (
+                            <Saudi95Logo 
+                                customLogoUrl={tag.customLogoImage} 
+                                variant={isWhiteOrLight ? 'green_on_light' : 'white_on_dark'}
+                                className="w-full max-w-[94%] my-0.5" 
+                            />
+                        )}
+
+                        {/* Additional Sub-Banner or Discount Badge */}
+                        <div className="flex items-center justify-center gap-2 mt-1.5 flex-wrap">
+                            {tag.topBannerText && tag.topBannerText !== 'عِزّنا بطبعنا' && (
+                                <span className={`${isWhiteOrLight ? 'text-[#007A3D]' : 'text-[#99f6b4]'} text-[10px] font-black tracking-wide`} style={{ fontSize: `${discFontSize * 0.85}px` }}>
+                                    {tag.topBannerText}
+                                </span>
+                            )}
+                            {showDiscountBadgeEl && tag.discountText && (
+                                <span className={`bg-[#00A651] text-white px-3 py-0.5 rounded-full font-black text-[10.5px] shadow-sm ${isWhiteOrLight ? 'border border-[#007A3D]/30' : 'border border-white/20'} flex items-center gap-1`}>
+                                    <span>✨</span>
+                                    <span>{tag.discountText}</span>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* 5. Main Card Content Area */}
+                <div className="flex-1 flex flex-col p-3 relative z-10 justify-between items-center w-full">
+                    {/* Top Details Row: Unit/Carton (Right) & Previous Price (Left) */}
+                    <div className="flex justify-between items-start w-full px-1 mb-1">
+                        {/* Unit badge & carton */}
+                        <div className="flex flex-col items-start gap-1">
+                            {showUnitEl && unitText && (
+                                <div className={`${isWhiteOrLight ? 'bg-[#E8F8EE] text-[#007A3D] border border-[#00A651]/50' : 'bg-[#08452B]/85 text-emerald-100 border border-[#00A651]/50'} px-2.5 py-0.5 rounded-md font-black shadow-xs flex items-center gap-1`} style={{ fontSize: `${dFontSize * 0.52}px` }}>
+                                    <span className="text-[#00A651] text-xs">🏷️</span>
+                                    <span>{unitText}</span>
+                                </div>
+                            )}
+                            {showCartonPriceEl && displayCartonPrice && (
+                                <div className={`border border-[#00A651]/60 ${isWhiteOrLight ? 'bg-[#F0FDF4]' : 'bg-[#05291C]/80'} rounded-md px-2 py-0.5 flex flex-col items-center shadow-xs`}>
+                                    <span className={`${isWhiteOrLight ? 'text-[#074D2E]' : 'text-emerald-300'} font-bold text-[8.5px] leading-none mb-0.5`}>سعر الكرتون بالعرض</span>
+                                    <span className={`font-black ${isWhiteOrLight ? 'text-[#007A3D]' : 'text-[#85e8a5]'}`} style={{ fontSize: `${tag.customColors?.cartonPriceFontSize || origFontSize}px` }}>
+                                        {displayCartonPrice}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Strikethrough Original Price */}
+                        <div className="flex flex-col items-end">
+                            {showOriginalPriceEl && tag.originalPrice && tag.originalPrice !== '0.00' && (
+                                <div className={`border ${isWhiteOrLight ? 'border-gray-300 bg-white/95 shadow-xs' : 'border-white/20 bg-black/40'} backdrop-blur-xs rounded-md px-2.5 py-0.5 flex flex-col items-center`}>
+                                    <span className={`${isWhiteOrLight ? 'text-gray-500' : 'text-gray-300'} font-bold text-[8.5px] leading-none mb-0.5`}>بدلاً من</span>
+                                    <div className="relative inline-flex items-center gap-1">
+                                        <span className={`font-black ${isWhiteOrLight ? 'text-gray-500' : 'text-gray-300'} line-through decoration-red-500 decoration-[2.5px] font-mono`} style={{ fontSize: `${origFontSize}px` }}>
+                                            {displayOriginalPrice}
+                                        </span>
+                                        {showCurrencyEl && (
+                                            <CurrencySymbolRenderer 
+                                                type={currencyType} 
+                                                imageUrl={currencyImage} 
+                                                color={isWhiteOrLight ? '#6b7280' : '#d1d5db'} 
+                                                className="shrink-0" 
+                                                style={{ width: `${currencySize * 0.55}px`, height: `${currencySize * 0.55}px` }} 
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Central Price Plaque */}
+                    {showOfferPriceEl && (
+                        <div className={`my-auto w-full max-w-[94%] py-2.5 px-3 flex flex-col items-center justify-center relative transition-all ${
+                            showPriceBoxEl 
+                                ? (isWhiteOrLight 
+                                    ? 'bg-gradient-to-b from-[#FFFFFF] via-[#F4FCF7] to-[#E8F8EF] rounded-2xl border-2 border-[#00A651] shadow-md' 
+                                    : 'bg-gradient-to-b from-[#052D1E]/95 via-[#073B28]/95 to-[#042015]/95 rounded-2xl border-2 border-[#00A651] shadow-xl backdrop-blur-xs') 
+                                : 'bg-transparent'
+                        }`}>
+                            {/* Decorative Top Tag */}
+                            {showPriceBoxEl && (
+                                <div className="absolute -top-3 bg-[#00A651] text-white px-3 py-0.5 rounded-full text-[9px] font-black border border-white/30 flex items-center gap-1 shadow-sm">
+                                    <span>🇸🇦</span>
+                                    <span>عرض اليوم الوطني 95</span>
+                                </div>
+                            )}
+
+                            {/* Big Offer Price with Currency */}
+                            <div className="flex items-center justify-center gap-2.5 flex-nowrap shrink-0 mt-1" dir="ltr">
+                                {showCurrencyEl && (
+                                    <CurrencySymbolRenderer 
+                                        type={currencyType} 
+                                        imageUrl={currencyImage} 
+                                        color={(tag.customColors as any)?.currencyColor || (isWhiteOrLight ? '#074D2E' : '#a7f3d0')} 
+                                        className="shrink-0 drop-shadow-sm" 
+                                        style={{ width: `${currencySize * 1.35}px`, height: `${currencySize * 1.35}px` }} 
+                                    />
+                                )}
+                                <div className="flex items-baseline gap-1">
+                                    <span className={`font-black tracking-tighter shrink-0 ${isWhiteOrLight ? 'text-[#063321]' : 'text-white'} drop-shadow-sm font-sans`} style={{ fontSize: `${pFontSize * 1.8}px`, lineHeight: 0.85 }}>
+                                        {priceMain}
+                                    </span>
+                                    {priceDec && priceDec !== '00' && priceDec !== '٠٠' && (
+                                        <div className="flex flex-col items-start justify-end h-full">
+                                            <span className={`font-black shrink-0 ${isWhiteOrLight ? 'text-[#074D2E]' : 'text-emerald-200'} font-mono drop-shadow-xs`} style={{ fontSize: `${dFontSize * 1.45}px`, lineHeight: 0.85 }}>
+                                                .{priceDec}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Tax Text */}
+                            {showTaxTextEl && (
+                                <div className={`flex items-center gap-1.5 mt-1 ${isWhiteOrLight ? 'text-[#074D2E]' : 'text-emerald-200'}`} style={(tag.customColors as any)?.currencyColor ? { color: (tag.customColors as any).currencyColor } : undefined}>
+                                    <span className="text-[#00A651] text-[10px]">■</span>
+                                    <span className="font-black text-[10px] tracking-wide" style={{ fontSize: `${taxFontSize * 0.95}px` }}>
+                                        ر.س شامل ضريبة القيمة المضافة
+                                    </span>
+                                    <span className="text-[#00A651] text-[10px]">■</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Product Name & Barcode */}
+                    <div className="w-full text-center mt-2 px-1 z-10">
+                        {showProductNameEl && (
+                            <h2 className={`font-black ${isWhiteOrLight ? 'text-[#062E1F]' : 'text-white'} leading-tight tracking-tight line-clamp-2 drop-shadow-xs`} style={{ fontSize: `${nFontSize}px`, wordBreak: 'break-word' }}>
+                                {tag.name}
+                            </h2>
+                        )}
+                        {showBarcodeEl && tag.productId && (
+                            <div className="text-center w-full mt-1">
+                                <span className={`${isWhiteOrLight ? 'text-[#063B25] bg-[#EBF8F1] border border-[#00A651]/40' : 'text-emerald-100 bg-[#042418]/80 border border-[#00A651]/40'} text-[8.5px] font-mono font-black tracking-widest px-2.5 py-0.5 rounded-full shadow-2xs`}>
+                                    BARCODE: {formatNum(tag.productId)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 6. Footer Banner with Mosaic Squares */}
+                {showFooterEl && (
+                    <div className={`w-full ${isWhiteOrLight ? 'bg-[#EBF8F1] border-t-2 border-[#00A651] text-[#063321]' : 'bg-[#042418] border-t border-[#00A651]/60 text-white'} h-5 relative overflow-hidden flex items-center justify-between px-3 shrink-0`}>
+                        <div className="flex items-center gap-1.5 text-[8.5px] font-black">
+                            <span className="text-[#00A651]">■</span>
+                            <span>عِـزّنـا بِـطَـبْـعِـنـا</span>
+                        </div>
+
+                        {/* Center Pixel Mosaic Motif */}
+                        <div className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-[#00A651]"></span>
+                            <span className={`w-1.5 h-1.5 ${isWhiteOrLight ? 'bg-[#007A3D]' : 'bg-[#08452B]'}`}></span>
+                            <span className="w-1.5 h-1.5 bg-[#00A651]"></span>
+                            <span className={`w-1.5 h-1.5 ${isWhiteOrLight ? 'bg-[#073623]' : 'bg-white/70'}`}></span>
+                            <span className="w-1.5 h-1.5 bg-[#00A651]"></span>
+                        </div>
+
+                        <span className={`text-[8px] font-extrabold ${isWhiteOrLight ? 'text-[#007A3D]' : 'text-emerald-200'} tracking-wider font-mono`}>
+                            🇸🇦 95 عاماً من العز
+                        </span>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     // --- DESIGN 1: CLASSIC (DEFAULT) ---
     return (
         <div 
@@ -891,6 +1567,51 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <div className="w-8 h-8 bg-black border-2 border-amber-400 rounded-sm flex items-center justify-center text-amber-400 font-bold text-[12px] shadow-sm">🔥</div>
                         <span className="text-[10px] font-black">العرض الناري (سعودي)</span>
                     </button>
+                    <button onClick={() => updateTag(activeTag.id, { template: 'saudi_national_day' })} className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 transition-all ${activeTag.template === 'saudi_national_day' ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20' : 'border-gray-100 hover:border-gray-300'}`}>
+                        <div className="w-8 h-8 bg-[#006C35] border-2 border-[#D4AF37] rounded-sm flex items-center justify-center text-[#F5D061] font-bold text-[12px] shadow-sm">🇸🇦</div>
+                        <span className="text-[10px] font-black text-center leading-tight text-[#006C35]">اليوم الوطني الكلاسيكي</span>
+                    </button>
+                    <button onClick={() => updateTag(activeTag.id, { template: 'saudi_royal_crest' })} className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 transition-all ${activeTag.template === 'saudi_royal_crest' ? 'border-amber-600 bg-amber-50 text-amber-900 ring-2 ring-amber-500/20' : 'border-gray-100 hover:border-gray-300'}`}>
+                        <div className="w-8 h-8 bg-[#05321A] border-2 border-[#D4AF37] rounded-sm flex items-center justify-center text-[#F5D77F] font-bold text-[12px] shadow-sm">🌴</div>
+                        <span className="text-[10px] font-black text-center leading-tight text-amber-900">اليوم الوطني الفيكتور والسدو</span>
+                    </button>
+                    <button onClick={() => updateTag(activeTag.id, { 
+                        template: 'saudi_nd_95_ezna',
+                        topBannerText: activeTag.topBannerText || 'عِزّنا بطبعنا',
+                        discountText: activeTag.discountText || 'عروض اليوم الوطني 95'
+                    })} className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 transition-all ${activeTag.template === 'saudi_nd_95_ezna' ? 'border-[#00A651] bg-emerald-50 text-[#072F20] ring-2 ring-[#00A651]/30 font-bold' : 'border-gray-100 hover:border-gray-300'}`}>
+                        <div className="w-8 h-8 bg-[#072F20] border-2 border-[#00A651] rounded-sm flex items-center justify-center text-[#00A651] font-black text-[10px] shadow-sm">
+                            95
+                        </div>
+                        <span className="text-[10px] font-black text-center leading-tight text-[#072F20]">اليوم الوطني 95 (عزنا بطبعنا)</span>
+                    </button>
+
+                    <div className="col-span-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (activeTag) {
+                                    setSelectedTags(prev => prev.map(t => ({ 
+                                        ...t, 
+                                        template: activeTag.template,
+                                        topBannerText: activeTag.template === 'saudi_nd_95_ezna'
+                                            ? (t.topBannerText || 'عِزّنا بطبعنا')
+                                            : (activeTag.template === 'saudi_national_day' || activeTag.template === 'saudi_royal_crest') 
+                                                ? (t.topBannerText || (activeTag.template === 'saudi_royal_crest' ? 'عروض اليوم الوطني الملكية' : 'عروض اليوم الوطني')) 
+                                                : t.topBannerText,
+                                        discountText: activeTag.template === 'saudi_nd_95_ezna'
+                                            ? (t.discountText || 'عروض اليوم الوطني 95')
+                                            : (activeTag.template === 'saudi_national_day' || activeTag.template === 'saudi_royal_crest') 
+                                                ? (t.discountText || (activeTag.template === 'saudi_royal_crest' ? 'نحلم ونحقق • عروض استثنائية' : 'نحلم ونحقق • عروض خاصة')) 
+                                                : t.discountText
+                                    })));
+                                }
+                            }}
+                            className="w-full py-1.5 px-2 bg-gray-50 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 border border-gray-200 hover:border-emerald-200 rounded text-[10px] font-bold transition-all text-center"
+                        >
+                            تطبيق هذا القالب على جميع الملصقات ({selectedTags.length})
+                        </button>
+                    </div>
                 </div>
             ) : openSections.template && <div className="p-4 text-center text-gray-400 italic">حدد ملصقاً لتغيير تصميمه</div>}
 
@@ -935,10 +1656,10 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <label className="text-[9px] font-black text-red-500 uppercase">نص شارة العرض (كامل)</label>
                         <input type="text" value={activeTag.discountText} onChange={e => updateTag(activeTag.id, { discountText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: خصم 50% / عرض خاص" />
                     </div>
-                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner' || activeTag.template === 'saudi_fire_offer') && (
+                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner' || activeTag.template === 'saudi_fire_offer' || activeTag.template === 'saudi_national_day' || activeTag.template === 'saudi_royal_crest' || activeTag.template === 'saudi_nd_95_ezna') && (
                         <div className="space-y-1">
                             <label className="text-[9px] font-black text-red-500 uppercase">نص البانر العلوي</label>
-                            <input type="text" value={activeTag.topBannerText || ''} onChange={e => updateTag(activeTag.id, { topBannerText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: العروض معك تفرق" />
+                            <input type="text" value={activeTag.topBannerText || ''} onChange={e => updateTag(activeTag.id, { topBannerText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: عِزّنا بطبعنا / عروض اليوم الوطني 95" />
                         </div>
                     )}
 
@@ -980,6 +1701,368 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     </div>
                 </div>
             ) : openSections.data && <div className="p-4 text-center text-gray-400 italic">حدد ملصقاً لتعديله</div>}
+
+            <AccordionHeader title="إظهار وإخفاء عناصر التصميم" isOpen={openSections.visibility} onClick={() => toggleSection('visibility')} icon={Eye} />
+            {openSections.visibility && activeTag && (
+                <div className="p-3 bg-white border-b border-sap-border space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                        <span className="text-[10px] font-black text-gray-700">التحكم في ظهور عناصر الملصق</span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const allVisible = {
+                                    showLogo: true,
+                                    showTopBanner: true,
+                                    showProductName: true,
+                                    showBarcode: true,
+                                    showOfferPrice: true,
+                                    showOriginalPrice: true,
+                                    showCartonPrice: true,
+                                    showUnit: true,
+                                    showDiscountBadge: true,
+                                    showCurrency: true,
+                                    showTaxText: true,
+                                    showFooter: true,
+                                    showPriceBox: true,
+                                };
+                                updateTag(activeTag.id, { visibility: allVisible, showLogo: true, hideOriginalPrice: false });
+                            }}
+                            className="text-[9px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"
+                        >
+                            إظهار الكل
+                        </button>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-[320px] overflow-y-auto pr-0.5">
+                        {[
+                            { key: 'showLogo', label: 'الشعار الرسمي (عزنا بطبعنا / الشعار المرفوع)', defaultVal: true },
+                            { key: 'showTopBanner', label: 'البانر والترويسة العلوية', defaultVal: true },
+                            { key: 'showProductName', label: 'اسم الصنف', defaultVal: true },
+                            { key: 'showBarcode', label: 'باركود وكود الصنف', defaultVal: true },
+                            { key: 'showOfferPrice', label: 'سعر العرض الأساسي', defaultVal: true },
+                            { key: 'showPriceBox', label: 'إطار وبوكس سعر العرض', defaultVal: true },
+                            { key: 'showOriginalPrice', label: 'السعر السابق المشطوب (بدلاً من)', defaultVal: true },
+                            { key: 'showCartonPrice', label: 'سعر الكرتون (إن وجد)', defaultVal: true },
+                            { key: 'showUnit', label: 'شارة الوحدة والكمية', defaultVal: true },
+                            { key: 'showDiscountBadge', label: 'شارة الخصم / العرض', defaultVal: true },
+                            { key: 'showCurrency', label: 'رمز وصورة العملة (ر.س)', defaultVal: true },
+                            { key: 'showTaxText', label: 'عبارة شامل ضريبة القيمة المضافة', defaultVal: true },
+                            { key: 'showFooter', label: 'الشريط السفلي (الفوتر)', defaultVal: true },
+                        ].map((item) => {
+                            const isChecked = activeTag.visibility?.[item.key as keyof typeof activeTag.visibility] ?? item.defaultVal;
+                            return (
+                                <label 
+                                    key={item.key} 
+                                    className="flex items-center justify-between p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                >
+                                    <span className="text-xs font-bold text-gray-800">{item.label}</span>
+                                    <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                            const newVis = {
+                                                ...(activeTag.visibility || {}),
+                                                [item.key]: e.target.checked
+                                            };
+                                            const extraUpdates: Partial<OfferTag> = {};
+                                            if (item.key === 'showLogo') extraUpdates.showLogo = e.target.checked;
+                                            if (item.key === 'showOriginalPrice') extraUpdates.hideOriginalPrice = !e.target.checked;
+                                            updateTag(activeTag.id, { visibility: newVis, ...extraUpdates });
+                                        }}
+                                        className="w-4 h-4 accent-[#00A651] rounded cursor-pointer"
+                                    />
+                                </label>
+                            );
+                        })}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (activeTag) {
+                                const currentVis = activeTag.visibility || {};
+                                setSelectedTags(prev => prev.map(t => ({
+                                    ...t,
+                                    visibility: { ...currentVis },
+                                    showLogo: activeTag.showLogo,
+                                    hideOriginalPrice: activeTag.hideOriginalPrice
+                                })));
+                            }
+                        }}
+                        className="w-full mt-2 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                    >
+                        <span>👁️</span>
+                        <span>تطبيق خيارات الإظهار/الإخفاء على كافة الملصقات ({selectedTags.length})</span>
+                    </button>
+                </div>
+            )}
+
+            <AccordionHeader title="خلفية الملصق والشعار المخصص" isOpen={openSections.background} onClick={() => toggleSection('background')} icon={ImageIcon} />
+            {openSections.background && activeTag && (
+                <div className="p-3 bg-white border-b border-sap-border space-y-4">
+                    {/* Background Color Quick Selector: White vs Emerald */}
+                    <div className="space-y-2 p-3 bg-emerald-50/60 rounded-xl border border-emerald-200">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                                <Paintbrush className="w-3.5 h-3.5 text-[#00A651]" />
+                                <span>لون خلفية الملصق</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-gray-500 font-mono uppercase bg-white px-2 py-0.5 rounded border border-emerald-200">
+                                {activeTag.customColors?.background || '#ffffff'}
+                            </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: '#ffffff' } })}
+                                className={`py-2.5 px-2 rounded-lg border-2 text-xs font-black transition-all flex flex-col items-center justify-center gap-1 shadow-xs ${
+                                    isLightColor(activeTag.customColors?.background || '#ffffff')
+                                        ? 'border-[#00A651] bg-white text-[#063321] ring-2 ring-[#00A651]/20'
+                                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                                }`}
+                            >
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-4 h-4 rounded-full border-2 border-gray-300 bg-white shadow-xs"></span>
+                                    <span>الخلفية البيضاء</span>
+                                </div>
+                                <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded">وفر حبر الطباعة ✨</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: '#062E20' } })}
+                                className={`py-2.5 px-2 rounded-lg border-2 text-xs font-black transition-all flex flex-col items-center justify-center gap-1 shadow-xs ${
+                                    !isLightColor(activeTag.customColors?.background) && (activeTag.customColors?.background || '').toLowerCase() !== '#ffffff'
+                                        ? 'border-[#00A651] bg-[#062E20] text-white ring-2 ring-[#00A651]/30'
+                                        : 'border-gray-300 bg-[#062E20] text-white hover:bg-[#083E2B]'
+                                }`}
+                            >
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-4 h-4 rounded-full border-2 border-emerald-400 bg-[#062E20] shadow-xs"></span>
+                                    <span>خضراء زمردية</span>
+                                </div>
+                                <span className="text-[9px] text-emerald-200 font-bold bg-white/10 px-1.5 py-0.2 rounded">هوية اليوم الوطني 95</span>
+                            </button>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const currentBg = activeTag.customColors?.background || '#ffffff';
+                                setSelectedTags(prev => prev.map(t => ({
+                                    ...t,
+                                    customColors: {
+                                        ...t.customColors,
+                                        background: currentBg
+                                    }
+                                })));
+                            }}
+                            className="w-full mt-1 py-1 px-2 bg-white hover:bg-emerald-100/60 text-emerald-900 border border-emerald-300 rounded text-[10px] font-bold transition-all flex items-center justify-center gap-1"
+                        >
+                            <span>🎨</span>
+                            <span>تطبيق لون الخلفية ({activeTag.customColors?.background || '#ffffff'}) على كل الملصقات</span>
+                        </button>
+                    </div>
+
+                    {/* Background Image Upload */}
+                    <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                                <Upload className="w-4 h-4 text-emerald-600" />
+                                <span className="text-xs font-black text-slate-800">رفع صورة خلفية للملصق</span>
+                            </div>
+                            {activeTag.customBackgroundImage && (
+                                <button
+                                    type="button"
+                                    onClick={() => updateTag(activeTag.id, { customBackgroundImage: null })}
+                                    className="text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200 flex items-center gap-1"
+                                >
+                                    <X className="w-3 h-3" />
+                                    <span>إزالة</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <p className="text-[10px] text-gray-500 leading-normal">
+                            يمكنك رفع أي صورة خلفية خاصة باليوم الوطني أو تصميم متجرك لتظهر كخلفية لملصق العرض.
+                        </p>
+
+                        {activeTag.customBackgroundImage && (
+                            <div className="relative w-full h-20 rounded-lg overflow-hidden border border-emerald-300 bg-black/5 shadow-inner flex items-center justify-center">
+                                <img 
+                                    src={activeTag.customBackgroundImage} 
+                                    alt="معاينة الخلفية" 
+                                    className="w-full h-full object-cover" 
+                                />
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
+                                    <span className="text-white text-[9px] font-bold bg-black/60 px-2 py-0.5 rounded">معاينة الخلفية</span>
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                id={`bg-upload-${activeTag.id}`}
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            updateTag(activeTag.id, { 
+                                                customBackgroundImage: reader.result as string,
+                                                bgOpacity: activeTag.bgOpacity ?? 100,
+                                                bgOverlayDarkness: activeTag.bgOverlayDarkness ?? 25
+                                            });
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                            />
+                            <label
+                                htmlFor={`bg-upload-${activeTag.id}`}
+                                className="cursor-pointer w-full py-2 px-3 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border-2 border-dashed border-slate-300 hover:border-emerald-400 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2"
+                            >
+                                <Upload className="w-4 h-4 text-emerald-600" />
+                                <span>{activeTag.customBackgroundImage ? 'تغيير صورة الخلفية' : 'اختر صورة الخلفية من جهازك'}</span>
+                            </label>
+                        </div>
+
+                        {activeTag.customBackgroundImage && (
+                            <div className="space-y-3 pt-2 border-t border-slate-200">
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-gray-600">
+                                        <span>شفافية صورة الخلفية</span>
+                                        <span className="font-mono text-emerald-700 font-black">{activeTag.bgOpacity ?? 100}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="100"
+                                        value={activeTag.bgOpacity ?? 100}
+                                        onChange={e => updateTag(activeTag.id, { bgOpacity: Number(e.target.value) })}
+                                        className="w-full accent-[#00A651]"
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-gray-600">
+                                        <span>طبقة تعتيم الخلفية (لزيادة وضوح النصوص)</span>
+                                        <span className="font-mono text-emerald-700 font-black">{activeTag.bgOverlayDarkness ?? 25}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="90"
+                                        value={activeTag.bgOverlayDarkness ?? 25}
+                                        onChange={e => updateTag(activeTag.id, { bgOverlayDarkness: Number(e.target.value) })}
+                                        className="w-full accent-[#00A651]"
+                                    />
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (activeTag.customBackgroundImage) {
+                                            setSelectedTags(prev => prev.map(t => ({
+                                                ...t,
+                                                customBackgroundImage: activeTag.customBackgroundImage,
+                                                bgOpacity: activeTag.bgOpacity ?? 100,
+                                                bgOverlayDarkness: activeTag.bgOverlayDarkness ?? 25
+                                            })));
+                                        }
+                                    }}
+                                    className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
+                                >
+                                    <span>🖼️</span>
+                                    <span>تطبيق هذه الخلفية على جميع الملصقات ({selectedTags.length})</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Custom Logo Upload */}
+                    <div className="space-y-2 p-3 bg-emerald-50/60 rounded-xl border border-emerald-200">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                                <Sparkles className="w-4 h-4 text-[#00A651]" />
+                                <span className="text-xs font-black text-emerald-950">شعار العرض المخصص</span>
+                            </div>
+                            {activeTag.customLogoImage && (
+                                <button
+                                    type="button"
+                                    onClick={() => updateTag(activeTag.id, { customLogoImage: null })}
+                                    className="text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200 flex items-center gap-1"
+                                >
+                                    <X className="w-3 h-3" />
+                                    <span>الرجوع للشعار المدمج</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <p className="text-[10px] text-gray-600 leading-normal">
+                            القالب مزود تلقائياً بهوية وشعار اليوم الوطني 95 الرسمي "عِزّنا بطبعنا". يمكنك أيضاً رفع صورة شعار بديلة من جهازك.
+                        </p>
+
+                        {activeTag.customLogoImage && (
+                            <div className="relative w-full h-16 rounded-lg overflow-hidden border border-emerald-300 bg-emerald-950 p-2 flex items-center justify-center">
+                                <img 
+                                    src={activeTag.customLogoImage} 
+                                    alt="معاينة الشعار" 
+                                    className="max-h-full max-w-full object-contain" 
+                                />
+                            </div>
+                        )}
+
+                        <div>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                id={`logo-upload-${activeTag.id}`}
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            updateTag(activeTag.id, { customLogoImage: reader.result as string });
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                            />
+                            <label
+                                htmlFor={`logo-upload-${activeTag.id}`}
+                                className="cursor-pointer w-full py-2 px-3 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs"
+                            >
+                                <Upload className="w-4 h-4 text-[#00A651]" />
+                                <span>{activeTag.customLogoImage ? 'تغيير الشعار المخصص' : 'رفع شعار مخصص من الجهاز'}</span>
+                            </label>
+                        </div>
+
+                        {activeTag.customLogoImage && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (activeTag.customLogoImage) {
+                                        setSelectedTags(prev => prev.map(t => ({
+                                            ...t,
+                                            customLogoImage: activeTag.customLogoImage
+                                        })));
+                                    }
+                                }}
+                                className="w-full py-1.5 px-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded text-[10px] font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
+                            >
+                                <span>🇸🇦</span>
+                                <span>تطبيق هذا الشعار على جميع الملصقات ({selectedTags.length})</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <AccordionHeader title="أحجام العناصر" isOpen={openSections.typography} onClick={() => toggleSection('typography')} icon={TypeIcon} />
             {openSections.typography && activeTag && (
@@ -1023,7 +2106,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <input type="range" min="10" max="200" value={(activeTag.customColors as any)?.discountFontSize} onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, discountFontSize: Number(e.target.value) } })} className="w-full accent-red-600" />
                     </div>
 
-                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner' || activeTag.template === 'saudi_fire_offer') && (
+                    {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner' || activeTag.template === 'saudi_fire_offer' || activeTag.template === 'saudi_national_day' || activeTag.template === 'saudi_royal_crest' || activeTag.template === 'saudi_nd_95_ezna') && (
                         <>
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center text-[9px] font-black text-gray-600 uppercase">
@@ -1047,20 +2130,170 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
             <AccordionHeader title="الألوان والخلفية" isOpen={openSections.colors} onClick={() => toggleSection('colors')} icon={Palette} />
             {openSections.colors && activeTag && (
                 <div className="p-3 bg-white border-b border-sap-border space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-2">
-                            <Paintbrush size={12}/> لون خلفية الملصق
+                    {/* Dedicated White Background Fast Button */}
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-700 uppercase flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                                <Paintbrush size={12} className="text-[#00A651]" />
+                                <span>اختيار خلفية الملصق</span>
+                            </span>
+                            <span className="font-mono font-bold text-[10px] uppercase text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                {activeTag.customColors?.background || '#ffffff'}
+                            </span>
                         </label>
-                        <div className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
-                           <input 
-                              type="color" 
-                              value={activeTag.customColors?.background || '#ffffff'} 
-                              onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: e.target.value } })} 
-                              className="w-10 h-10 border-none cursor-pointer rounded" 
-                           />
-                           <span className="font-mono font-bold text-[10px] uppercase text-gray-400">{activeTag.customColors?.background || '#ffffff'}</span>
+
+                        <button
+                            type="button"
+                            onClick={() => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: '#ffffff' } })}
+                            className={`w-full py-2.5 px-3 rounded-lg border-2 text-xs font-black transition-all flex items-center justify-between shadow-xs ${
+                                (activeTag.customColors?.background || '#ffffff').toLowerCase() === '#ffffff'
+                                    ? 'border-[#00A651] bg-emerald-50/80 text-emerald-950 ring-2 ring-[#00A651]/20'
+                                    : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                            }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full border-2 border-gray-300 bg-white shadow-xs"></span>
+                                <div className="flex flex-col items-start">
+                                    <span className="font-black text-xs">خلفية بيضاء (توفير الحبر للطباعة)</span>
+                                    <span className="text-[9px] text-emerald-700 font-bold">أنسب وأوضح خيار لطباعة الملصقات الورقية</span>
+                                </div>
+                            </div>
+                            <span className="text-[10px] bg-white border border-gray-200 px-2 py-0.5 rounded font-mono font-bold text-gray-600">
+                                #FFFFFF
+                            </span>
+                        </button>
+                    </div>
+
+                    {/* Pre-set Color Swatches */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-gray-500 flex items-center justify-between">
+                            <span>باليتات ألوان سريعة</span>
+                            <span className="text-[9px] text-gray-400">انقر للاختيار المباشر</span>
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                                { name: 'أبيض ناصع', hex: '#ffffff', border: 'border-gray-300' },
+                                { name: 'أخضر زمردي 95', hex: '#062E20', border: 'border-emerald-800' },
+                                { name: 'أخضر سعودي', hex: '#007A3D', border: 'border-[#007A3D]' },
+                                { name: 'نعناعي فاتح', hex: '#F0FDF4', border: 'border-emerald-200' },
+                                { name: 'بيج أوف وايت', hex: '#FDF8EE', border: 'border-amber-200' },
+                                { name: 'أسود فاخر', hex: '#111827', border: 'border-gray-800' },
+                            ].map((c) => {
+                                const isSelected = (activeTag.customColors?.background || '#ffffff').toLowerCase() === c.hex.toLowerCase();
+                                return (
+                                    <button
+                                        key={c.hex}
+                                        type="button"
+                                        onClick={() => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: c.hex } })}
+                                        className={`py-1.5 px-2 rounded-md border text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                                            isSelected
+                                                ? 'ring-2 ring-[#00A651] border-[#00A651] bg-emerald-50 text-emerald-950 font-black'
+                                                : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                                        }`}
+                                    >
+                                        <span 
+                                            className={`w-3.5 h-3.5 rounded-full shrink-0 border ${c.border}`} 
+                                            style={{ backgroundColor: c.hex }}
+                                        />
+                                        <span className="truncate">{c.name}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
+
+                    {/* Custom Color Input */}
+                    <div className="space-y-1.5 pt-1 border-t border-gray-100">
+                        <label className="text-[10px] font-bold text-gray-500 flex items-center justify-between">
+                            <span>تخصيص أي لون كود HEX</span>
+                            <span className="text-[9px] text-gray-400">منتقي الألوان</span>
+                        </label>
+                        <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <input 
+                                type="color" 
+                                value={activeTag.customColors?.background || '#ffffff'} 
+                                onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: e.target.value } })} 
+                                className="w-10 h-10 border-none cursor-pointer rounded-lg bg-transparent" 
+                            />
+                            <div className="flex-1 flex items-center justify-between">
+                                <input
+                                    type="text"
+                                    value={activeTag.customColors?.background || '#ffffff'}
+                                    onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: e.target.value } })}
+                                    className="w-24 px-2 py-1 bg-white border border-gray-300 rounded font-mono font-bold text-xs uppercase text-gray-700 focus:outline-none focus:border-emerald-500"
+                                    placeholder="#FFFFFF"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, background: '#ffffff' } })}
+                                    className="text-[10px] text-emerald-700 hover:text-emerald-800 font-bold bg-white px-2 py-1 rounded border border-emerald-300"
+                                >
+                                    إعادة للأبيض
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Currency & Tax Color Control */}
+                    <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                        <label className="text-[10px] font-bold text-gray-700 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 font-black text-gray-800">
+                                <span>🪙</span>
+                                <span>لون رمز الريال وضريبة القيمة المضافة</span>
+                            </span>
+                            <span className="text-[9px] text-emerald-800 font-mono font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 uppercase">
+                                {(activeTag.customColors as any)?.currencyColor || (isLightColor(activeTag.customColors?.background || '#ffffff') ? '#074D2E' : '#A7F3D0')}
+                            </span>
+                        </label>
+                        <div className="flex items-center gap-3 p-2 bg-emerald-50/40 rounded-lg border border-emerald-200">
+                            <input 
+                                type="color" 
+                                value={(activeTag.customColors as any)?.currencyColor || (isLightColor(activeTag.customColors?.background || '#ffffff') ? '#074D2E' : '#a7f3d0')} 
+                                onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, currencyColor: e.target.value } })} 
+                                className="w-10 h-10 border-none cursor-pointer rounded-lg bg-transparent" 
+                            />
+                            <div className="flex-1 flex items-center justify-between gap-2">
+                                <input
+                                    type="text"
+                                    value={(activeTag.customColors as any)?.currencyColor || (isLightColor(activeTag.customColors?.background || '#ffffff') ? '#074D2E' : '#a7f3d0')}
+                                    onChange={e => updateTag(activeTag.id, { customColors: { ...activeTag.customColors, currencyColor: e.target.value } })}
+                                    className="w-24 px-2 py-1 bg-white border border-gray-300 rounded font-mono font-bold text-xs uppercase text-gray-700 focus:outline-none focus:border-emerald-500"
+                                    placeholder="#074D2E"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const defaultColor = isLightColor(activeTag.customColors?.background || '#ffffff') ? '#074D2E' : '#a7f3d0';
+                                        updateTag(activeTag.id, { customColors: { ...activeTag.customColors, currencyColor: defaultColor } });
+                                    }}
+                                    className="text-[10px] text-emerald-700 hover:text-emerald-800 font-bold bg-white px-2 py-1 rounded border border-emerald-300 shadow-2xs"
+                                >
+                                    مطابقة تلقائية
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Apply Color to all tags */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const currentBg = activeTag.customColors?.background || '#ffffff';
+                            const currentCurrColor = (activeTag.customColors as any)?.currencyColor;
+                            setSelectedTags(prev => prev.map(t => ({
+                                ...t,
+                                customColors: {
+                                    ...t.customColors,
+                                    background: currentBg,
+                                    ...(currentCurrColor ? { currencyColor: currentCurrColor } : {})
+                                }
+                            })));
+                        }}
+                        className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                        <span>🎨</span>
+                        <span>تطبيق الألوان على جميع الملصقات ({selectedTags.length})</span>
+                    </button>
                 </div>
             )}
 

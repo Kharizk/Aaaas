@@ -8,6 +8,9 @@ function getFriendlyErrorMessage(error: any): string {
   const errorStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
   const combined = (msg + " " + errorStr).toLowerCase();
 
+  if (combined.includes("spending cap") || combined.includes("spend cap") || combined.includes("monthly spending")) {
+    return "تنبيه هام: لقد تجاوز حسابك في Google AI Studio الحد الأقصى للميزانية الشهرية المحددة (Spending Cap). لتتمكن من استخدام ميزات الذكاء الاصطناعي والمسح الذكي مجدداً، يرجى الانتقال إلى صفحة الفوترة والميزانية في AI Studio لزيادة حد الإنفاق الشهري: https://ai.studio/spend";
+  }
   if (combined.includes("503") || combined.includes("unavailable") || combined.includes("high demand") || combined.includes("service_unavailable")) {
     return "خوادم الذكاء الاصطناعي تواجه حالياً ضغطاً عالياً كبيراً (503 Service Unavailable). هذا الضغط مؤقت ومجرد بضع ثوانٍ وسيعود للعمل بشكل طبيعي. يرجى المحاولة مرة أخرى الآن.";
   }

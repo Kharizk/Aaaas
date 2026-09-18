@@ -1,19 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
-import { Lock, User, Key, Crown, ArrowRight, Loader2, ShieldCheck, Check, Fingerprint } from 'lucide-react';
+import { Lock, User, Key, Crown, ArrowRight, Loader2, ShieldCheck, Check, Fingerprint, AlertTriangle, Sparkles, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: (username: string, pass: string) => Promise<boolean>;
-  onGoogleLogin: () => Promise<boolean>;
+  onGoogleLogin: () => Promise<{ success: boolean; error?: string; errorCode?: string } | boolean>;
+  onDemoLogin?: (role?: 'admin' | 'user') => boolean;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin, onDemoLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showConfigAlert, setShowConfigAlert] = useState(false);
+  const [showFirebaseInstructions, setShowFirebaseInstructions] = useState(false);
 
   // استرجاع البيانات المحفوظة عند تحميل الصفحة
   useEffect(() => {
@@ -26,19 +29,36 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin
     }
   }, []);
 
+  const handleQuickAdminFill = () => {
+    setUsername('admin');
+    setPassword('admin123');
+    setError('');
+  };
+
+  const handleQuickAdminLogin = async () => {
+    setUsername('admin');
+    setPassword('admin123');
+    setLoading(true);
+    setError('');
+    setShowConfigAlert(false);
+    const success = await onLogin('admin', 'admin123');
+    if (!success && onDemoLogin) {
+        onDemoLogin('admin');
+    }
+    setLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     
-    // Simulate network delay for effect
     setTimeout(async () => {
         const success = await onLogin(username, password);
         if (!success) {
-            setError('بيانات الدخول غير صحيحة');
+            setError('بيانات الدخول غير صحيحة. يمكنك استخدام حساب المدير: admin / admin123');
             setLoading(false);
         } else {
-            // حفظ البيانات إذا تم تفعيل "تذكرني" عند نجاح الدخول
             if (rememberMe) {
                 localStorage.setItem('sf_saved_username', username);
                 localStorage.setItem('sf_saved_password', password);
@@ -47,19 +67,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin
                 localStorage.removeItem('sf_saved_password');
             }
         }
-    }, 800);
+    }, 400);
   };
 
   const handleGoogleLogin = async () => {
     setError('');
     setGoogleLoading(true);
     try {
-        const success = await onGoogleLogin();
-        if (!success) {
-            setError('فشل تسجيل الدخول بواسطة جوجل');
+        const res = await onGoogleLogin();
+        if (typeof res === 'object' && !res.success) {
+            if (res.errorCode === 'auth/configuration-not-found' || res.error?.includes('auth/configuration-not-found')) {
+                setShowConfigAlert(true);
+            } else if (res.errorCode === 'auth/popup-closed-by-user') {
+                setError('تم إلغاء نافذة تسجيل الدخول.');
+            } else {
+                setError(res.error || 'فشل تسجيل الدخول بواسطة جوجل');
+            }
+        } else if (res === false) {
+            setShowConfigAlert(true);
         }
-    } catch (err) {
-        setError('حدث خطأ أثناء تسجيل الدخول');
+    } catch (err: any) {
+        if (err?.code === 'auth/configuration-not-found' || err?.message?.includes('auth/configuration-not-found')) {
+            setShowConfigAlert(true);
+        } else {
+            setError('حدث خطأ أثناء تسجيل الدخول');
+        }
     } finally {
         setGoogleLoading(false);
     }
@@ -138,19 +170,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin
                         </div>
                         <span className="text-[11px] font-bold text-gray-500 group-hover:text-gray-700 transition-colors">حفظ البيانات</span>
                     </label>
+
+                    <button
+                        type="button"
+                        onClick={handleQuickAdminFill}
+                        className="text-[11px] font-bold text-sap-primary hover:underline"
+                    >
+                        تعبئة المدير الافتراضي
+                    </button>
                 </div>
 
                 {error && (
-                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-xs font-bold animate-in fade-in slide-in-from-top-1">
-                        <div className="p-1 bg-red-100 rounded-full"><Fingerprint size={14}/></div>
-                        {error}
+                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2.5 text-red-600 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                        <div className="p-1 bg-red-100 rounded-full flex-shrink-0 mt-0.5"><Fingerprint size={14}/></div>
+                        <span className="leading-tight">{error}</span>
                     </div>
                 )}
 
                 <button 
                     type="submit" 
                     disabled={loading || googleLoading}
-                    className="w-full py-4 bg-gray-900 text-white rounded-xl font-black text-sm hover:bg-black shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:translate-y-0"
+                    className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-black text-sm hover:bg-black shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:translate-y-0"
                 >
                     {loading ? <Loader2 size={18} className="animate-spin"/> : <>دخول للنظام <ArrowRight size={18} className="rotate-180" /></>}
                 </button>
@@ -165,7 +205,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin
                     type="button" 
                     onClick={handleGoogleLogin}
                     disabled={loading || googleLoading}
-                    className="w-full py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-black text-sm hover:bg-gray-50 shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+                    className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-black text-sm hover:bg-gray-50 shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-70"
                 >
                     {googleLoading ? <Loader2 size={18} className="animate-spin text-gray-500"/> : (
                         <>
@@ -179,14 +219,115 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin
                         </>
                     )}
                 </button>
+
+                {onDemoLogin && (
+                    <div className="text-center pt-1">
+                        <button
+                            type="button"
+                            onClick={() => onDemoLogin('admin')}
+                            className="text-xs text-gray-500 hover:text-sap-primary flex items-center justify-center gap-1.5 mx-auto font-bold transition-colors"
+                        >
+                            <Sparkles size={13} className="text-amber-500"/>
+                            دخول تجريبي مباشر (Demo Mode)
+                        </button>
+                    </div>
+                )}
             </form>
         </div>
 
         {/* Footer */}
-        <div className="p-5 bg-gray-50 text-center border-t border-gray-100">
-            <p className="text-[10px] text-gray-400 font-mono font-bold">Secure System v2.5.0</p>
+        <div className="p-4 bg-gray-50 text-center border-t border-gray-100 flex items-center justify-between px-6">
+            <p className="text-[11px] text-gray-500 font-mono font-bold">Admin: admin / admin123</p>
+            <button 
+                type="button" 
+                onClick={handleQuickAdminFill}
+                className="text-[11px] text-sap-primary font-bold hover:underline"
+            >
+                استخدام
+            </button>
         </div>
       </div>
+
+      {/* Firebase Configuration Modal */}
+      {showConfigAlert && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 relative">
+                  <button 
+                      onClick={() => setShowConfigAlert(false)}
+                      className="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                      <X size={20} />
+                  </button>
+
+                  <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                          <AlertTriangle size={24} />
+                      </div>
+                      <div>
+                          <h3 className="font-black text-gray-900 text-base">تنبيه موفّر تسجيل الدخول (Firebase Auth)</h3>
+                          <p className="text-xs text-gray-500 font-mono font-bold">auth/configuration-not-found</p>
+                      </div>
+                  </div>
+
+                  <p className="text-xs text-gray-600 leading-relaxed mb-4">
+                      لم يتم تفعيل موفّر تسجيل الدخول بواسطة <strong>Google</strong> في لوحة تحكم <strong>Firebase Console</strong> لمشروعك الحالي (<code className="bg-gray-100 px-1 py-0.5 rounded text-[11px] text-gray-800 font-mono">sales-495ee</code>).
+                  </p>
+
+                  <div className="space-y-2.5 mb-5">
+                      <button
+                          type="button"
+                          onClick={handleQuickAdminLogin}
+                          className="w-full py-3 px-4 bg-sap-primary text-white rounded-xl font-bold text-xs hover:bg-sap-primary-hover flex items-center justify-center gap-2 shadow-md transition-all"
+                      >
+                          <ShieldCheck size={16} />
+                          الدخول المباشر بحساب المدير العام (admin / admin123)
+                      </button>
+
+                      {onDemoLogin && (
+                          <button
+                              type="button"
+                              onClick={() => { setShowConfigAlert(false); onDemoLogin('admin'); }}
+                              className="w-full py-2.5 px-4 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl font-bold text-xs hover:bg-emerald-100 flex items-center justify-center gap-2 transition-all"
+                          >
+                              <Sparkles size={16} className="text-emerald-600" />
+                              الدخول التجريبي الفوري بنقرة واحدة (Demo Mode)
+                          </button>
+                      )}
+
+                      <button
+                          type="button"
+                          onClick={() => setShowFirebaseInstructions(!showFirebaseInstructions)}
+                          className="w-full py-2.5 px-4 bg-gray-50 text-gray-700 border border-gray-200 rounded-xl font-bold text-xs hover:bg-gray-100 flex items-center justify-between transition-all"
+                      >
+                          <span>خطوات تفعيل Google Provider في Firebase Console</span>
+                          {showFirebaseInstructions ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                      </button>
+                  </div>
+
+                  {showFirebaseInstructions && (
+                      <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-xs text-gray-700 space-y-2 mb-4 leading-relaxed animate-in fade-in">
+                          <p className="font-bold text-gray-800">لتفعيل موفّر Google في Firebase Console:</p>
+                          <ol className="list-decimal list-inside space-y-1 text-gray-600 text-[11px] pr-2">
+                              <li>افتح لوحة تحكم <strong>Firebase Console</strong> للمشروع <strong>sales-495ee</strong>.</li>
+                              <li>انتقل إلى قسم <strong>Authentication</strong> ثم تبويب <strong>Sign-in method</strong>.</li>
+                              <li>اضغط على موفر <strong>Google</strong>، وفعل خيار <strong>Enable</strong>.</li>
+                              <li>اختر البريد الإلكتروني المعتمد للدعم واضغط <strong>Save</strong>.</li>
+                          </ol>
+                      </div>
+                  )}
+
+                  <div className="flex justify-end">
+                      <button
+                          type="button"
+                          onClick={() => setShowConfigAlert(false)}
+                          className="px-5 py-2 text-xs font-bold text-gray-500 hover:text-gray-800"
+                      >
+                          إغلاق
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

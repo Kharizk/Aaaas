@@ -281,6 +281,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
       const dataUrl = await toPng(canvasRef.current, {
         quality: 1,
         pixelRatio: 3,
+        skipFonts: true,
         style: {
           transform: 'none',
           margin: '0',
@@ -311,6 +312,7 @@ export const CatalogGenerator: React.FC<CatalogGeneratorProps> = ({ products, un
       const dataUrl = await toJpeg(canvasRef.current, {
         quality: 1,
         pixelRatio: 3,
+        skipFonts: true,
         style: {
           transform: 'none',
           margin: '0',

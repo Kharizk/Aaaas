@@ -189,7 +189,7 @@ export const PriceGroupManager: React.FC = () => {
     const element = document.getElementById(targetId);
     if (!element) return;
     try {
-      const dataUrl = await toPng(element, { quality: 1, pixelRatio: 2 });
+      const dataUrl = await toPng(element, { quality: 1, pixelRatio: 2, skipFonts: true });
       const link = document.createElement('a');
       link.download = `${fileName}.png`;
       link.href = dataUrl;

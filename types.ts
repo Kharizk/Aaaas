@@ -238,7 +238,23 @@ export interface User {
   lastLogin?: string;
 }
 
-export type OfferTemplate = 'modern_clean' | 'industrial' | 'vibrant_red' | 'discount' | '1plus1' | 'luxury' | 'mega_sale_50' | 'yellow_red_banner' | 'bw_banner' | 'saudi_fire_offer';
+export type OfferTemplate = 'modern_clean' | 'industrial' | 'vibrant_red' | 'discount' | '1plus1' | 'luxury' | 'mega_sale_50' | 'yellow_red_banner' | 'bw_banner' | 'saudi_fire_offer' | 'saudi_national_day' | 'saudi_royal_crest' | 'saudi_nd_95_ezna';
+
+export interface OfferTagVisibility {
+  showLogo?: boolean;
+  showTopBanner?: boolean;
+  showProductName?: boolean;
+  showBarcode?: boolean;
+  showOfferPrice?: boolean;
+  showOriginalPrice?: boolean;
+  showCartonPrice?: boolean;
+  showUnit?: boolean;
+  showDiscountBadge?: boolean;
+  showCurrency?: boolean;
+  showTaxText?: boolean;
+  showFooter?: boolean;
+  showPriceBox?: boolean;
+}
 
 export interface OfferTag {
   id: string;
@@ -256,6 +272,11 @@ export interface OfferTag {
   offerQuantity?: string;
   unitName?: string;
   customCurrencyImage?: string | null;
+  customBackgroundImage?: string | null;
+  bgOpacity?: number;
+  bgOverlayDarkness?: number;
+  customLogoImage?: string | null;
+  visibility?: OfferTagVisibility;
   customColors?: {
     primary?: string;
     background?: string;
@@ -271,6 +292,8 @@ export interface OfferTag {
     originalPriceFontSize?: number;
     taxFontSize?: number;
     currencySize?: number;
+    currencyColor?: string;
+    taxColor?: string;
   };
 }
 
