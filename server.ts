@@ -90,7 +90,12 @@ async function generateContentWithModelFallback(
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
+
+  // Health check endpoint for Cloud Run container ingress & health probes
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
 
   app.use(express.json({ limit: '50mb' }));
 
@@ -300,13 +305,17 @@ CRITICAL MANDATES:
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${PORT} (environment PORT=${process.env.PORT || 'not set, defaulted to 3000'})`);
+  });
+
+  server.on("error", (err: any) => {
+    console.error(`Failed to start server on port ${PORT}:`, err);
   });
 }
 
