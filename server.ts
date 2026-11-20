@@ -8,22 +8,28 @@ function getFriendlyErrorMessage(error: any): string {
   const errorStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
   const combined = (msg + " " + errorStr).toLowerCase();
 
+  if (combined.includes("402") || combined.includes("payment required") || combined.includes("prepayment") || combined.includes("credits are depleted")) {
+    return "تنبيه مالي (402 Payment Required): رصيد الدفع المسبق (Prepayment Credits) لمشروع Google AI Studio قد نفد. يرجى مراجعة وشحن الرصيد من https://ai.studio/projects أو استخدام خيار المحاكاة الذكية المدمجة في التطبيق.";
+  }
   if (combined.includes("spending cap") || combined.includes("spend cap") || combined.includes("monthly spending")) {
-    return "تنبيه هام: لقد تجاوز حسابك في Google AI Studio الحد الأقصى للميزانية الشهرية المحددة (Spending Cap). لتتمكن من استخدام ميزات الذكاء الاصطناعي والمسح الذكي مجدداً، يرجى الانتقال إلى صفحة الفوترة والميزانية في AI Studio لزيادة حد الإنفاق الشهري: https://ai.studio/spend";
+    return "تنبيه هام: لقد تجاوز حسابك في Google AI Studio الحد الأقصى للميزانية الشهرية المحددة (Spending Cap). لتتمكن من استخدام ميزات الذكاء الاصطناعي مجدداً، يرجى الانتقال إلى صفحة الفوترة والميزانية في AI Studio لزيادة حد الإنفاق الشهري: https://ai.studio/spend";
   }
   if (combined.includes("503") || combined.includes("unavailable") || combined.includes("high demand") || combined.includes("service_unavailable")) {
-    return "خوادم الذكاء الاصطناعي تواجه حالياً ضغطاً عالياً كبيراً (503 Service Unavailable). هذا الضغط مؤقت ومجرد بضع ثوانٍ وسيعود للعمل بشكل طبيعي. يرجى المحاولة مرة أخرى الآن.";
+    return "خوادم الذكاء الاصطناعي تواجه حالياً ضغطاً مؤقتاً (503 Service Unavailable). يرجى المحاولة مرة أخرى خلال لحظات.";
   }
-  if (combined.includes("429") || combined.includes("exhausted") || combined.includes("quota") || combined.includes("rate_limit")) {
-    return "تم تجاوز حصة الاستخدام المسموح بها لخادم الذكاء الاصطناعي حالياً. يرجى المحاولة مجدداً بعد دقيقة.";
+  if (combined.includes("429") || combined.includes("rate_limit")) {
+    return "تم تجاوز معدل الطلبات المسموح به مؤقتاً. يرجى الانتظار بضع ثوانٍ والمحاولة مجدداً.";
+  }
+  if (combined.includes("exhausted") || combined.includes("quota")) {
+    return "تم استنفاد حصة الاستخدام المتاحة لحسابك في Google AI Studio. يرجى مراجعة إعدادات الحصة أو استخدام المحاكاة.";
   }
   if (combined.includes("api key") || combined.includes("apikey")) {
-    return "مفتاح الـ API للذكاء الاصطناعي (GEMINI_API_KEY) الخاص بك غير صالح أو مفقود. يرجى مراجعة إعدادات تطبيقك.";
+    return "مفتاح الـ API للذكاء الاصطناعي (GEMINI_API_KEY) غير صالح أو مفقود. يرجى مراجعة إعدادات المشروع.";
   }
   return error.message || "حدث خطأ غير متوقع أثناء معالجة الطلب بالذكاء الاصطناعي.";
 }
 
-async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+async function callWithRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> {
   try {
     return await fn();
   } catch (error: any) {
@@ -31,13 +37,26 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
     const errorStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
     const combined = (errorMsg + " " + errorStr).toLowerCase();
     
+    // Non-retryable errors: 402 Payment Required, 400 Bad Request, 401 Unauthorized, 403 Forbidden
+    const isPermanent = combined.includes("402") || 
+                        combined.includes("payment required") || 
+                        combined.includes("prepayment") || 
+                        combined.includes("credits are depleted") ||
+                        combined.includes("spending cap") || 
+                        combined.includes("invalid_argument") ||
+                        combined.includes("api key") ||
+                        combined.includes("unauthenticated") ||
+                        combined.includes("permission_denied");
+
+    if (isPermanent) {
+      throw error;
+    }
+
     const isTransient = combined.includes("503") || 
                         combined.includes("unavailable") || 
                         combined.includes("high demand") || 
                         combined.includes("service_unavailable") || 
                         combined.includes("429") || 
-                        combined.includes("exhausted") || 
-                        combined.includes("quota") || 
                         combined.includes("rate_limit");
     
     if (isTransient && retries > 0) {
@@ -58,10 +77,10 @@ async function generateContentWithModelFallback(
   }
 ): Promise<any> {
   const modelsToTry = [
-    options.defaultModel || 'gemini-3.5-flash',
+    options.defaultModel || 'gemini-3.8-flash',
+    'gemini-3.8-flash',
     'gemini-flash-latest',
-    'gemini-3.1-flash-lite',
-    'gemini-2.5-flash'
+    'gemini-3.1-flash-lite'
   ];
 
   const uniqueModels = Array.from(new Set(modelsToTry));
@@ -75,13 +94,23 @@ async function generateContentWithModelFallback(
         model,
         contents: options.contents,
         config: options.config
-      }), 2, 1000); // 2 retries per model
+      }), 1, 1000);
 
       console.log(`[Gemini Success] Successfully completed generation using ${model}`);
       return response;
     } catch (error: any) {
-      console.warn(`[Gemini Warning] Model ${model} failed with error: ${error?.message || error}. Trying next fallback model if available...`);
+      console.warn(`[Gemini Warning] Model ${model} failed with error: ${error?.message || error}.`);
       lastError = error;
+
+      const errorMsg = error?.message || "";
+      const errorStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
+      const combined = (errorMsg + " " + errorStr).toLowerCase();
+
+      // If credits are depleted or spending cap reached, fallback models on same key will fail identically
+      if (combined.includes("402") || combined.includes("payment required") || combined.includes("prepayment") || combined.includes("credits are depleted") || combined.includes("spending cap")) {
+        console.warn(`[Gemini Info] Billing / Prepayment credit error detected (402). Stopping fallback attempts.`);
+        break;
+      }
     }
   }
 
@@ -136,7 +165,7 @@ async function startServer() {
       `;
 
       const response = await generateContentWithModelFallback(getAi, {
-        defaultModel: 'gemini-3.5-flash',
+        defaultModel: 'gemini-3.8-flash',
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -178,7 +207,7 @@ async function startServer() {
 يرجى توليد 3 فئات رئيسية على الأقل، وفي كل فئة 4 منتجات منطقية لتخصص المتجر.`;
 
       const response = await generateContentWithModelFallback(getAi, {
-        defaultModel: 'gemini-3.5-flash',
+        defaultModel: 'gemini-3.8-flash',
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -200,7 +229,7 @@ async function startServer() {
       const ai = getAi();
 
       const response = await callWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3.1-flash-image', 
+        model: 'gemini-3.1-flash-lite-image', 
         contents: prompt,
         config: {
           imageConfig: {
@@ -271,7 +300,7 @@ CRITICAL MANDATES:
 7. Return strict JSON matching the schema.`;
 
       const response = await generateContentWithModelFallback(getAi, {
-          defaultModel: 'gemini-3.5-flash',
+          defaultModel: 'gemini-3.8-flash',
           contents: [
               {
                   parts: [

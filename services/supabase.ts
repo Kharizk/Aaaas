@@ -393,6 +393,36 @@ export const db = {
                   throw new Error("List document does not exist");
               }
           });
+      },
+      async updateRowsDismissedBatch(items: Array<{ listId: string; rowId?: string; productCode?: string; expiryDate?: string }>) {
+          return safeDbCall(async () => {
+              if (!items || items.length === 0) return;
+              const byList = new Map<string, Array<{ rowId?: string; productCode?: string; expiryDate?: string }>>();
+              items.forEach(item => {
+                  if (!item.listId) return;
+                  const arr = byList.get(item.listId) || [];
+                  arr.push(item);
+                  byList.set(item.listId, arr);
+              });
+
+              await Promise.all(
+                  Array.from(byList.entries()).map(async ([listId, targets]) => {
+                      const docRef = doc(firestore, "lists", listId);
+                      const docSnap = await getDoc(docRef);
+                      if (!docSnap.exists()) return;
+                      const data = docSnap.data();
+                      const rows = Array.isArray(data.rows) ? data.rows : [];
+                      const updatedRows = rows.map((r: any) => {
+                          const matched = targets.some(t =>
+                              (t.rowId && r.id === t.rowId) ||
+                              (!t.rowId && t.productCode && t.expiryDate && r.code === t.productCode && r.expiryDate === t.expiryDate)
+                          );
+                          return matched ? { ...r, isDismissed: true } : r;
+                      });
+                      await updateDoc(docRef, { rows: updatedRows });
+                  })
+              );
+          });
       }
   },
   tagLists: {

@@ -19,7 +19,7 @@ export const Saudi95Logo: React.FC<Saudi95LogoProps> = ({
       <div className={`relative flex items-center justify-center overflow-hidden ${className}`} style={style}>
         <img 
           src={customLogoUrl} 
-          alt="شعار اليوم الوطني 95" 
+          alt="شعار اليوم الوطني 96" 
           className="max-h-full max-w-full object-contain drop-shadow-sm" 
           referrerPolicy="no-referrer"
         />
@@ -27,7 +27,7 @@ export const Saudi95Logo: React.FC<Saudi95LogoProps> = ({
     );
   }
 
-  // Authentic pixel-perfect vector representation of the official Saudi National Day 95 identity: "عِزّنا بطبعنا"
+  // Authentic pixel-perfect vector representation of the official Saudi National Day 96 identity: "عِزّنا بطبعنا"
   const isLight = variant === 'green_on_light';
 
   return (
@@ -86,20 +86,20 @@ export const Saudi95Logo: React.FC<Saudi95LogoProps> = ({
         </div>
       </div>
 
-      {/* Subtitles: "اليوم الوطني السعودي 95" */}
+      {/* Subtitles: "اليوم الوطني السعودي 96" */}
       <div className="mt-1.5 flex items-center justify-center gap-1.5">
         <span className={`${isLight ? 'text-[#073321]' : 'text-white'} font-black text-xs md:text-sm tracking-wide drop-shadow-xs`}>
           اليوم الوطني السعودي
         </span>
         <span className={`${isLight ? 'text-[#007A3D] bg-[#007A3D]/10 border border-[#007A3D]/30' : 'text-[#00A651] bg-white/10'} font-black text-sm md:text-base font-mono px-1 rounded`}>
-          95
+          96
         </span>
       </div>
 
-      {/* English Tracking: SAUDI NATIONAL DAY 95 */}
+      {/* English Tracking: SAUDI NATIONAL DAY 96 */}
       <div className="mt-0.5">
         <span className={`${isLight ? 'text-[#073321]/80' : 'text-white/80'} font-bold text-[7px] md:text-[8px] tracking-[0.25em] uppercase font-mono`}>
-          SAUDI NATIONAL DAY 95
+          SAUDI NATIONAL DAY 96
         </span>
       </div>
     </div>

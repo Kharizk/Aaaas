@@ -653,11 +653,11 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                 {/* Black Premium Header with Flame Icons */}
                 <div className="bg-[#111111] text-white w-full py-3 px-4 flex flex-col items-center justify-center border-b-[4px] border-[#FFD700] relative z-10 shrink-0" style={{ minHeight: '90px' }}>
                     <div className="flex items-center gap-2 justify-center">
-                        <span className="text-lg md:text-xl animate-pulse">🔥</span>
+                        <span className="text-lg md:text-xl">🔥</span>
                         <span className="font-black text-center leading-none tracking-wide text-white" style={{ fontSize: `${discFontSize * 1.1}px` }}>
                             {tag.topBannerText || 'عرض خاص'}
                         </span>
-                        <span className="text-lg md:text-xl animate-pulse">🔥</span>
+                        <span className="text-lg md:text-xl">🔥</span>
                     </div>
                     <span className="font-black tracking-widest text-center leading-none mt-1.5 text-[#FFD700]" style={{ fontSize: `${discFontSize * 0.65}px` }}>
                         {tag.discountText || 'SPECIAL OFFER'}
@@ -1132,7 +1132,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         );
     }
 
-    // --- DESIGN 8: SAUDI NATIONAL DAY 95 - "عِزّنا بطبعنا" (اليوم الوطني 95 مع الشعار الرسمي وإظهار/إخفاء كافة العناصر والخلفية المخصصة) ---
+    // --- DESIGN 8: SAUDI NATIONAL DAY 96 - "عِزّنا بطبعنا" (اليوم الوطني 96 مع الشعار الرسمي وإظهار/إخفاء كافة العناصر والخلفية المخصصة) ---
     if (tag.template === 'saudi_nd_95_ezna') {
         const vis = tag.visibility || {};
         const showLogoEl = vis.showLogo !== false && tag.showLogo !== false;
@@ -1300,7 +1300,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                             {showPriceBoxEl && (
                                 <div className="absolute -top-3 bg-[#00A651] text-white px-3 py-0.5 rounded-full text-[9px] font-black border border-white/30 flex items-center gap-1 shadow-sm">
                                     <span>🇸🇦</span>
-                                    <span>عرض اليوم الوطني 95</span>
+                                    <span>عرض اليوم الوطني 96</span>
                                 </div>
                             )}
 
@@ -1377,7 +1377,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         </div>
 
                         <span className={`text-[8px] font-extrabold ${isWhiteOrLight ? 'text-[#007A3D]' : 'text-emerald-200'} tracking-wider font-mono`}>
-                            🇸🇦 95 عاماً من العز
+                            🇸🇦 96 عاماً من العز
                         </span>
                     </div>
                 )}
@@ -1578,12 +1578,12 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     <button onClick={() => updateTag(activeTag.id, { 
                         template: 'saudi_nd_95_ezna',
                         topBannerText: activeTag.topBannerText || 'عِزّنا بطبعنا',
-                        discountText: activeTag.discountText || 'عروض اليوم الوطني 95'
+                        discountText: activeTag.discountText || 'عروض اليوم الوطني 96'
                     })} className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 transition-all ${activeTag.template === 'saudi_nd_95_ezna' ? 'border-[#00A651] bg-emerald-50 text-[#072F20] ring-2 ring-[#00A651]/30 font-bold' : 'border-gray-100 hover:border-gray-300'}`}>
                         <div className="w-8 h-8 bg-[#072F20] border-2 border-[#00A651] rounded-sm flex items-center justify-center text-[#00A651] font-black text-[10px] shadow-sm">
-                            95
+                            96
                         </div>
-                        <span className="text-[10px] font-black text-center leading-tight text-[#072F20]">اليوم الوطني 95 (عزنا بطبعنا)</span>
+                        <span className="text-[10px] font-black text-center leading-tight text-[#072F20]">اليوم الوطني 96 (عزنا بطبعنا)</span>
                     </button>
 
                     <div className="col-span-2 pt-2 border-t border-gray-100 flex items-center justify-between">
@@ -1600,7 +1600,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                                 ? (t.topBannerText || (activeTag.template === 'saudi_royal_crest' ? 'عروض اليوم الوطني الملكية' : 'عروض اليوم الوطني')) 
                                                 : t.topBannerText,
                                         discountText: activeTag.template === 'saudi_nd_95_ezna'
-                                            ? (t.discountText || 'عروض اليوم الوطني 95')
+                                            ? (t.discountText || 'عروض اليوم الوطني 96')
                                             : (activeTag.template === 'saudi_national_day' || activeTag.template === 'saudi_royal_crest') 
                                                 ? (t.discountText || (activeTag.template === 'saudi_royal_crest' ? 'نحلم ونحقق • عروض استثنائية' : 'نحلم ونحقق • عروض خاصة')) 
                                                 : t.discountText
@@ -1659,7 +1659,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                     {(activeTag.template === 'yellow_red_banner' || activeTag.template === 'bw_banner' || activeTag.template === 'saudi_fire_offer' || activeTag.template === 'saudi_national_day' || activeTag.template === 'saudi_royal_crest' || activeTag.template === 'saudi_nd_95_ezna') && (
                         <div className="space-y-1">
                             <label className="text-[9px] font-black text-red-500 uppercase">نص البانر العلوي</label>
-                            <input type="text" value={activeTag.topBannerText || ''} onChange={e => updateTag(activeTag.id, { topBannerText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: عِزّنا بطبعنا / عروض اليوم الوطني 95" />
+                            <input type="text" value={activeTag.topBannerText || ''} onChange={e => updateTag(activeTag.id, { topBannerText: e.target.value })} className="w-full p-2 border font-bold text-xs rounded text-red-600" placeholder="مثال: عِزّنا بطبعنا / عروض اليوم الوطني 96" />
                         </div>
                     )}
 
@@ -1842,7 +1842,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                                     <span className="w-4 h-4 rounded-full border-2 border-emerald-400 bg-[#062E20] shadow-xs"></span>
                                     <span>خضراء زمردية</span>
                                 </div>
-                                <span className="text-[9px] text-emerald-200 font-bold bg-white/10 px-1.5 py-0.2 rounded">هوية اليوم الوطني 95</span>
+                                <span className="text-[9px] text-emerald-200 font-bold bg-white/10 px-1.5 py-0.2 rounded">هوية اليوم الوطني 96</span>
                             </button>
                         </div>
 
@@ -2004,7 +2004,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         </div>
 
                         <p className="text-[10px] text-gray-600 leading-normal">
-                            القالب مزود تلقائياً بهوية وشعار اليوم الوطني 95 الرسمي "عِزّنا بطبعنا". يمكنك أيضاً رفع صورة شعار بديلة من جهازك.
+                            القالب مزود تلقائياً بهوية وشعار اليوم الوطني 96 الرسمي "عِزّنا بطبعنا". يمكنك أيضاً رفع صورة شعار بديلة من جهازك.
                         </p>
 
                         {activeTag.customLogoImage && (
@@ -2173,7 +2173,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
                         <div className="grid grid-cols-3 gap-1.5">
                             {[
                                 { name: 'أبيض ناصع', hex: '#ffffff', border: 'border-gray-300' },
-                                { name: 'أخضر زمردي 95', hex: '#062E20', border: 'border-emerald-800' },
+                                { name: 'أخضر زمردي 96', hex: '#062E20', border: 'border-emerald-800' },
                                 { name: 'أخضر سعودي', hex: '#007A3D', border: 'border-[#007A3D]' },
                                 { name: 'نعناعي فاتح', hex: '#F0FDF4', border: 'border-emerald-200' },
                                 { name: 'بيج أوف وايت', hex: '#FDF8EE', border: 'border-amber-200' },

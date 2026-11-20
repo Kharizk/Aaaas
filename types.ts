@@ -20,6 +20,12 @@ export interface PriceGroupStyles {
   showGeometricPattern: boolean;
   currencySymbolType?: CurrencySymbolType;
   currencySymbolImage?: string | null;
+  aspectMode?: 'a4_landscape' | 'screen_16_9' | 'screen_9_16';
+  showClock?: boolean;
+  showTicker?: boolean;
+  tickerText?: string;
+  slideDurationSec?: number;
+  showBoardFooter?: boolean;
 }
 
 export interface Unit {
@@ -322,18 +328,25 @@ export type PriceGroupTheme =
   | 'ramadan_vibes'
   | 'super_market'
   | 'elegant_gold'
-  | 'fresh_nature';
+  | 'fresh_nature'
+  | 'dark_menu_board'
+  | 'neon_promo_tv'
+  | 'minimal_kiosk';
 
 export interface PriceGroupItem {
   id: string;
   label: string;
   price: string;
+  originalPrice?: string;
+  unit?: string;
+  badgeText?: string;
   isOffer?: boolean;
 }
 
 export interface PriceGroupBoard {
   id: string;
   title: string;
+  subtitle?: string;
   items: PriceGroupItem[];
   isActive: boolean;
 }

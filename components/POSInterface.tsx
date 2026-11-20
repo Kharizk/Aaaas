@@ -767,9 +767,9 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
 
                  <button 
                     onClick={() => setIsRefundMode(!isRefundMode)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm border ${isRefundMode ? 'bg-red-50 text-red-600 border-red-200 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-sap-primary/30'}`}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm border ${isRefundMode ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-500/25' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-sap-primary/30'}`}
                 >
-                    <RefreshCcw size={18} className={isRefundMode ? 'animate-spin-slow' : ''}/> {isRefundMode ? 'وضع المرتجع مفعل' : 'وضع المرتجع'}
+                    <RefreshCcw size={18} /> {isRefundMode ? 'وضع المرتجع مفعل' : 'وضع المرتجع'}
                 </button>
 
                 <button 
@@ -856,7 +856,7 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
                                 <div className="flex items-center gap-1.5 opacity-80">
                                     {(product.stock || 0) <= (product.lowStockThreshold || 5) && (
                                         <>
-                                            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span>
+                                            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                                             <span className="text-[10px] font-bold text-red-500">منخفض</span>
                                         </>
                                     )}
@@ -881,8 +881,8 @@ export const POSInterface: React.FC<POSInterfaceProps> = ({ products, setDailySa
             <div className={`w-96 flex flex-col shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-10 transition-all duration-300 border-r border-gray-100 ${isRefundMode ? 'border-4 border-red-500 bg-red-50/80 backdrop-blur-xl' : 'bg-white/95 backdrop-blur-xl'}`}>
                 {/* Return Mode Banner */}
                 {isRefundMode && (
-                    <div className="bg-red-600 text-white text-center py-2.5 font-bold text-sm shadow-md animate-pulse">
-                        ⚠️ وضع المرتجع مفعل - جميع العناصر بالسالب
+                    <div className="bg-red-600 text-white text-center py-2.5 font-bold text-sm shadow-sm">
+                        وضع المرتجع مفعل — جميع العناصر بالسالب
                     </div>
                 )}
 

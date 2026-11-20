@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Product, Unit, ListType, ListRow, SavedTagList, SelectedTag } from '../types';
 import { db } from '../services/supabase';
 import { ReportLayout } from './ReportLayout';
+import { useNotification } from './Notifications';
 import { parseExcelFile, generateInventoryTemplate } from '../services/excelService';
 import { 
   Printer, Plus, Trash2, Save, FolderOpen, Loader2, SlidersHorizontal,
@@ -13,13 +14,15 @@ import {
 
 interface ProductListBuilderProps {
   products: Product[];
+  setProducts?: React.Dispatch<React.SetStateAction<Product[]>>;
   units: Unit[];
   onNewProductsAdded?: () => void;
   initialListParams?: { listId: string, rowId?: string } | null;
   clearInitialParams?: () => void;
 }
 
-export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products, units, onNewProductsAdded, initialListParams, clearInitialParams }) => {
+export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products, setProducts, units, onNewProductsAdded, initialListParams, clearInitialParams }) => {
+  const { notify } = useNotification();
   const generateId = () => crypto.randomUUID();
   const createEmptyRow = (): ListRow => ({
     id: generateId(), code: '', name: '', unitId: '', qty: '', cartonQty: '', expiryDate: '', note: '', isDismissed: false
@@ -72,6 +75,30 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
   // Highlighting State
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
+  const [customColumnInput, setCustomColumnInput] = useState('');
+  const [quickAddProductModal, setQuickAddProductModal] = useState<{
+    open: boolean;
+    targetRowId?: string;
+    code: string;
+    name: string;
+    unitId: string;
+    price: string;
+    costPrice: string;
+    qty: string;
+    cartonQty: string;
+    expiryDate: string;
+  }>({
+    open: false,
+    code: '',
+    name: '',
+    unitId: '',
+    price: '0',
+    costPrice: '',
+    qty: '',
+    cartonQty: '',
+    expiryDate: ''
+  });
+  const [isSavingNewProduct, setIsSavingNewProduct] = useState(false);
 
   const totalQty = rows.reduce((acc, row) => acc + (Number(row.qty) || 0), 0);
   const totalCartonQty = rows.reduce((acc, row) => acc + (Number(row.cartonQty) || 0), 0);
@@ -141,18 +168,20 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           const query = localScanQuery.trim().toLowerCase();
           if (!query) return;
 
-          // Find row by exact code OR partial name match
-          const foundRow = rows.find(r => 
-              (r.code && r.code.toLowerCase() === query) || 
-              (r.name && r.name.toLowerCase().includes(query))
+          // أولوية قصوى: مطابقة الكود على نفس الرقم تماماً
+          const exactCodeRow = rows.find(r =>
+              r.code && r.code.trim().toLowerCase() === query
           );
+          const isNumericCode = /^\d+$/.test(query);
+          const foundRow = exactCodeRow || (!isNumericCode
+              ? rows.find(r => r.name && r.name.toLowerCase().includes(query))
+              : undefined);
 
           if (foundRow) {
               highlightAndScrollToRow(foundRow.id);
               setLocalScanQuery(''); // Clear input for next scan
           } else {
-              // Optional: Play error sound or shake UI
-              alert('الصنف غير موجود في القائمة الحالية. يمكنك إضافته يدوياً في الأسفل.');
+              notify('الصنف غير موجود في القائمة الحالية. يمكنك إضافته يدوياً أو كمنتج جديد.', 'warning');
           }
       }
   };
@@ -184,10 +213,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           // Check if list name or date matches
           const metaMatch = list.name.toLowerCase().includes(term) || list.date.includes(term);
           
-          // Check if any product inside matches
+          // Check if any product inside matches (exact code match or partial name match)
           const matchingItems = (list.rows || []).filter((r: any) => 
               (r.name && r.name.toLowerCase().includes(term)) || 
-              (r.code && r.code.toLowerCase().includes(term))
+              (r.code && r.code.trim().toLowerCase() === term)
           );
 
           // Return list only if meta matches or items match
@@ -200,20 +229,63 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
 
   const handleSave = async () => {
     const validRows = rows.filter(r => r.name.trim());
-    if (validRows.length === 0) { alert("لا توجد بيانات صالحة للحفظ"); return; }
+    if (validRows.length === 0) { notify("لا توجد بيانات صالحة للحفظ", "warning"); return; }
     setIsSaving(true);
     try {
+      // اكتشاف وإضافة أي منتجات جديدة مسجلة في الجرد تلقائياً إلى قاعدة البيانات
+      const knownProducts = [...products];
+      const newProductsToInsert: Product[] = [];
+      const preparedRows = validRows.map((row, idx) => {
+        const cleanCode = (row.code || '').trim();
+        const cleanName = row.name.trim();
+        const existing = knownProducts.find(p =>
+          (cleanCode && p.code && p.code.trim().toLowerCase() === cleanCode.toLowerCase()) ||
+          p.name.trim().toLowerCase() === cleanName.toLowerCase()
+        );
+        if (!existing) {
+          const finalCode = cleanCode || `INV-${Date.now().toString().slice(-6)}-${idx + 1}`;
+          const newProd: Product = {
+            id: crypto.randomUUID(),
+            code: finalCode,
+            name: cleanName,
+            unitId: row.unitId || units[0]?.id || '',
+            price: '0',
+            stock: row.qty !== '' && !isNaN(Number(row.qty)) ? Number(row.qty) : 0,
+            expiryDate: row.expiryDate || undefined,
+            color: '#ffffff',
+          };
+          knownProducts.push(newProd);
+          newProductsToInsert.push(newProd);
+          return { ...row, code: finalCode, unitId: row.unitId || newProd.unitId };
+        }
+        return row;
+      });
+
+      if (newProductsToInsert.length > 0) {
+        await Promise.all(newProductsToInsert.map(p => db.products.upsert(p)));
+        setProducts?.(prev => [...prev, ...newProductsToInsert]);
+        setRows(prev => {
+          const updatedMap = new Map(preparedRows.map(r => [r.id, r]));
+          return prev.map(r => updatedMap.get(r.id) || r);
+        });
+        if (onNewProductsAdded) onNewProductsAdded();
+      }
+
       const listId = activeListId || crypto.randomUUID();
       await db.lists.upsert({ 
         id: listId, 
         name: listName || (listType === 'inventory' ? 'قائمة جرد' : 'سند استلام'), 
         date: listDate, 
         type: listType,
-        rows: validRows 
+        rows: preparedRows 
       });
       setActiveListId(listId);
-      alert("تم حفظ المستند بنجاح");
-    } catch (e) { alert("فشل الحفظ"); }
+      if (newProductsToInsert.length > 0) {
+        notify(`تم حفظ السند بنجاح وإضافة ${newProductsToInsert.length} منتج جديد تلقائياً إلى قاعدة البيانات`, 'success');
+      } else {
+        notify("تم حفظ المستند بنجاح", "success");
+      }
+    } catch (e) { notify("فشل الحفظ", "error"); }
     finally { setIsSaving(false); }
   };
 
@@ -652,14 +724,127 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           if (e.key === 'Enter') { e.preventDefault(); const selected = filteredProducts[selectedIndex]; if (selected) selectProductForRow(rowId, selected); return; }
           if (e.key === 'Escape') { setActiveSearch(null); return; }
       }
+      if (e.key === 'Escape') { setActiveSearch(null); return; }
       if (e.key === 'Enter') focusNextField(e, rowId, field);
+  };
+
+  const openQuickAddModal = (rowId?: string, prefillCode = '', prefillName = '') => {
+    const row = rowId ? rows.find(r => r.id === rowId) : undefined;
+    setActiveSearch(null);
+    setQuickAddProductModal({
+      open: true,
+      targetRowId: rowId,
+      code: (prefillCode || row?.code || '').trim(),
+      name: (prefillName || row?.name || '').trim(),
+      unitId: row?.unitId || units[0]?.id || '',
+      price: '0',
+      costPrice: '',
+      qty: row?.qty !== undefined && row?.qty !== '' ? String(row.qty) : '',
+      cartonQty: row?.cartonQty !== undefined && row?.cartonQty !== '' ? String(row.cartonQty) : '',
+      expiryDate: row?.expiryDate || '',
+    });
+  };
+
+  const handleSaveQuickProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = quickAddProductModal.code.trim();
+    const cleanName = quickAddProductModal.name.trim();
+    if (!cleanCode || !cleanName) {
+      notify('يرجى إدخال كود المنتج واسم المنتج', 'warning');
+      return;
+    }
+
+    const duplicate = products.find(p =>
+      (p.code && p.code.trim().toLowerCase() === cleanCode.toLowerCase()) ||
+      p.name.trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (duplicate) {
+      notify(`المنتج "${duplicate.name}" (${duplicate.code}) مسجل بالفعل في قاعدة البيانات`, 'warning');
+      if (quickAddProductModal.targetRowId) {
+        selectProductForRow(quickAddProductModal.targetRowId, duplicate);
+      }
+      setQuickAddProductModal(prev => ({ ...prev, open: false }));
+      return;
+    }
+
+    setIsSavingNewProduct(true);
+    try {
+      const newProd: Product = {
+        id: crypto.randomUUID(),
+        code: cleanCode,
+        name: cleanName,
+        unitId: quickAddProductModal.unitId || units[0]?.id || '',
+        price: quickAddProductModal.price.trim() || '0',
+        costPrice: quickAddProductModal.costPrice.trim() || undefined,
+        stock: quickAddProductModal.qty !== '' ? Number(quickAddProductModal.qty) || 0 : 0,
+        expiryDate: quickAddProductModal.expiryDate || undefined,
+        color: '#ffffff',
+      };
+      await db.products.upsert(newProd);
+      setProducts?.(prev => [...prev, newProd]);
+      if (onNewProductsAdded) onNewProductsAdded();
+
+      const qtyVal = quickAddProductModal.qty !== '' ? Number(quickAddProductModal.qty) : '';
+      const cartonVal = quickAddProductModal.cartonQty !== '' ? Number(quickAddProductModal.cartonQty) : '';
+
+      if (quickAddProductModal.targetRowId) {
+        setRows(prev =>
+          prev.map(r =>
+            r.id === quickAddProductModal.targetRowId
+              ? {
+                  ...r,
+                  code: newProd.code,
+                  name: newProd.name,
+                  unitId: newProd.unitId,
+                  qty: qtyVal !== '' ? qtyVal : r.qty,
+                  cartonQty: cartonVal !== '' ? cartonVal : r.cartonQty,
+                  expiryDate: quickAddProductModal.expiryDate || r.expiryDate,
+                }
+              : r
+          )
+        );
+      } else {
+        const newRow: ListRow = {
+          id: generateId(),
+          code: newProd.code,
+          name: newProd.name,
+          unitId: newProd.unitId,
+          qty: qtyVal,
+          cartonQty: cartonVal,
+          expiryDate: quickAddProductModal.expiryDate || '',
+          note: '',
+          isDismissed: false,
+        };
+        setRows(prev => {
+          const hasEmptyLast = prev.length > 0 && !prev[prev.length - 1].name.trim() && !prev[prev.length - 1].code.trim();
+          if (hasEmptyLast) {
+            return [...prev.slice(0, -1), newRow, prev[prev.length - 1]];
+          }
+          return [...prev, newRow, createEmptyRow()];
+        });
+      }
+
+      notify(`تمت إضافة "${newProd.name}" إلى قاعدة البيانات وقائمة الجرد`, 'success');
+      setQuickAddProductModal(prev => ({ ...prev, open: false }));
+    } catch (err) {
+      console.error(err);
+      notify('حدث خطأ أثناء حفظ المنتج الجديد في قاعدة البيانات', 'error');
+    } finally {
+      setIsSavingNewProduct(false);
+    }
   };
 
   const filteredProducts = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return [];
-    return products.filter(p => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)).slice(0, 10);
-  }, [searchTerm, products]);
+    if (activeSearch?.field === 'code') {
+      // البحث بكود المنتج يظهر المطابق لنفس الرقم/الكود فقط
+      return products.filter(p => (p.code || '').trim().toLowerCase() === q);
+    }
+    return products
+      .filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.trim().toLowerCase() === q))
+      .slice(0, 10);
+  }, [searchTerm, products, activeSearch]);
 
   const getExpiryStatus = (dateStr: string) => {
       if (!dateStr) return { days: null, status: 'normal' };
@@ -874,22 +1059,47 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                                             </div>
                                         ))}
                                     </div>
-                                    <button 
-                                        onClick={() => {
-                                            const name = prompt('أدخل اسم العمود الجديد:');
-                                            if (name && name.trim()) {
-                                                setCustomColumns(prev => [...prev, { id: `custom_${Date.now()}`, name: name.trim() }]);
-                                            }
-                                        }}
-                                        className="mt-2 w-full py-1.5 border border-dashed border-gray-300 text-gray-500 rounded-lg text-[10px] font-bold hover:bg-gray-50 hover:text-sap-primary transition-colors flex items-center justify-center gap-1"
-                                    >
-                                        <Plus size={12}/> إضافة عمود مخصص
-                                    </button>
+                                    <div className="mt-2 flex gap-1.5">
+                                        <input
+                                            type="text"
+                                            value={customColumnInput}
+                                            onChange={e => setCustomColumnInput(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' && customColumnInput.trim()) {
+                                                    e.preventDefault();
+                                                    setCustomColumns(prev => [...prev, { id: `custom_${Date.now()}`, name: customColumnInput.trim() }]);
+                                                    setCustomColumnInput('');
+                                                }
+                                            }}
+                                            placeholder="اسم عمود مخصص..."
+                                            className="flex-1 px-2 py-1 border border-gray-200 rounded-lg text-[10px] font-bold outline-none focus:border-sap-primary"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                if (customColumnInput.trim()) {
+                                                    setCustomColumns(prev => [...prev, { id: `custom_${Date.now()}`, name: customColumnInput.trim() }]);
+                                                    setCustomColumnInput('');
+                                                }
+                                            }}
+                                            className="px-2.5 py-1 bg-sap-primary/10 text-sap-primary rounded-lg text-[10px] font-bold hover:bg-sap-primary/20 transition-colors flex items-center gap-1"
+                                        >
+                                            <Plus size={12}/> إضافة
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
+                    <button
+                        type="button"
+                        onClick={() => openQuickAddModal()}
+                        className="px-3.5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all shadow-sm flex items-center gap-1.5"
+                        title="إضافة منتج جديد وإدراجه تلقائياً في قاعدة البيانات"
+                    >
+                        <Plus size={16}/> <span className="hidden sm:inline">منتج جديد للقاعدة</span>
+                    </button>
                     <button onClick={() => window.print()} className="px-4 py-2 bg-gray-100 text-gray-800 border border-gray-200 rounded-xl text-sm font-black hover:bg-gray-200 transition-all shadow-sm flex items-center gap-2">
                         <Printer size={18}/> <span className="hidden sm:inline">طباعة</span>
                     </button>
@@ -946,13 +1156,29 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                           placeholder="SCAN" autoComplete="off"
                         />
                     </div>
-                    {activeSearch?.rowId === row.id && activeSearch.field === 'code' && filteredProducts.length > 0 && (
-                      <div className="absolute top-full right-0 z-50 bg-white border border-gray-100 w-64 shadow-xl mt-1 rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
-                          {filteredProducts.map((p, i) => (
+                    {activeSearch?.rowId === row.id && activeSearch.field === 'code' && searchTerm.trim() !== '' && (
+                      <div className="absolute top-full right-0 z-50 bg-white border border-gray-200 w-72 shadow-xl mt-1 rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                          {filteredProducts.length > 0 ? (
+                            filteredProducts.map((p, i) => (
                               <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center transition-colors ${i === selectedIndex ? 'bg-sap-primary/10 text-sap-primary' : 'hover:bg-gray-50 text-gray-700'}`}>
-                                  <span className="font-mono font-black text-sm">{p.code}</span><span className="text-[10px] opacity-70 truncate max-w-[100px]">{p.name}</span>
+                                  <span className="font-mono font-black text-sm">{p.code}</span><span className="text-[11px] font-bold opacity-80 truncate max-w-[140px]">{p.name}</span>
                               </div>
-                          ))}
+                            ))
+                          ) : (
+                            <div className="p-2.5 space-y-2">
+                              <div className="text-[11px] font-bold text-gray-500 px-1">
+                                لا يوجد منتج بالكود <span className="font-mono text-gray-800">{searchTerm.trim()}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openQuickAddModal(row.id, searchTerm.trim(), row.name)}
+                                className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors"
+                              >
+                                <Plus size={14} />
+                                <span>إضافة كمنتج جديد لقاعدة البيانات</span>
+                              </button>
+                            </div>
+                          )}
                       </div>
                     )}
                   </td>}
@@ -971,13 +1197,26 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       className="w-full bg-transparent border-b border-gray-200/60 hover:border-sap-primary/30 focus:border-sap-primary p-2 focus:ring-0 font-bold text-gray-800 placeholder-gray-300 transition-colors outline-none text-xs"
                       placeholder="بحث عن منتج..." autoComplete="off"
                     />
-                    {activeSearch?.rowId === row.id && activeSearch.field === 'name' && filteredProducts.length > 0 && (
-                      <div className="absolute top-full right-0 z-50 bg-white border border-gray-100 w-full shadow-xl mt-1 rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
-                          {filteredProducts.map((p, i) => (
+                    {activeSearch?.rowId === row.id && activeSearch.field === 'name' && searchTerm.trim() !== '' && (
+                      <div className="absolute top-full right-0 z-50 bg-white border border-gray-200 w-full min-w-[240px] shadow-xl mt-1 rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                          {filteredProducts.length > 0 ? (
+                            filteredProducts.map((p, i) => (
                               <div key={p.id} onClick={() => selectProductForRow(row.id, p)} className={`p-3 cursor-pointer border-b border-gray-50 flex justify-between items-center transition-colors ${i === selectedIndex ? 'bg-sap-primary/10 text-sap-primary' : 'hover:bg-gray-50 text-gray-700'}`}>
                                   <span className="font-bold text-xs">{p.name}</span><span className="text-[10px] opacity-70 font-mono">{p.code}</span>
                               </div>
-                          ))}
+                            ))
+                          ) : (
+                            <div className="p-2.5">
+                              <button
+                                type="button"
+                                onClick={() => openQuickAddModal(row.id, row.code, searchTerm.trim())}
+                                className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors"
+                              >
+                                <Plus size={14} />
+                                <span>إضافة "{searchTerm.trim()}" كمنتج جديد في القاعدة</span>
+                              </button>
+                            </div>
+                          )}
                       </div>
                     )}
                   </td>}
@@ -1137,46 +1376,67 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           </div>
       )}
 
-      {/* Quota Fallback Modal */}
+      {/* Quota & Billing Fallback Modal */}
       {showQuotaFallback && (
           <div className="fixed inset-0 z-[220] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-amber-200 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200" dir="rtl">
-                  <div className="p-6 bg-gradient-to-l from-amber-500 to-amber-600 text-white flex items-center gap-4">
+                  <div className="p-6 bg-gradient-to-l from-amber-500 via-amber-600 to-amber-700 text-white flex items-center gap-4">
                       <div className="p-3 bg-white/20 rounded-2xl shrink-0">
                           <span className="text-2xl">⚠️</span>
                       </div>
                       <div>
-                          <h3 className="font-black text-lg">تنبيه: سقف الميزانية في AI Studio ممتلئ</h3>
-                          <p className="text-xs text-amber-100 font-bold opacity-90">تجاوز مفتاح الـ API حد الإنفاق الشهري (Spending Cap)</p>
+                          <h3 className="font-black text-lg">
+                              {quotaErrorMsg.includes("402") || quotaErrorMsg.includes("Prepayment")
+                                  ? "تنبيه: نفاد رصيد الدفع المسبق (402 Payment Required)"
+                                  : "تنبيه: تعذر إتمام المسح بالذكاء الاصطناعي"}
+                          </h3>
+                          <p className="text-xs text-amber-100 font-bold opacity-90">
+                              {quotaErrorMsg.includes("402") 
+                                  ? "حساب Google AI Studio يتطلب شحن رصيد الـ Prepayment Credits" 
+                                  : "حالة الفوترة أو حصة الاستخدام لمشروع الذكاء الاصطناعي"}
+                          </p>
                       </div>
                   </div>
 
                   <div className="p-6 space-y-4">
-                      <p className="text-gray-600 text-sm leading-relaxed font-bold">
-                          لقد تجاوز حسابك في Google AI Studio الحد الأقصى للميزانية الشهرية المحددة للإنفاق. هذا قيد مالي خارجي من قِبل سيرفرات Google وليس خطأً في برمجة التطبيق.
-                      </p>
-
                       <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-2">
-                          <h4 className="font-black text-amber-800 text-xs">🛠️ كيف تقوم بحل المشكلة فوراً؟</h4>
-                          <p className="text-amber-700 text-xs leading-relaxed font-bold">
-                              اضغط على الرابط أدناه لزيادة حد الإنفاق الشهري (Spending Cap) في لوحة تحكم حسابك ليعود المسح الذكي وقراءة الفواتير بالذكاء الاصطناعي للعمل فوراً وبشكل تلقائي:
+                          <h4 className="font-black text-amber-900 text-xs flex items-center gap-1.5">
+                              <span>🔍 تفاصيل التنبيه:</span>
+                          </h4>
+                          <p className="text-amber-950 text-xs leading-relaxed font-bold bg-white/70 p-2.5 rounded-xl border border-amber-200/60">
+                              {quotaErrorMsg}
                           </p>
-                          <a 
-                              href="https://ai.studio/spend" 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-black text-xs underline mt-1"
-                          >
-                              <span>الانتقال لصفحة إدارة الميزانية والإنفاق في AI Studio</span>
-                              <span>🔗</span>
-                          </a>
+                          <p className="text-gray-600 text-[11px] leading-relaxed">
+                              هذا القيد صادر مباشرة من خوادم Google AI Studio بسبب انتهاء الرصيد المالي المسبق للمشروع، وليس خطأً داخلياً في النظام.
+                          </p>
+                          <div className="flex flex-wrap gap-2 pt-2">
+                              <a 
+                                  href="https://ai.studio/projects" 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white hover:bg-amber-700 font-black text-xs rounded-xl shadow-xs transition-colors"
+                              >
+                                  <span>إدارة المشاريع والفوترة في AI Studio</span>
+                                  <span>🔗</span>
+                              </a>
+                              <a 
+                                  href="https://ai.google.dev/gemini-api/docs/billing#prepay" 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 font-bold text-xs rounded-xl transition-colors"
+                              >
+                                  <span>دليل شحن رصيد Prepay</span>
+                              </a>
+                          </div>
                       </div>
 
                       <div className="space-y-2">
-                          <h4 className="font-black text-gray-800 text-xs">✨ الحل السريع لتجربة واختبار الميزة الآن:</h4>
-                          <p className="text-gray-500 text-xs leading-relaxed">
-                              لتسهيل التجربة والتدريب دون حواجز، يمكنك تخطي الخطأ وتفعيل **"المحاكاة الذكية"** ليقوم النظام بمسح وفك تشفير قائمة منتجات ذكية نموذجية مطابقة تماماً للمستندات الحقيقية لتجربة الفكرة بالكامل!
-                          </p>
+                          <h4 className="font-black text-gray-800 text-xs">✨ الحلول البديلة المتاحة فوراً للمتابعة بدون توقف:</h4>
+                          <ul className="text-gray-600 text-xs space-y-1.5 list-disc list-inside">
+                              <li><span className="font-bold text-gray-800">المحاكاة الذكية:</span> مسح وفك تشفير قائمة أصناف نموذجية لتجربة وفحص دورة العمل فوراً.</li>
+                              <li><span className="font-bold text-gray-800">ملفات Excel:</span> استيراد جدول بيانات الأصناف مباشرة وبدقة وبدون أي رسوم.</li>
+                              <li><span className="font-bold text-gray-800">الإدخال اليدوي أو الكاميرا:</span> مسح الباركود وإضافة المنتجات مباشرة.</li>
+                          </ul>
                       </div>
                   </div>
 
@@ -1186,14 +1446,24 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                               setShowQuotaFallback(false);
                               handleMockScanProcess();
                           }} 
-                          className="w-full py-4 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all"
+                          className="w-full py-3.5 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-all"
                       >
-                          <span>تخطي وتشغيل المحاكاة الذكية بالبيانات النموذجية 🪄</span>
+                          <span>تشغيل المحاكاة الذكية بالبيانات النموذجية 🪄</span>
+                      </button>
+
+                      <button 
+                          onClick={() => {
+                              setShowQuotaFallback(false);
+                              excelInputRef.current?.click();
+                          }} 
+                          className="w-full py-3 bg-emerald-700 text-white font-black text-xs rounded-2xl hover:bg-emerald-800 shadow-sm flex items-center justify-center gap-2 transition-all"
+                      >
+                          <span>📊 استيراد ملف إكسل (Excel) بدلاً من ذلك</span>
                       </button>
                       
                       <button 
                           onClick={() => setShowQuotaFallback(false)} 
-                          className="w-full py-3.5 bg-gray-100 text-gray-500 font-black text-xs rounded-2xl hover:bg-gray-200 transition-all text-center"
+                          className="w-full py-2.5 bg-gray-100 text-gray-600 font-black text-xs rounded-2xl hover:bg-gray-200 transition-all text-center"
                       >
                           إغلاق
                       </button>
@@ -1267,6 +1537,146 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       )}
                   </div>
               </div>
+          </div>
+      )}
+
+      {/* Quick Add New Product Modal (Auto-saved to DB & Inventory) */}
+      {quickAddProductModal.open && (
+          <div className="fixed inset-0 z-[210] bg-black/55 backdrop-blur-xs flex items-center justify-center p-4" onClick={() => setQuickAddProductModal(prev => ({ ...prev, open: false }))}>
+              <form
+                onSubmit={handleSaveQuickProduct}
+                onClick={e => e.stopPropagation()}
+                className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-150"
+                dir="rtl"
+              >
+                  <div className="px-5 py-4 bg-emerald-600 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                          <Plus size={20} />
+                          <div>
+                              <h3 className="font-black text-sm">إضافة منتج جديد لقاعدة البيانات</h3>
+                              <p className="text-[11px] text-emerald-100 font-semibold">يُحفظ تلقائياً في قاعدة البيانات ويُدرج في الجرد</p>
+                          </div>
+                      </div>
+                      <button type="button" onClick={() => setQuickAddProductModal(prev => ({ ...prev, open: false }))} className="p-1.5 rounded-lg hover:bg-white/15">
+                          <X size={18} />
+                      </button>
+                  </div>
+
+                  <div className="p-5 space-y-3.5 text-xs">
+                      <div className="grid grid-cols-2 gap-3">
+                          <div>
+                              <label className="block font-bold text-gray-700 mb-1">كود المنتج / الباركود *</label>
+                              <input
+                                type="text"
+                                required
+                                value={quickAddProductModal.code}
+                                onChange={e => setQuickAddProductModal(prev => ({ ...prev, code: e.target.value }))}
+                                placeholder="مثال: 628100..."
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl font-mono font-bold focus:border-emerald-600 outline-none"
+                                autoFocus={!quickAddProductModal.code}
+                              />
+                          </div>
+                          <div>
+                              <label className="block font-bold text-gray-700 mb-1">الوحدة</label>
+                              <select
+                                value={quickAddProductModal.unitId}
+                                onChange={e => setQuickAddProductModal(prev => ({ ...prev, unitId: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl font-bold focus:border-emerald-600 outline-none bg-white"
+                              >
+                                  <option value="">اختر الوحدة</option>
+                                  {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                              </select>
+                          </div>
+                      </div>
+
+                      <div>
+                          <label className="block font-bold text-gray-700 mb-1">اسم المنتج *</label>
+                          <input
+                            type="text"
+                            required
+                            value={quickAddProductModal.name}
+                            onChange={e => setQuickAddProductModal(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="أدخل اسم المنتج بالكامل..."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl font-bold focus:border-emerald-600 outline-none"
+                            autoFocus={Boolean(quickAddProductModal.code)}
+                          />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                          <div>
+                              <label className="block font-bold text-gray-700 mb-1">سعر البيع</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={quickAddProductModal.price}
+                                onChange={e => setQuickAddProductModal(prev => ({ ...prev, price: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl font-mono font-bold focus:border-emerald-600 outline-none"
+                              />
+                          </div>
+                          <div>
+                              <label className="block font-bold text-gray-700 mb-1">سعر التكلفة</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={quickAddProductModal.costPrice}
+                                onChange={e => setQuickAddProductModal(prev => ({ ...prev, costPrice: e.target.value }))}
+                                placeholder="اختياري"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl font-mono font-bold focus:border-emerald-600 outline-none"
+                              />
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                          <div>
+                              <label className="block font-bold text-gray-700 mb-1">كمية الجرد</label>
+                              <input
+                                type="number"
+                                value={quickAddProductModal.qty}
+                                onChange={e => setQuickAddProductModal(prev => ({ ...prev, qty: e.target.value }))}
+                                placeholder="0"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl font-mono font-bold focus:border-emerald-600 outline-none"
+                              />
+                          </div>
+                          <div>
+                              <label className="block font-bold text-gray-700 mb-1">كمية الكرتون</label>
+                              <input
+                                type="number"
+                                value={quickAddProductModal.cartonQty}
+                                onChange={e => setQuickAddProductModal(prev => ({ ...prev, cartonQty: e.target.value }))}
+                                placeholder="-"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl font-mono font-bold focus:border-emerald-600 outline-none"
+                              />
+                          </div>
+                          <div>
+                              <label className="block font-bold text-gray-700 mb-1">تاريخ الصلاحية</label>
+                              <input
+                                type="date"
+                                value={quickAddProductModal.expiryDate}
+                                onChange={e => setQuickAddProductModal(prev => ({ ...prev, expiryDate: e.target.value }))}
+                                className="w-full px-2 py-2 border border-gray-200 rounded-xl font-mono text-[11px] focus:border-emerald-600 outline-none"
+                              />
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQuickAddProductModal(prev => ({ ...prev, open: false }))}
+                        className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-100"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingNewProduct}
+                        className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {isSavingNewProduct ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        <span>حفظ في القاعدة والجرد</span>
+                      </button>
+                  </div>
+              </form>
           </div>
       )}
 

@@ -54,6 +54,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else {
         playTone(392, 0.2, now); // G4
       }
+      window.setTimeout(() => {
+        ctx.close().catch(() => {});
+      }, 600);
     } catch (e) {
       console.warn('Audio feedback failed:', e);
     }
@@ -65,7 +68,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     playSound(type);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000); // Auto close after 4s
+    }, 4000);
   }, [playSound]);
 
   const removeToast = (id: string) => {
@@ -75,29 +78,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   return (
     <NotificationContext.Provider value={{ notify }}>
       {children}
-      <div className="fixed bottom-4 left-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed bottom-16 left-4 z-[9999] flex flex-col gap-2 pointer-events-none" dir="rtl">
         {toasts.map(toast => (
           <div 
             key={toast.id} 
-            className={`pointer-events-auto min-w-[300px] max-w-sm p-4 rounded-xl shadow-2xl border flex items-start gap-3 animate-in slide-in-from-left-5 fade-in duration-300 ${
-              toast.type === 'success' ? 'bg-white border-green-500 text-green-700' :
-              toast.type === 'error' ? 'bg-white border-red-500 text-red-700' :
-              toast.type === 'warning' ? 'bg-white border-amber-500 text-amber-700' :
-              'bg-white border-blue-500 text-blue-700'
+            className={`pointer-events-auto min-w-[290px] max-w-sm p-3.5 rounded-xl shadow-2xl border flex items-start gap-3 animate-in slide-in-from-left-5 fade-in duration-300 bg-white dark:bg-slate-900 ${
+              toast.type === 'success' ? 'border-emerald-500/60 text-emerald-700 dark:text-emerald-300' :
+              toast.type === 'error' ? 'border-red-500/60 text-red-700 dark:text-red-300' :
+              toast.type === 'warning' ? 'border-amber-500/60 text-amber-700 dark:text-amber-300' :
+              'border-blue-500/60 text-blue-700 dark:text-blue-300'
             }`}
           >
             <div className={`p-1 rounded-full shrink-0 ${
-               toast.type === 'success' ? 'bg-green-100' :
-               toast.type === 'error' ? 'bg-red-100' :
-               toast.type === 'warning' ? 'bg-amber-100' : 'bg-blue-100'
+               toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-950/60' :
+               toast.type === 'error' ? 'bg-red-100 dark:bg-red-950/60' :
+               toast.type === 'warning' ? 'bg-amber-100 dark:bg-amber-950/60' : 'bg-blue-100 dark:bg-blue-950/60'
             }`}>
-              {toast.type === 'success' && <CheckCircle size={18} />}
-              {toast.type === 'error' && <AlertCircle size={18} />}
-              {toast.type === 'warning' && <AlertTriangle size={18} />}
-              {toast.type === 'info' && <Info size={18} />}
+              {toast.type === 'success' && <CheckCircle size={17} />}
+              {toast.type === 'error' && <AlertCircle size={17} />}
+              {toast.type === 'warning' && <AlertTriangle size={17} />}
+              {toast.type === 'info' && <Info size={17} />}
             </div>
-            <div className="flex-1 pt-0.5 text-sm font-bold">{toast.message}</div>
-            <button onClick={() => removeToast(toast.id)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
+            <div className="flex-1 pt-0.5 text-xs font-bold leading-relaxed">{toast.message}</div>
+            <button onClick={() => removeToast(toast.id)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5" aria-label="إغلاق">
+              <X size={15}/>
+            </button>
           </div>
         ))}
       </div>
