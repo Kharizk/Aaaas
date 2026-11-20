@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Branch, Permission, ActivityLog } from '../types';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 import { 
   Users, Plus, Trash2, Edit2, Shield, Key, Save, X, Loader2, 
   Search, CheckCircle2, History, UserCog, Building, Lock
@@ -33,6 +34,8 @@ const ALL_PERMISSIONS: { key: Permission, label: string }[] = [
 ];
 
 export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState<'users' | 'logs'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -99,14 +102,14 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches 
   };
 
   const handleSave = async () => {
-      if (!username || !fullName) { alert("يرجى ملء الحقول الأساسية"); return; }
-      if (!editingUser && !password) { alert("كلمة المرور مطلوبة للمستخدم الجديد"); return; }
+      if (!username || !fullName) { notify('يرجى ملء اسم المستخدم والاسم الكامل', 'warning'); return; }
+      if (!editingUser && !password) { notify('كلمة المرور مطلوبة للمستخدم الجديد', 'warning'); return; }
       
       const userId = editingUser ? editingUser.id : crypto.randomUUID();
       const userData: User = {
           id: userId,
           username,
-          password: password, // Note: Should be hashed
+          password: password,
           fullName,
           role,
           branchId: role === 'admin' ? undefined : (branchId || undefined),
@@ -117,7 +120,6 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches 
       try {
           await db.users.upsert(userData);
           
-          // Log Action
           await db.logs.add({
               userId: currentUser.id,
               username: currentUser.username,
@@ -127,18 +129,24 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches 
 
           fetchUsers();
           setIsModalOpen(false);
+          notify(editingUser ? 'تم تحديث بيانات المستخدم بنجاح' : 'تم إنشاء المستخدم بنجاح', 'success');
       } catch (e) {
-          alert("حدث خطأ أثناء الحفظ");
+          notify('حدث خطأ أثناء حفظ المستخدم', 'error');
       }
   };
 
   const handleDelete = async (user: User) => {
-      if (user.id === currentUser.id) { alert("لا يمكنك حذف حسابك الحالي"); return; }
-      if (!confirm(`هل أنت متأكد من حذف المستخدم ${user.fullName}؟`)) return;
+      if (user.id === currentUser.id) { notify('لا يمكنك حذف حسابك الحالي', 'warning'); return; }
+      const ok = await confirm({
+          title: 'حذف مستخدم',
+          message: `هل أنت متأكد من حذف المستخدم "${user.fullName}"؟`,
+          confirmLabel: 'حذف المستخدم',
+          variant: 'danger'
+      });
+      if (!ok) return;
 
       try {
           await db.users.delete(user.id);
-          // Log Action
           await db.logs.add({
               userId: currentUser.id,
               username: currentUser.username,
@@ -146,7 +154,8 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser, branches 
               details: `تم حذف المستخدم: ${user.username}`
           });
           fetchUsers();
-      } catch (e) { alert("فشل الحذف"); }
+          notify('تم حذف المستخدم', 'info');
+      } catch (e) { notify('فشل حذف المستخدم', 'error'); }
   };
 
   return (

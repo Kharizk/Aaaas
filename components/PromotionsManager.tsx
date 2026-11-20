@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Promotion, Product } from '../types';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 import { Plus, Trash2, Save, Tag, Calendar, Percent, Gift, Settings, Search } from 'lucide-react';
 
 interface PromotionsManagerProps {
@@ -8,6 +9,8 @@ interface PromotionsManagerProps {
 }
 
 export const PromotionsManager: React.FC<PromotionsManagerProps> = ({ products }) => {
+    const { notify } = useNotification();
+    const { confirm } = useConfirm();
     const [promotions, setPromotions] = useState<Promotion[]>([]);
     const [name, setName] = useState('');
     const [type, setType] = useState<Promotion['type']>('discount_percentage');
@@ -30,7 +33,7 @@ export const PromotionsManager: React.FC<PromotionsManagerProps> = ({ products }
 
     const handleSave = async () => {
         if (!name || !value) {
-            alert('يرجى تعبئة الحقول المطلوبة');
+            notify('يرجى تعبئة الحقول المطلوبة', 'warning');
             return;
         }
 
@@ -48,6 +51,7 @@ export const PromotionsManager: React.FC<PromotionsManagerProps> = ({ products }
 
         await db.promotions.upsert(newPromo);
         setPromotions(prev => [newPromo, ...prev]);
+        notify('تمت إضافة العرض الترويجي بنجاح', 'success');
         
         // Reset form
         setName('');
@@ -55,9 +59,16 @@ export const PromotionsManager: React.FC<PromotionsManagerProps> = ({ products }
     };
 
     const handleDelete = async (id: string) => {
-        if (confirm('هل أنت متأكد من حذف هذا العرض؟')) {
+        const ok = await confirm({
+            title: 'حذف العرض',
+            message: 'هل أنت متأكد من حذف هذا العرض؟',
+            confirmLabel: 'حذف',
+            variant: 'danger'
+        });
+        if (ok) {
             await db.promotions.delete(id);
             setPromotions(prev => prev.filter(p => p.id !== id));
+            notify('تم حذف العرض بنجاح', 'success');
         }
     };
 

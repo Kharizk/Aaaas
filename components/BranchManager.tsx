@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Branch, DailySales } from '../types';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 import { Plus, Edit2, Trash2, Save, X, Loader2, MapPin, Search, BarChart3, Calendar, Building2 } from 'lucide-react';
 
 interface BranchManagerProps {
@@ -11,6 +12,8 @@ interface BranchManagerProps {
 }
 
 export const BranchManager: React.FC<BranchManagerProps> = ({ branches, setBranches, sales }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [selectedBranchForReport, setSelectedBranchForReport] = useState<Branch | null>(null);
@@ -49,20 +52,28 @@ export const BranchManager: React.FC<BranchManagerProps> = ({ branches, setBranc
             setBranches(prev => [...prev, branchData]);
         }
         setIsModalOpen(false);
+        notify(editingBranch ? 'تم تحديث بيانات الفرع' : 'تم إضافة الفرع بنجاح', 'success');
     } catch (error: any) {
-        alert("Error saving branch");
+        notify('حدث خطأ أثناء حفظ بيانات الفرع', 'error');
     } finally {
         setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('حذف الفرع سيحذف جميع المبيعات المرتبطة به. هل أنت متأكد؟')) {
+    const ok = await confirm({
+      title: 'حذف الفرع',
+      message: 'حذف الفرع سيحذف جميع المبيعات المرتبطة به. هل أنت متأكد؟',
+      confirmLabel: 'حذف الفرع والمبيعات',
+      variant: 'danger'
+    });
+    if (ok) {
       try {
           await db.dailySales.deleteByBranch(id);
           await db.branches.delete(id);
           setBranches(prev => prev.filter(b => b.id !== id));
-      } catch (error) { alert("فشل الحذف"); }
+          notify('تم حذف الفرع بنجاح', 'info');
+      } catch (error) { notify('فشل حذف الفرع', 'error'); }
     }
   };
 

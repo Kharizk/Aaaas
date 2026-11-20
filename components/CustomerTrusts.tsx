@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/supabase';
 import { CustomerTrust, Customer, Product } from '../types';
 import { Package, Plus, Search, Filter, ArrowDownToLine, History, X, Save, Trash2, Edit, Printer, Share2 } from 'lucide-react';
+import { useNotification, useConfirm } from './Notifications';
 
 interface CustomerTrustsProps {
     products: Product[];
 }
 
 export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
+    const { notify } = useNotification();
+    const { confirm } = useConfirm();
     const [trusts, setTrusts] = useState<CustomerTrust[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(true);
@@ -54,7 +57,7 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
 
     const handleSave = async () => {
         if (!formData.customerId || !formData.productId || !formData.totalQty) {
-            alert('الرجاء تعبئة الحقول المطلوبة (العميل، المنتج، إجمالي الكمية)');
+            notify('الرجاء تعبئة الحقول المطلوبة (العميل، المنتج، إجمالي الكمية)', 'warning');
             return;
         }
 
@@ -94,9 +97,10 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
             await fetchData();
             setShowModal(false);
             resetForm();
+            notify('تم حفظ سجل الأمانات بنجاح', 'success');
         } catch (error) {
             console.error("Error saving trust:", error);
-            alert('حدث خطأ أثناء الحفظ');
+            notify('حدث خطأ أثناء الحفظ', 'error');
         }
     };
 
@@ -105,7 +109,7 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
         
         const qtyToWithdraw = Number(withdrawQty);
         if (qtyToWithdraw > selectedTrust.remainingQty) {
-            alert('الكمية المسحوبة أكبر من الرصيد المتبقي!');
+            notify('الكمية المسحوبة أكبر من الرصيد المتبقي!', 'warning');
             return;
         }
 
@@ -137,20 +141,28 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
             setWithdrawQty('');
             setWithdrawNote('');
             setSelectedTrust(null);
+            notify('تم تسجيل عملية السحب بنجاح', 'success');
         } catch (error) {
             console.error("Error withdrawing:", error);
-            alert('حدث خطأ أثناء السحب');
+            notify('حدث خطأ أثناء السحب', 'error');
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!window.confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
+        const ok = await confirm({
+            title: 'حذف سجل الأمانات',
+            message: 'هل أنت متأكد من حذف هذا السجل؟',
+            confirmLabel: 'حذف',
+            variant: 'danger'
+        });
+        if (!ok) return;
         try {
             await db.customerTrusts.delete(id);
             await fetchData();
+            notify('تم حذف السجل', 'info');
         } catch (error) {
             console.error("Error deleting trust:", error);
-            alert('حدث خطأ أثناء الحذف');
+            notify('حدث خطأ أثناء الحذف', 'error');
         }
     };
 
@@ -179,7 +191,7 @@ export const CustomerTrusts: React.FC<CustomerTrustsProps> = ({ products }) => {
                 });
             } else {
                 await navigator.clipboard.writeText(text);
-                alert('تم نسخ النص إلى الحافظة');
+                notify('تم نسخ سجل الحركات إلى الحافظة', 'success');
             }
         } catch (error) {
             console.error('Error sharing:', error);

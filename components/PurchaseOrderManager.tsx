@@ -4,7 +4,7 @@ import { PurchaseOrder, Supplier, Product } from '../types';
 import { db } from '../services/supabase';
 import { Plus, Trash2, Save, ShoppingBag, Calendar, User, Package, CheckCircle2, XCircle, FileText, Printer, Search, Filter, ArrowRight, Loader2 } from 'lucide-react';
 import { ReportLayout } from './ReportLayout';
-import { useNotification } from './Notifications';
+import { useNotification, useConfirm } from './Notifications';
 
 export const PurchaseOrderManager: React.FC = () => {
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -24,6 +24,7 @@ export const PurchaseOrderManager: React.FC = () => {
 
     const [printOrder, setPrintOrder] = useState<PurchaseOrder | null>(null);
     const { notify } = useNotification();
+    const { confirm } = useConfirm();
 
     const loadData = async () => {
         setIsLoading(true);
@@ -108,7 +109,13 @@ export const PurchaseOrderManager: React.FC = () => {
     };
 
     const handleDeleteOrder = async (id: string) => {
-        if (!confirm('هل أنت متأكد من حذف هذا الأمر؟')) return;
+        const ok = await confirm({
+            title: 'حذف أمر الشراء',
+            message: 'هل أنت متأكد من حذف هذا الأمر؟',
+            confirmLabel: 'حذف',
+            variant: 'danger'
+        });
+        if (!ok) return;
         try {
             await db.purchaseOrders.delete(id);
             setOrders(prev => prev.filter(o => o.id !== id));

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ActivityLog } from '../types';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 import { History, Info, AlertTriangle, CheckCircle, XCircle, Search, RefreshCcw, Trash2 } from 'lucide-react';
 
 export const ActivityLogViewer: React.FC = () => {
+    const { notify } = useNotification();
+    const { confirm } = useConfirm();
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState('');
@@ -21,13 +24,20 @@ export const ActivityLogViewer: React.FC = () => {
     };
 
     const handleClearLogs = async () => {
-        if (confirm('هل أنت متأكد من مسح جميع السجلات؟ لا يمكن التراجع عن هذا الإجراء.')) {
+        const ok = await confirm({
+            title: 'مسح سجل النشاطات',
+            message: 'هل أنت متأكد من مسح جميع السجلات؟ لا يمكن التراجع عن هذا الإجراء.',
+            confirmLabel: 'مسح السجلات',
+            variant: 'danger'
+        });
+        if (ok) {
             setIsLoading(true);
             try {
                 await db.activityLogs.clear();
                 await loadLogs();
+                notify('تم مسح جميع السجلات', 'success');
             } catch (e) {
-                alert('فشل مسح السجلات');
+                notify('فشل مسح السجلات', 'error');
             } finally {
                 setIsLoading(false);
             }

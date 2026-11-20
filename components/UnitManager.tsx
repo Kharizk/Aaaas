@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Unit } from '../types';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 import { Plus, Edit2, Trash2, Save, X, Loader2, Ruler, Search } from 'lucide-react';
 
 interface UnitManagerProps {
@@ -10,6 +11,8 @@ interface UnitManagerProps {
 }
 
 export const UnitManager: React.FC<UnitManagerProps> = ({ units, setUnits }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [unitName, setUnitName] = useState('');
@@ -36,19 +39,27 @@ export const UnitManager: React.FC<UnitManagerProps> = ({ units, setUnits }) => 
         if (editingUnit) setUnits(prev => prev.map(u => u.id === editingUnit.id ? unitData : u));
         else setUnits(prev => [...prev, unitData]);
         setIsModalOpen(false);
+        notify(editingUnit ? 'تم تحديث الوحدة بنجاح' : 'تم إضافة الوحدة بنجاح', 'success');
     } catch (error) {
-        alert("حدث خطأ أثناء الحفظ");
+        notify('حدث خطأ أثناء حفظ الوحدة', 'error');
     } finally {
         setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('هل تريد حذف هذه الوحدة؟')) {
+    const ok = await confirm({
+      title: 'حذف وحدة القياس',
+      message: 'هل تريد حذف هذه الوحدة نهائياً؟',
+      confirmLabel: 'حذف',
+      variant: 'danger'
+    });
+    if (ok) {
       try {
           await db.units.delete(id);
           setUnits(prev => prev.filter(u => u.id !== id));
-      } catch (error) { alert("فشل الحذف"); }
+          notify('تم حذف الوحدة', 'info');
+      } catch (error) { notify('فشل حذف الوحدة', 'error'); }
     }
   };
 

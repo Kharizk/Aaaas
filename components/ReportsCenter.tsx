@@ -5,6 +5,7 @@ import { SalesReports } from './SalesReports';
 import { SalesMatrixReport } from './SalesMatrixReport';
 import { ReportLayout } from './ReportLayout';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 import { 
   FileLineChart, LayoutGrid, BarChart3, TrendingUp, TrendingDown, Package, Printer, 
   Eye, EyeOff, Boxes, Search, CheckCircle2, ClipboardList, Calendar, Filter, ArrowLeft, AlertTriangle, Wallet, Download, PieChart, Trash2, Settings
@@ -19,6 +20,8 @@ interface ReportsCenterProps {
 }
 
 export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, products, units }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [activeSubTab, setActiveSubTab] = useState<'standard' | 'matrix' | 'products' | 'inventory' | 'expiry' | 'low_stock' | 'profit' | 'category'>('standard');
   const [showHeader, setShowHeader] = useState(true);
   const [productSearch, setProductSearch] = useState('');
@@ -362,7 +365,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             setLists(prev => prev.map(l => l.id === listId ? updatedList : l));
         } catch (e) {
             console.error("Error dismissing item:", e);
-            alert("حدث خطأ أثناء إخفاء العنصر");
+            notify("حدث خطأ أثناء إخفاء العنصر", "error");
         }
     };
 
@@ -381,7 +384,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             setLists(prev => prev.map(l => l.id === listId ? updatedList : l));
         } catch (e) {
             console.error("Error updating qty:", e);
-            alert("حدث خطأ أثناء تحديث الكمية");
+            notify("حدث خطأ أثناء تحديث الكمية", "error");
         }
     };
 
@@ -400,7 +403,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
             setLists(prev => prev.map(l => l.id === listId ? updatedList : l));
         } catch (e) {
             console.error("Error updating carton qty:", e);
-            alert("حدث خطأ أثناء تحديث كمية الكرتون");
+            notify("حدث خطأ أثناء تحديث كمية الكرتون", "error");
         }
     };
 
@@ -735,8 +738,14 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ branches, sales, p
                                                 {visibleColumns.listName && <td className="px-6 py-3 print:px-2 print:py-1 text-gray-400 text-[10px] print:text-black print:border print:border-gray-200">{item.listName} ({item.listDate})</td>}
                                                 {visibleColumns.actions && <td className="px-6 py-3 print:hidden text-center">
                                                     <button 
-                                                        onClick={() => {
-                                                            if (window.confirm('هل أنت متأكد من إخفاء هذا السجل من التقرير؟')) {
+                                                        onClick={async () => {
+                                                            const ok = await confirm({
+                                                                title: 'إخفاء السجل',
+                                                                message: 'هل أنت متأكد من إخفاء هذا السجل من التقرير؟',
+                                                                confirmLabel: 'إخفاء',
+                                                                variant: 'warning'
+                                                            });
+                                                            if (ok) {
                                                                 handleDismiss(item.listId, item.rowId);
                                                             }
                                                         }}

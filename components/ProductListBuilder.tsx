@@ -135,7 +135,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                           highlightAndScrollToRow(initialListParams.rowId);
                       }
                   } else {
-                      alert("القائمة المطلوبة غير موجودة");
+                      notify("القائمة المطلوبة غير موجودة", "warning");
                   }
               } catch (e) {
                   console.error(e);
@@ -301,7 +301,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
       try {
           const rawData = await parseExcelFile(file);
           if (rawData.length === 0) {
-              alert("الملف فارغ أو التنسيق غير صحيح");
+              notify("الملف فارغ أو التنسيق غير صحيح", "warning");
               return;
           }
 
@@ -359,11 +359,11 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
               const cleanPrev = prev.filter(r => r.name.trim() !== '');
               return [...cleanPrev, ...newRows, createEmptyRow()];
           });
-          alert(`تم استيراد ${newRows.length} صنف بنجاح.`);
+          notify(`تم استيراد ${newRows.length} صنف بنجاح.`, "success");
 
       } catch (error) {
           console.error("Excel Import Error", error);
-          alert("خطأ في قراءة ملف Excel");
+          notify("خطأ في قراءة ملف Excel", "error");
       } finally {
           setIsScanning(false);
           if (excelInputRef.current) excelInputRef.current.value = '';
@@ -446,7 +446,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                 
                 if (Array.isArray(extractedData) && extractedData.length > 0) {
                     if (parseError) {
-                        alert(parseError);
+                        notify(parseError, "warning");
                     }
                     const foundNewProducts: Product[] = [];
                     const processedRows: ListRow[] = extractedData.map((item: any) => {
@@ -508,10 +508,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                         const cleanPrev = prev.filter(r => r.name.trim() !== '');
                         return [...cleanPrev, ...processedRows, createEmptyRow()];
                     });
-                    alert(`تم استخراج ${processedRows.length} صنف.`);
+                    notify(`تم استخراج ${processedRows.length} صنف.`, "success");
                     
                 } else {
-                    alert(parseError || "لم يتم العثور على بيانات في الصورة.");
+                    notify(parseError || "لم يتم العثور على بيانات في الصورة.", "warning");
                 }
             } catch (err: any) {
                 console.error("Smart Scan Error in onloadend:", err);
@@ -639,7 +639,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
         const cleanPrev = prev.filter(r => r.name.trim() !== '');
         return [...cleanPrev, ...processedRows, createEmptyRow()];
     });
-    alert(`تمت محاكاة استخراج ${processedRows.length} أصناف تجريبية بنجاح!`);
+    notify(`تمت محاكاة استخراج ${processedRows.length} أصناف تجريبية بنجاح!`, "info");
   };
 
   const handleProcessNewItems = async (action: 'add_only' | 'add_and_label') => {
@@ -648,7 +648,7 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
           try {
               await Promise.all(selectedItems.map(p => db.products.upsert(p)));
               if (onNewProductsAdded) await onNewProductsAdded();
-          } catch (e) { alert("خطأ في قاعدة البيانات"); return; }
+          } catch (e) { notify("خطأ في قاعدة البيانات", "error"); return; }
 
           if (action === 'add_and_label') {
               try {
@@ -666,10 +666,10 @@ export const ProductListBuilder: React.FC<ProductListBuilderProps> = ({ products
                       }
                   };
                   await db.tagLists.upsert(tagList);
-                  alert("تمت إضافة المنتجات وإنشاء قائمة ملصقات");
-              } catch (e) { alert("فشل إنشاء الملصقات"); }
+                  notify("تمت إضافة المنتجات وإنشاء قائمة ملصقات", "success");
+              } catch (e) { notify("فشل إنشاء الملصقات", "error"); }
           } else {
-              alert(`تمت إضافة ${selectedItems.length} منتج جديد`);
+              notify(`تمت إضافة ${selectedItems.length} منتج جديد`, "success");
           }
       }
       setRows(prev => {

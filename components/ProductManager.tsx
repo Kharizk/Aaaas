@@ -4,6 +4,7 @@ import { db } from '../services/supabase';
 import { parseExcelFile, exportDataToExcel } from '../services/excelService';
 import { EmptyState } from './UIStates';
 import { BarcodePrinter } from './BarcodePrinter';
+import { useNotification, useConfirm } from './Notifications';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Package, Search, 
   Barcode, LayoutGrid, DollarSign, FileSpreadsheet, Ruler, 
@@ -19,6 +20,8 @@ interface ProductManagerProps {
 }
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ products, setProducts, units, setUnits, currentUser }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -101,7 +104,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       
       const discountNum = parseFloat(discountAmount);
       if (isNaN(discountNum) || discountNum <= 0 || discountNum >= 100) {
-          alert('نسبة غير صحيحة');
+          notify('نسبة الخصم غير صحيحة', 'warning');
           return;
       }
       
@@ -117,7 +120,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
       
       await db.products.upsert(updatedProduct);
       setProducts(prev => prev.map(prod => prod.id === p.id ? updatedProduct : prod));
-      alert(`تم تطبيق الخصم بنجاح. السعر الجديد: ${newPrice} SAR`);
+      notify(`تم تطبيق الخصم بنجاح. السعر الجديد: ${newPrice}`, 'success');
       setShowDiscountModal(false);
       setDiscountAmount('');
       setSelectedProductForDiscount(null);
@@ -126,7 +129,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const handleStockAdjustment = async () => {
       if (!editingProduct || !stockAdjustmentQty) return;
       const qty = parseInt(stockAdjustmentQty);
-      if (isNaN(qty) || qty <= 0) return alert('الكمية غير صحيحة');
+      if (isNaN(qty) || qty <= 0) {
+          notify('يرجى إدخال كمية صحيحة أكبر من صفر', 'warning');
+          return;
+      }
 
       const currentStock = editingProduct.stock || 0;
       const newStock = stockAdjustmentType === 'add' ? currentStock + qty : currentStock - qty;
@@ -147,9 +153,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
           setShowStockModal(false);
           setStockAdjustmentQty('');
           setStockAdjustmentReason('');
-          alert('تم تعديل المخزون بنجاح');
+          notify('تم تعديل المخزون بنجاح', 'success');
       } catch (e) {
-          alert('حدث خطأ');
+          notify('حدث خطأ أثناء تعديل المخزون', 'error');
       }
   };
 
@@ -175,7 +181,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   };
 
   const handleSave = async () => {
-    if (!code || !name || !unitId) { alert("البيانات الأساسية مطلوبة"); return; }
+    if (!code || !name || !unitId) { notify('البيانات الأساسية (الكود والاسم والوحدة) مطلوبة', 'warning'); return; }
     setIsSaving(true);
     try {
         const productData: Product = {
@@ -193,18 +199,26 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
         if (editingProduct) setProducts(prev => prev.map(p => p.id === editingProduct.id ? productData : p));
         else setProducts(prev => [...prev, productData]);
         setIsModalOpen(false);
-    } catch (e) { alert("فشل الحفظ"); }
+        notify(editingProduct ? 'تم تحديث بيانات المنتج بنجاح' : 'تم إضافة المنتج بنجاح', 'success');
+    } catch (e) { notify('فشل حفظ بيانات المنتج', 'error'); }
     setIsSaving(false);
   };
 
   const handleBulkDelete = async () => {
-      if (!confirm(`حذف ${selectedIds.size} عنصر؟`)) return;
+      const ok = await confirm({
+          title: 'حذف المنتجات المحددة',
+          message: `هل أنت متأكد من حذف ${selectedIds.size} منتج نهائياً؟`,
+          confirmLabel: 'حذف النهائي',
+          variant: 'danger'
+      });
+      if (!ok) return;
       try {
           const ids = Array.from(selectedIds);
           await Promise.all(ids.map((id: string) => db.products.delete(id)));
           setProducts(prev => prev.filter(p => !selectedIds.has(p.id)));
           setSelectedIds(new Set());
-      } catch (e) { alert("خطأ في الحذف"); }
+          notify(`تم حذف ${ids.length} منتج بنجاح`, 'info');
+      } catch (e) { notify('حدث خطأ أثناء الحذف', 'error'); }
   };
 
   const handleExport = () => {
@@ -217,28 +231,31 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
 
       try {
           const data = await parseExcelFile(file);
-          // Basic validation and mapping
           const newProducts: Product[] = data.map((row: any) => ({
               id: crypto.randomUUID(),
               name: row['Name'] || row['name'] || row['الاسم'],
               code: (row['Code'] || row['code'] || row['الكود'] || Math.floor(Math.random() * 1000000)).toString(),
               price: (row['Price'] || row['price'] || row['السعر'] || '0').toString(),
               costPrice: (row['Cost'] || row['cost'] || row['التكلفة'] || '0').toString(),
-              unitId: 'unit_piece', // Default unit
+              unitId: 'unit_piece',
               stock: Number(row['Stock'] || row['stock'] || row['المخزون'] || 0),
               category: row['Category'] || row['category'] || row['التصنيف'] || 'General',
-              supplierId: undefined // Could map if supplier name matches ID, but safer to skip for now
-          })).filter((p: Product) => p.name); // Filter out empty rows
+              supplierId: undefined
+          })).filter((p: Product) => p.name);
 
           if (newProducts.length === 0) throw new Error('No valid data found');
 
-          if (confirm(`تم العثور على ${newProducts.length} منتج. هل تريد استيرادها؟`)) {
-              // Batch insert
+          const ok = await confirm({
+              title: 'استيراد من Excel',
+              message: `تم العثور على ${newProducts.length} منتج في الملف. هل تريد استيرادها الآن؟`,
+              confirmLabel: 'استيراد المنتجات',
+              variant: 'primary'
+          });
+          if (ok) {
               await Promise.all(newProducts.map(p => db.products.upsert(p)));
               setProducts(prev => [...prev, ...newProducts]);
-              alert('تم الاستيراد بنجاح');
+              notify(`تم استيراد ${newProducts.length} منتج بنجاح`, 'success');
               
-               // Log Activity
               await db.activityLogs.add({
                   action: 'استيراد منتجات',
                   details: `تم استيراد ${newProducts.length} منتج من ملف Excel`,
@@ -247,7 +264,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
               });
           }
       } catch (err) {
-          alert('فشل قراءة الملف. تأكد من الصيغة.');
+          notify('فشل قراءة الملف. تأكد من صحة الصيغة والأعمدة.', 'error');
           console.error(err);
       }
       if (excelInputRef.current) excelInputRef.current.value = '';

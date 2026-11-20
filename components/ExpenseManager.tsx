@@ -4,8 +4,11 @@ import { Expense, ExpenseCategory } from '../types';
 import { db } from '../services/supabase';
 import { Plus, Trash2, Save, TrendingDown, Calendar, Tag, Settings, FileSpreadsheet, X } from 'lucide-react';
 import { exportDataToExcel } from '../services/excelService';
+import { useNotification, useConfirm } from './Notifications';
 
 export const ExpenseManager: React.FC = () => {
+    const { notify } = useNotification();
+    const { confirm } = useConfirm();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
@@ -46,7 +49,7 @@ export const ExpenseManager: React.FC = () => {
     const handleAddCategory = async () => {
         if (!newCategory) return;
         if (categories.find(c => c.name === newCategory)) {
-            alert('التصنيف موجود مسبقاً');
+            notify('التصنيف موجود مسبقاً', 'warning');
             return;
         }
         
@@ -54,10 +57,17 @@ export const ExpenseManager: React.FC = () => {
         await db.expenseCategories.upsert(cat);
         setCategories(prev => [...prev, cat]);
         setNewCategory('');
+        notify('تم إضافة التصنيف بنجاح', 'success');
     };
 
     const handleRemoveCategory = async (catId: string, catName: string) => {
-        if (confirm(`هل أنت متأكد من حذف تصنيف "${catName}"؟`)) {
+        const ok = await confirm({
+            title: 'حذف التصنيف',
+            message: `هل أنت متأكد من حذف تصنيف "${catName}"؟`,
+            confirmLabel: 'حذف',
+            variant: 'danger'
+        });
+        if (ok) {
             await db.expenseCategories.delete(catId);
             const updatedCats = categories.filter(c => c.id !== catId);
             setCategories(updatedCats);
@@ -66,12 +76,13 @@ export const ExpenseManager: React.FC = () => {
             } else if (category === catName) {
                 setCategory('');
             }
+            notify('تم حذف التصنيف', 'info');
         }
     };
 
     const handleSave = async () => {
         if(!title || !amount || !category) {
-            alert('البيانات ناقصة');
+            notify('يرجى إدخال البند والمبلغ والتصنيف', 'warning');
             return;
         }
         const newItem: Expense = {
@@ -85,13 +96,20 @@ export const ExpenseManager: React.FC = () => {
         setExpenses(prev => [newItem, ...prev]);
         setTitle(''); 
         setAmount('');
-        // Keep the category and date as is for easier entry of multiple items
+        notify('تم تسجيل المصروف بنجاح', 'success');
     };
 
     const handleDelete = async (id: string) => {
-        if(confirm('حذف؟')) {
+        const ok = await confirm({
+            title: 'حذف المصروف',
+            message: 'هل أنت متأكد من حذف هذا المصروف؟',
+            confirmLabel: 'حذف',
+            variant: 'danger'
+        });
+        if(ok) {
             await db.expenses.delete(id);
             setExpenses(prev => prev.filter(x => x.id !== id));
+            notify('تم حذف المصروف', 'info');
         }
     };
 

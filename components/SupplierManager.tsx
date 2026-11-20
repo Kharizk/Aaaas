@@ -3,8 +3,11 @@ import { Supplier, SupplierTransaction } from '../types';
 import { db } from '../services/supabase';
 import { Plus, Trash2, Edit2, Search, Truck, Package, Save, X, Phone, Mail, MapPin, FileText, DollarSign, ArrowUpRight, ArrowDownLeft, Clock, FileSpreadsheet } from 'lucide-react';
 import { exportDataToExcel } from '../services/excelService';
+import { useNotification, useConfirm } from './Notifications';
 
 export const SupplierManager: React.FC = () => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [transactions, setTransactions] = useState<SupplierTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +43,7 @@ export const SupplierManager: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.name) return alert('اسم المورد مطلوب');
+    if (!formData.name) { notify('اسم المورد مطلوب', 'warning'); return; }
     
     try {
       const supplier: Supplier = {
@@ -59,18 +62,26 @@ export const SupplierManager: React.FC = () => {
       setIsModalOpen(false);
       setEditingSupplier(null);
       setFormData({});
+      notify(editingSupplier ? 'تم تحديث بيانات المورد' : 'تم إضافة المورد بنجاح', 'success');
     } catch (e) {
-      alert('حدث خطأ أثناء الحفظ');
+      notify('حدث خطأ أثناء حفظ بيانات المورد', 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا المورد؟')) return;
+    const ok = await confirm({
+      title: 'حذف المورد',
+      message: 'هل أنت متأكد من حذف هذا المورد؟',
+      confirmLabel: 'حذف',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await db.suppliers.delete(id);
       setSuppliers(prev => prev.filter(s => s.id !== id));
+      notify('تم حذف المورد', 'info');
     } catch (e) {
-      alert('فشل الحذف');
+      notify('فشل حذف المورد', 'error');
     }
   };
 
@@ -115,8 +126,9 @@ export const SupplierManager: React.FC = () => {
           
           setIsTxModalOpen(false);
           setTxFormData({ type: 'bill', amount: 0 });
+          notify('تم تسجيل العملية المالية للمورد', 'success');
       } catch (e) {
-          alert('فشل حفظ العملية');
+          notify('فشل حفظ العملية', 'error');
       }
   };
 

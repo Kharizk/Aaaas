@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Product } from '../types';
 import Barcode from 'react-barcode';
+import { useNotification } from './Notifications';
 import { Printer, X, CheckSquare, Square } from 'lucide-react';
 
 interface BarcodePrinterProps {
@@ -10,6 +11,7 @@ interface BarcodePrinterProps {
 }
 
 export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClose, isClearance }) => {
+  const { notify } = useNotification();
   const printRef = useRef<HTMLDivElement>(null);
   
   // Track which items are selected by index
@@ -31,13 +33,13 @@ export const BarcodePrinter: React.FC<BarcodePrinterProps> = ({ products, onClos
     if (!printContent) return;
 
     if (selectedCount === 0) {
-      alert('يرجى تحديد ملصق واحد على الأقل للطباعة.');
+      notify('يرجى تحديد ملصق واحد على الأقل للطباعة.', 'warning');
       return;
     }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Please allow popups to print barcodes.');
+      notify('يرجى السماح بالنوافذ المنبثقة لطباعة ملصقات الباركود.', 'warning');
       return;
     }
 

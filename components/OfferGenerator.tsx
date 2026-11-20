@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Product, Unit, OfferTag, OfferTemplate, SavedOfferList } from '../types';
 import { db } from '../services/supabase';
 import { useSystemSettings } from './SystemSettingsContext';
+import { useNotification, useConfirm } from './Notifications';
 import { CurrencySymbolRenderer } from './CurrencySymbolRenderer';
 import { Saudi95Logo } from './Saudi95Logo';
 import { toPng } from 'html-to-image';
@@ -30,6 +31,8 @@ const generateId = () => {
 
 export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units }) => {
   const { settings } = useSystemSettings();
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [selectedTags, setSelectedTags] = useState<OfferTag[]>([]);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const [changingTagId, setChangingTagId] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
   };
 
   const handleSaveProject = async () => {
-    if (!listName.trim()) { alert("يرجى تسمية المشروع"); return; }
+    if (!listName.trim()) { notify("يرجى تسمية المشروع", "warning"); return; }
     setIsSaving(true);
     try {
       const listData: SavedOfferList = { 
@@ -116,13 +119,13 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       await db.offerLists.upsert(listData);
       setActiveListId(listData.id);
       fetchSavedLists();
-      alert("تم حفظ المشروع بنجاح");
-    } catch (e) { alert("فشل الحفظ"); }
+      notify("تم حفظ المشروع بنجاح", "success");
+    } catch (e) { notify("فشل الحفظ", "error"); }
     finally { setIsSaving(false); }
   };
 
   const handleSaveAsCopy = async () => {
-    if (!listName.trim()) { alert("يرجى تسمية المشروع"); return; }
+    if (!listName.trim()) { notify("يرجى تسمية المشروع", "warning"); return; }
     setIsSaving(true);
     try {
       const newId = generateId();
@@ -137,8 +140,8 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       setActiveListId(newId);
       setListName(listData.name);
       fetchSavedLists();
-      alert("تم حفظ نسخة جديدة بنجاح");
-    } catch (e) { alert("فشل الحفظ"); }
+      notify("تم حفظ نسخة جديدة بنجاح", "success");
+    } catch (e) { notify("فشل الحفظ", "error"); }
     finally { setIsSaving(false); }
   };
 
@@ -154,9 +157,9 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
       };
       await db.offerLists.upsert(duplicatedList);
       fetchSavedLists();
-      alert("تم نسخ المشروع بنجاح");
+      notify("تم نسخ المشروع بنجاح", "success");
     } catch (err) {
-      alert("فشل نسخ المشروع");
+      notify("فشل نسخ المشروع", "error");
     } finally {
       setIsSaving(false);
     }
@@ -164,7 +167,13 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
   const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('هل أنت متأكد من حذف هذا المشروع؟')) return;
+    const ok = await confirm({
+      title: 'حذف المشروع',
+      message: 'هل أنت متأكد من حذف هذا المشروع؟',
+      confirmLabel: 'حذف',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await db.offerLists.delete(id);
       if (activeListId === id) {
@@ -174,8 +183,9 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         setActiveTagId(null);
       }
       fetchSavedLists();
+      notify("تم حذف المشروع بنجاح", "success");
     } catch (err) {
-      alert("فشل حذف المشروع");
+      notify("فشل حذف المشروع", "error");
     }
   };
 
@@ -251,7 +261,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
     }
 
     if (selectedTags.length >= labelsPerPage) { 
-      alert(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`); 
+      notify(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`, "warning"); 
       return; 
     }
 
@@ -321,7 +331,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
 
   const handleDuplicate = (tag: OfferTag) => {
     if (selectedTags.length >= labelsPerPage) {
-      alert(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`);
+      notify(`الحد الأقصى للملصقات حالياً هو (${labelsPerPage}).`, "warning");
       return;
     }
     const newTag = { ...tag, id: generateId() };
@@ -340,7 +350,7 @@ export const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products, units 
         link.click();
       } catch (err) {
         console.error('Failed to save image', err);
-        alert('حدث خطأ أثناء حفظ الصورة');
+        notify('حدث خطأ أثناء حفظ الصورة', 'error');
       }
     }
   };

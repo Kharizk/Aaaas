@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Settlement, User, DailySales, Expense, POSPoint, Network } from '../types';
 import { db } from '../services/supabase';
 import { ReportLayout } from './ReportLayout';
+import { useNotification, useConfirm } from './Notifications';
 import { 
   Wallet, TrendingUp, AlertTriangle, CheckCircle2, History, 
   ArrowRight, Coins, Banknote, Calendar, Receipt, 
@@ -15,6 +16,8 @@ interface SettlementManagerProps {
 }
 
 export const SettlementManager: React.FC<SettlementManagerProps> = ({ currentUser }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   // --- Data ---
   const [sales, setSales] = useState<DailySales[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -115,11 +118,17 @@ export const SettlementManager: React.FC<SettlementManagerProps> = ({ currentUse
   }, [actualCash, theoreticalCash]);
 
   const handleCloseDay = async () => {
-      if (!selectedPosId) return alert("يرجى اختيار نقطة البيع");
-      if (!actualCash) return alert("يرجى إدخال الجرد الفعلي");
-      if (variance !== 0 && !notes) return alert("يوجد فرق في الصندوق. يرجى كتابة ملاحظة تبريرية.");
+      if (!selectedPosId) { notify("يرجى اختيار نقطة البيع", "warning"); return; }
+      if (!actualCash) { notify("يرجى إدخال الجرد الفعلي", "warning"); return; }
+      if (variance !== 0 && !notes) { notify("يوجد فرق في الصندوق. يرجى كتابة ملاحظة تبريرية.", "warning"); return; }
       
-      if (!confirm("هل أنت متأكد من إغلاق الوردية لهذه النقطة؟")) return;
+      const ok = await confirm({
+        title: 'إغلاق الوردية',
+        message: 'هل أنت متأكد من إغلاق الوردية لهذه النقطة؟',
+        confirmLabel: 'إغلاق الوردية',
+        variant: 'warning'
+      });
+      if (!ok) return;
 
       setIsSaving(true);
       try {
@@ -156,8 +165,8 @@ export const SettlementManager: React.FC<SettlementManagerProps> = ({ currentUse
           // 2. Mark sales as Closed
           await fetchData();
           setMode('list');
-          alert("تم إغلاق الوردية بنجاح");
-      } catch (e) { alert("خطأ في الإغلاق"); }
+          notify("تم إغلاق الوردية بنجاح", "success");
+      } catch (e) { notify("خطأ في الإغلاق", "error"); }
       finally { setIsSaving(false); }
   };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Product, DailySales, ReturnRecord, ReturnItem, User } from '../types';
 import { db } from '../services/supabase';
 import { useLanguage } from './LanguageContext';
+import { useNotification } from './Notifications';
 import { Search, RotateCcw, Package, AlertTriangle, Check, Calendar, FileText, User as UserIcon } from 'lucide-react';
 
 interface ReturnsManagerProps {
@@ -12,6 +13,7 @@ interface ReturnsManagerProps {
 
 export const ReturnsManager: React.FC<ReturnsManagerProps> = ({ products, currentUser, sales }) => {
     const { t, language } = useLanguage();
+    const { notify } = useNotification();
     const [returns, setReturns] = useState<ReturnRecord[]>([]);
     const [searchReceipt, setSearchReceipt] = useState('');
     const [foundSale, setFoundSale] = useState<DailySales | null>(null);
@@ -45,7 +47,7 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({ products, curren
             setReturnItems({});
         } else {
             setFoundSale(null);
-            alert(t('returns.no_receipt'));
+            notify(t('returns.no_receipt'), 'warning');
         }
     };
 
@@ -93,7 +95,7 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({ products, curren
         });
 
         if (itemsToReturn.length === 0) {
-            alert(t('returns.select_items'));
+            notify(t('returns.select_items'), 'warning');
             return;
         }
 
@@ -133,7 +135,7 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({ products, curren
                 type: 'warning'
             });
 
-            alert(t('returns.success'));
+            notify(t('returns.success'), 'success');
             setFoundSale(null);
             setSearchReceipt('');
             setReturnItems({});
@@ -141,7 +143,7 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({ products, curren
             setActiveTab('history');
         } catch (error) {
             console.error(error);
-            alert(t('returns.error'));
+            notify(t('returns.error'), 'error');
         } finally {
             setIsLoading(false);
         }

@@ -3,6 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { DailySales, Branch } from '../types';
 import { db } from '../services/supabase';
 import { generateSalesTemplate } from '../services/excelService';
+import { useNotification, useConfirm } from './Notifications';
 import { Save, DollarSign, FileSpreadsheet, Trash2, Loader2, Edit2, Download, Filter, RefreshCcw } from 'lucide-react';
 
 interface SalesRecorderProps {
@@ -12,6 +13,8 @@ interface SalesRecorderProps {
 }
 
 export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, setSales }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [branchId, setBranchId] = useState('');
   const [amount, setAmount] = useState('');
@@ -55,7 +58,7 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
   }), [filteredSales]);
 
   const handleSave = async () => {
-    if (!date || !amount || !branchId) { alert("البيانات ناقصة"); return; }
+    if (!date || !amount || !branchId) { notify('يرجى تعبئة التاريخ والمبلغ والفرع', 'warning'); return; }
     setIsSaving(true);
     try {
       let finalAmount = parseFloat(amount);
@@ -67,7 +70,6 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
         date, 
         amount: finalAmount, 
         notes: notes.trim(),
-        // Default values for new fields required by DailySales interface
         totalAmount: Math.abs(finalAmount),
         paidAmount: Math.abs(finalAmount),
         remainingAmount: 0,
@@ -79,7 +81,8 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
       await db.dailySales.upsert(saleData);
       setSales(prev => editingId ? prev.map(s => s.id === editingId ? saleData : s) : [saleData, ...prev]);
       setAmount(''); setNotes(''); setEditingId(null); setTxnType('sale');
-    } catch (error) { alert("خطأ في الحفظ"); }
+      notify(editingId ? 'تم تحديث السجل بنجاح' : 'تم تسجيل العملية بنجاح', 'success');
+    } catch (error) { notify('خطأ في حفظ العملية', 'error'); }
     finally { setIsSaving(false); }
   };
 
@@ -93,11 +96,18 @@ export const SalesRecorder: React.FC<SalesRecorderProps> = ({ branches, sales, s
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('حذف السجل؟')) {
+    const ok = await confirm({
+      title: 'حذف سجل المبيعات',
+      message: 'هل أنت متأكد من حذف هذا السجل؟',
+      confirmLabel: 'حذف',
+      variant: 'danger'
+    });
+    if (ok) {
       try {
         await db.dailySales.delete(id);
         setSales(prev => prev.filter(s => s.id !== id));
-      } catch (e) { alert("فشل الحذف"); }
+        notify('تم حذف السجل', 'info');
+      } catch (e) { notify('فشل حذف السجل', 'error'); }
     }
   };
 

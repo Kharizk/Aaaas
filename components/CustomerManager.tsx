@@ -4,11 +4,12 @@ import { Customer, DailySales } from '../types';
 import { db } from '../services/supabase';
 import { Plus, Search, Trash2, Edit, User, Phone, FileText, Wallet, CreditCard, CheckCircle2, XCircle, History, Star, Crown, Shield, FileSpreadsheet } from 'lucide-react';
 import { exportDataToExcel } from '../services/excelService';
-import { useNotification } from './Notifications';
+import { useNotification, useConfirm } from './Notifications';
 import { CustomerStatement } from './CustomerStatement';
 
 export const CustomerManager: React.FC = () => {
     const { notify } = useNotification();
+    const { confirm } = useConfirm();
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -77,7 +78,13 @@ export const CustomerManager: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (confirm('هل أنت متأكد من حذف هذا العميل؟')) {
+        const ok = await confirm({
+            title: 'حذف العميل',
+            message: 'هل أنت متأكد من حذف هذا العميل؟',
+            confirmLabel: 'حذف',
+            variant: 'danger'
+        });
+        if (ok) {
             try {
                 await db.customers.delete(id);
                 setCustomers(prev => prev.filter(c => c.id !== id));

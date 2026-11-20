@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Product, Unit, Branch, DailySales, User } from '../types';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 
 export interface DesktopAppDef {
   id: string;
@@ -142,6 +143,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onToggleDesktopPin,
   onVfsChanged,
 }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [currentFolder, setCurrentFolder] = useState<string>(initialFolder);
   const [history, setHistory] = useState<string[]>([initialFolder]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
@@ -932,7 +935,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert('حجم الملف يتجاوز 2 ميجابايت للتخزين المحلي السريع.');
+      notify('حجم الملف يتجاوز 2 ميجابايت للتخزين المحلي السريع.', 'warning');
       e.target.value = '';
       return;
     }
@@ -1010,7 +1013,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
     }
     if (entry.vfsNode) {
       if (entry.vfsNode.isDeleted) {
-        alert('استعد الملف من سلة المحذوفات أولاً لفتحه.');
+        notify('استعد الملف من سلة المحذوفات أولاً لفتحه.', 'warning');
         return;
       }
       if (entry.vfsNode.kind === 'note') {
@@ -1027,9 +1030,15 @@ export const FileManager: React.FC<FileManagerProps> = ({
     }
   };
 
-  const handleDeleteVfs = (node: VfsNode, permanent = false) => {
+  const handleDeleteVfs = async (node: VfsNode, permanent = false) => {
     if (permanent) {
-      if (!confirm(`حذف "${node.name}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+      const ok = await confirm({
+        title: 'حذف نهائي',
+        message: `حذف "${node.name}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`,
+        confirmLabel: 'حذف نهائي',
+        variant: 'danger'
+      });
+      if (!ok) return;
       persistVfs(vfsNodes.filter(n => n.id !== node.id && n.parentId !== node.id));
     } else {
       persistVfs(
@@ -1053,10 +1062,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
     );
   };
 
-  const handleEmptyRecycleBin = () => {
+  const handleEmptyRecycleBin = async () => {
     const deletedCount = vfsNodes.filter(n => n.isDeleted).length;
     if (deletedCount === 0) return;
-    if (!confirm(`إفراغ سلة المحذوفات وحذف ${deletedCount} عنصر نهائياً؟`)) return;
+    const ok = await confirm({
+      title: 'إفراغ سلة المحذوفات',
+      message: `إفراغ سلة المحذوفات وحذف ${deletedCount} عنصر نهائياً؟`,
+      confirmLabel: 'إفراغ السلة',
+      variant: 'danger'
+    });
+    if (!ok) return;
     persistVfs(vfsNodes.filter(n => !n.isDeleted));
   };
 

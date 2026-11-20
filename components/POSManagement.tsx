@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { POSPoint, Cashier, Branch, User, Settlement, Network } from '../types';
 import { db } from '../services/supabase';
+import { useNotification, useConfirm } from './Notifications';
 import { 
   Plus, Edit2, Trash2, Save, X, Loader2, Monitor, 
   Users, Building2, Search, CheckCircle2, ShieldCheck,
@@ -15,6 +16,8 @@ interface POSManagementProps {
 }
 
 export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
+  const { notify } = useNotification();
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState<'points' | 'cashiers' | 'networks'>('points');
   const [posPoints, setPosPoints] = useState<POSPoint[]>([]);
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
@@ -71,8 +74,8 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) return alert("يرجى إدخال الاسم");
-    if (activeTab === 'points' && !branchId) return alert("يرجى ربط نقطة البيع بفرع");
+    if (!name.trim()) { notify('يرجى إدخال الاسم', 'warning'); return; }
+    if (activeTab === 'points' && !branchId) { notify('يرجى ربط نقطة البيع بفرع', 'warning'); return; }
 
     setIsSaving(true);
     try {
@@ -84,26 +87,34 @@ export const POSManagement: React.FC<POSManagementProps> = ({ branches }) => {
         const data: Cashier = { id, name: name.trim() };
         await db.cashiers.upsert(data);
       } else {
-        const data: Network = { id, name: name.trim(), branchId }; // Optional branch link for networks
+        const data: Network = { id, name: name.trim(), branchId };
         await db.networks.upsert(data);
       }
       await fetchData();
       setIsModalOpen(false);
+      notify('تم الحفظ بنجاح', 'success');
     } catch (e) {
-      alert("حدث خطأ أثناء الحفظ");
+      notify('حدث خطأ أثناء الحفظ', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من الحذف؟')) return;
+    const ok = await confirm({
+      title: 'تأكيد الحذف',
+      message: 'هل أنت متأكد من حذف هذا السجل نهائياً؟',
+      confirmLabel: 'حذف',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       if (activeTab === 'points') await db.posPoints.delete(id);
       else if (activeTab === 'cashiers') await db.cashiers.delete(id);
       else await db.networks.delete(id);
       await fetchData();
-    } catch (e) { alert("فشل الحذف"); }
+      notify('تم الحذف بنجاح', 'info');
+    } catch (e) { notify('فشل الحذف', 'error'); }
   };
 
   const fmt = (val: number) => val.toLocaleString('ar-SA', { minimumFractionDigits: 2 });

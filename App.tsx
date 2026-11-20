@@ -31,7 +31,7 @@ import { UserManager } from './components/UserManager';
 import { UserProfile } from './components/UserProfile';
 import { ActivityLogViewer } from './components/ActivityLog';
 import { InstallApp } from './components/InstallApp';
-import { NotificationProvider } from './components/Notifications';
+import { NotificationProvider, useNotification } from './components/Notifications';
 import { SystemSettingsProvider, useSystemSettings } from './components/SystemSettingsContext';
 import { DesktopWindow, WindowBounds, WindowSnapPreset, computeSnapBounds } from './components/DesktopWindow';
 import { FileManager, DesktopAppDef, VfsNode, loadVfsNodes } from './components/FileManager';
@@ -183,6 +183,7 @@ const DENSE_MAXIMIZED_APPS = new Set([
 const AppContent: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const { settings, updateSettings } = useSystemSettings();
+  const { notify } = useNotification();
 
   const [showCalculator, setShowCalculator] = useState(false);
   const [showStartMenu, setShowStartMenu] = useState(false);
@@ -828,7 +829,7 @@ const AppContent: React.FC = () => {
             ]).catch(() => null);
             if (catalog) setViewCatalogData(catalog as CatalogProject);
             else {
-              alert('المجلة غير موجودة');
+              notify('المجلة غير موجودة أو تم حذفها', 'warning');
               setViewCatalogId(null);
             }
           } catch {
@@ -902,7 +903,7 @@ const AppContent: React.FC = () => {
       const user = await db.auth.login(username);
       if (user && user.password === pass) {
         if (user.role !== 'admin' && !user.isActive) {
-          alert('الحساب غير نشط');
+          notify('هذا الحساب غير نشط حالياً. تواصل مع المدير.', 'warning');
           return false;
         }
         const safeUser: User = {
@@ -946,7 +947,7 @@ const AppContent: React.FC = () => {
       const user = await db.auth.loginWithGoogle();
       if (user) {
         if (user.role !== 'admin' && !user.isActive) {
-          alert('الحساب غير نشط');
+          notify('هذا الحساب غير نشط حالياً. تواصل مع المدير.', 'warning');
           return { success: false, error: 'الحساب غير نشط' };
         }
         const safeUser: User = {
@@ -1036,7 +1037,7 @@ const AppContent: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
-      alert('يرجى اختيار صورة أقل من 3 ميجابايت');
+      notify('يرجى اختيار صورة أقل من 3 ميجابايت', 'warning');
       return;
     }
     const reader = new FileReader();
@@ -1636,7 +1637,7 @@ const AppContent: React.FC = () => {
           onMove={(x, y) => handleMoveWindow(win.id, x, y)}
           onResize={(bounds) => handleResizeWindow(win.id, bounds)}
         >
-          <div className={win.id === 'file_manager' || win.id === 'price_groups' ? 'h-full print:h-auto' : 'p-4 md:p-6 min-h-full print:p-0'}>
+          <div className={win.id === 'file_manager' || win.id === 'price_groups' || win.id === 'catalog' ? 'h-full print:h-auto' : 'p-4 md:p-6 min-h-full print:p-0'}>
             {renderWindowAppContent(win.id)}
           </div>
         </DesktopWindow>
