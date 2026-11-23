@@ -717,6 +717,8 @@ export interface FrozenChickenBoardConfig {
   titleSize: number;
   itemSize: number;
   priceSize: number;
+  printOrientation?: 'auto' | 'portrait' | 'landscape';
+  printSinglePage?: boolean;
 }
 
 export interface FrozenChickenBoard {

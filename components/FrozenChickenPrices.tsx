@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FrozenChickenBoard,
@@ -26,6 +26,8 @@ import {
   Copy,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   EyeOff,
   SlidersHorizontal,
@@ -38,6 +40,8 @@ import {
   RotateCcw,
   FilePlus,
   Clock,
+  Palette,
+  Edit3,
 } from 'lucide-react';
 
 interface FrozenChickenPricesProps {
@@ -171,6 +175,8 @@ const createStarterBoard = (): FrozenChickenBoard => ({
     titleSize: 18,
     itemSize: 14,
     priceSize: 18,
+    printOrientation: 'auto',
+    printSinglePage: true,
   },
   companies: [
     {
@@ -269,7 +275,11 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
   const [isSaving, setIsSaving] = useState(false);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [showEditor, setShowEditor] = useState(true);
+  const [inlineEditEnabled, setInlineEditEnabled] = useState(true);
+  const [isExportingPng, setIsExportingPng] = useState(false);
+  const [openColorCompanyId, setOpenColorCompanyId] = useState<string | null>(null);
+  const [openQuickWeightCompanyId, setOpenQuickWeightCompanyId] = useState<string | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
   const [editorTab, setEditorTab] = useState<'companies' | 'design'>('companies');
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [showPresetsModal, setShowPresetsModal] = useState(false);
@@ -280,10 +290,17 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
   const [liveTime, setLiveTime] = useState(() => new Date());
 
   const boardCanvasRef = useRef<HTMLDivElement>(null);
+  const printMeasureRef = useRef<HTMLDivElement>(null);
   const logoUploadRef = useRef<HTMLInputElement>(null);
+  const canvasLogoUploadRef = useRef<HTMLInputElement>(null);
+  const logoTargetCompanyIdRef = useRef<string | null>(null);
   const [printRoot] = useState(() =>
     typeof document !== 'undefined' ? document.getElementById('print-container') : null
   );
+  const [printFit, setPrintFit] = useState<{ scale: number; scaledHeightPx: number | null }>({
+    scale: 1,
+    scaledHeightPx: null,
+  });
 
   // Load saved boards on mount
   useEffect(() => {
@@ -363,6 +380,70 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
   }, [products, productSearch]);
 
   const theme = THEME_STYLES[board.config.theme] || THEME_STYLES.frost;
+
+  const printSinglePage = board.config.printSinglePage !== false;
+  const effectivePrintOrientation: 'portrait' | 'landscape' = useMemo(() => {
+    const pref = board.config.printOrientation || 'auto';
+    if (pref === 'portrait' || pref === 'landscape') return pref;
+    return board.config.columns >= 4 ? 'landscape' : 'portrait';
+  }, [board.config.printOrientation, board.config.columns]);
+
+  const printTargetBox = useMemo(
+    () =>
+      effectivePrintOrientation === 'landscape'
+        ? { pageW: 1060, pageH: 710 }
+        : { pageW: 748, pageH: 1030 },
+    [effectivePrintOrientation]
+  );
+
+  const printBaseMeasureWidth = useMemo(() => {
+    const minColsW =
+      board.config.columns === 4 ? 1140 : board.config.columns === 3 ? 900 : 748;
+    return Math.max(printTargetBox.pageW, minColsW);
+  }, [board.config.columns, printTargetBox.pageW]);
+
+  const computePrintFitLayout = () => {
+    const el = printMeasureRef.current;
+    if (!el) return null;
+    const measuredH = el.scrollHeight || 0;
+    if (measuredH <= 0) return null;
+    const widthScale = printTargetBox.pageW / printBaseMeasureWidth;
+    const heightScale = printSinglePage ? printTargetBox.pageH / measuredH : 1;
+    const scale = Math.min(1, widthScale, heightScale);
+    const scaledHeightPx = printSinglePage
+      ? Math.min(printTargetBox.pageH, Math.ceil(measuredH * scale) + 2)
+      : null;
+    return { scale, scaledHeightPx };
+  };
+
+  useLayoutEffect(() => {
+    const next = computePrintFitLayout();
+    if (!next) return;
+    setPrintFit(prev => {
+      if (
+        Math.abs(prev.scale - next.scale) <= 0.002 &&
+        prev.scaledHeightPx === next.scaledHeightPx
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [
+    board,
+    companySearch,
+    effectivePrintOrientation,
+    printSinglePage,
+    printTargetBox,
+    printBaseMeasureWidth,
+  ]);
+
+  const handlePrint = () => {
+    const next = computePrintFitLayout();
+    if (next) {
+      setPrintFit(next);
+    }
+    window.setTimeout(() => window.print(), 60);
+  };
 
   // --- CRUD Handlers ---
   const handleSaveBoard = async (asCopy = false) => {
@@ -477,7 +558,6 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
     setSelectedCompanyId(newComp.id);
     setShowPresetsModal(false);
     setEditorTab('companies');
-    setShowEditor(true);
   };
 
   const updateCompany = (companyId: string, patch: Partial<FrozenChickenCompany>) => {
@@ -607,9 +687,23 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
     e.target.value = '';
   };
 
+  const handleUploadCanvasCompanyLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const targetId = logoTargetCompanyIdRef.current;
+    if (!file || !targetId) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      updateCompany(targetId, { logoUrl: ev.target?.result as string });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleExportPng = async () => {
     if (!boardCanvasRef.current) return;
+    setIsExportingPng(true);
     try {
+      await new Promise(r => setTimeout(r, 80));
       const dataUrl = await toPng(boardCanvasRef.current, {
         quality: 1,
         pixelRatio: 2,
@@ -624,6 +718,8 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
     } catch (e) {
       console.error('Export PNG failed:', e);
       notify('حدث خطأ أثناء تصدير الصورة', 'error');
+    } finally {
+      setIsExportingPng(false);
     }
   };
 
@@ -652,283 +748,739 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
       ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
       : 'grid-cols-1 md:grid-cols-2';
 
-  // Reusable Multi-Company Board Sheet (Rendered in Canvas, Fullscreen, and Print Portal)
-  const renderPriceBoardSheet = (forPrintOrTv: boolean) => (
-    <div
-      ref={!forPrintOrTv ? boardCanvasRef : undefined}
-      style={{
-        backgroundColor: theme.pageBg,
-        color: theme.pageText,
-        borderColor: theme.cardBorder,
-      }}
-      className={`w-full transition-colors ${
-        forPrintOrTv
-          ? 'p-6 sm:p-8 min-h-full'
-          : 'rounded-2xl border p-5 sm:p-8 shadow-sm'
-      }`}
-    >
-      {/* Page Header */}
-      {board.config.showHeader && (
-        <div
-          style={{ borderColor: theme.rowDivider }}
-          className="pb-5 mb-6 border-b flex flex-col sm:flex-row sm:items-end justify-between gap-4"
-        >
-          <div className="space-y-1">
-            <div
-              style={{ color: theme.mutedText }}
-              className="flex items-center gap-2 text-xs font-bold flex-wrap"
-            >
-              <span>{settings.orgName || 'مؤسسة المدير برو التجارية'}</span>
-              <span aria-hidden="true">·</span>
-              <span>قسم المجمدات والدواجن</span>
-              {board.config.showDate && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="tabular-nums">{board.date}</span>
-                </>
-              )}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-balance">
-              {board.title || 'أسعار الدجاج المجمد'}
-            </h1>
-            {board.subtitle && (
-              <p style={{ color: theme.mutedText }} className="text-xs sm:text-sm font-medium">
-                {board.subtitle}
-              </p>
-            )}
-          </div>
+  // Reusable Multi-Company Board Sheet (Rendered in Canvas, Fullscreen TV, and Print Portal)
+  const renderPriceBoardSheet = (mode: 'canvas' | 'tv' | 'print') => {
+    const isTv = mode === 'tv';
+    const isPrint = mode === 'print';
+    const forPrintOrTv = isTv || isPrint;
+    const canEdit = mode === 'canvas' && !isExportingPng && inlineEditEnabled;
 
-          <div className="flex items-center gap-4 shrink-0">
-            {isFullscreen && (
+    return (
+      <div
+        ref={mode === 'canvas' ? boardCanvasRef : undefined}
+        style={{
+          backgroundColor: theme.pageBg,
+          color: theme.pageText,
+          borderColor: theme.cardBorder,
+        }}
+        className={`w-full transition-colors ${
+          isPrint
+            ? 'p-4'
+            : isTv || isExportingPng
+            ? 'p-6 sm:p-8 min-h-full'
+            : 'rounded-2xl border p-5 sm:p-8 shadow-sm'
+        }`}
+      >
+        {/* Page Header */}
+        {board.config.showHeader && (
+          <div
+            style={{ borderColor: theme.rowDivider }}
+            className={`${
+              isPrint ? 'pb-3 mb-3.5' : 'pb-5 mb-6'
+            } border-b flex flex-col sm:flex-row sm:items-end justify-between gap-4`}
+          >
+            <div className="space-y-1 flex-1 min-w-0">
               <div
                 style={{ color: theme.mutedText }}
-                className="flex items-center gap-1.5 text-sm font-bold tabular-nums font-mono"
+                className="flex items-center gap-2 text-xs font-bold flex-wrap"
               >
-                <Clock size={15} />
-                <span>{liveTime.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            )}
-            <div style={{ color: theme.mutedText }} className="text-xs font-bold tabular-nums">
-              {visibleCompanies.length} شركات
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Multi-Company Grid */}
-      {visibleCompanies.length === 0 ? (
-        <div className="py-20 text-center">
-          <Snowflake size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-base font-bold">لا توجد شركات ظاهرة حالياً</p>
-          <p style={{ color: theme.mutedText }} className="text-xs mt-1">
-            أضف شركة جديدة أو امسح نص البحث لإظهار الشركات.
-          </p>
-        </div>
-      ) : (
-        <div className={`grid ${gridColumnsClass} gap-5 items-stretch`}>
-          {visibleCompanies.map(company => {
-            const isSelected = !forPrintOrTv && selectedCompanyId === company.id;
-            return (
-              <section
-                key={company.id}
-                onClick={() => {
-                  if (!forPrintOrTv) {
-                    setSelectedCompanyId(company.id);
-                    setEditorTab('companies');
-                  }
-                }}
-                style={{
-                  backgroundColor: theme.cardBg,
-                  borderColor: isSelected ? company.accentColor : theme.cardBorder,
-                }}
-                className={`flex flex-col rounded-xl border overflow-hidden transition-all ${
-                  !forPrintOrTv ? 'cursor-pointer hover:-translate-y-0.5' : ''
-                } ${isSelected ? 'ring-2 ring-offset-1 ring-sky-500/40' : ''}`}
-              >
-                {/* Company Header Bar */}
-                <div
-                  style={{
-                    backgroundColor: company.accentColor,
-                  }}
-                  className="px-4 py-3.5 text-white flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {company.logoUrl ? (
-                      <img
-                        src={company.logoUrl}
-                        alt={company.name}
-                        referrerPolicy="no-referrer"
-                        className="w-10 h-10 rounded-lg object-contain bg-white p-1 shrink-0"
+                <span>{settings.orgName || 'مؤسسة المدير برو التجارية'}</span>
+                <span aria-hidden="true">·</span>
+                <span>قسم المجمدات والدواجن</span>
+                {board.config.showDate && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    {canEdit ? (
+                      <input
+                        type="date"
+                        value={board.date}
+                        onChange={e => setBoard(prev => ({ ...prev, date: e.target.value }))}
+                        className="tabular-nums bg-transparent border border-transparent hover:border-slate-300 dark:hover:border-slate-700 focus:border-sky-500 rounded px-1.5 py-0.5 focus:outline-none text-xs font-bold"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center shrink-0 font-black text-base">
-                        {company.name.trim().charAt(0)}
-                      </div>
+                      <span className="tabular-nums">{board.date}</span>
                     )}
-                    <div className="min-w-0">
-                      <h2
-                        style={{ fontSize: `${board.config.titleSize}px` }}
-                        className="font-black leading-tight truncate"
-                      >
-                        {company.name}
-                      </h2>
-                      {company.subtitle && (
-                        <p className="text-[11px] font-medium text-white/85 truncate mt-0.5">
-                          {company.subtitle}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold text-white/80 tabular-nums shrink-0">
-                    {company.items.length} أصناف
-                  </span>
-                </div>
+                  </>
+                )}
+              </div>
 
-                {/* Prices Table Underneath the Company */}
-                <div className="flex-1 flex flex-col">
+              {canEdit ? (
+                <input
+                  type="text"
+                  value={board.title}
+                  onChange={e => setBoard(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="عنوان صفحة الأسعار..."
+                  className="w-full text-2xl sm:text-3xl font-black tracking-tight bg-transparent border border-transparent hover:border-slate-300/70 dark:hover:border-slate-700 focus:border-sky-500 focus:bg-white/70 dark:focus:bg-slate-800/70 rounded-lg px-2 py-0.5 -mx-2 focus:outline-none"
+                />
+              ) : (
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-balance">
+                  {board.title || 'أسعار الدجاج المجمد'}
+                </h1>
+              )}
+
+              {canEdit ? (
+                <input
+                  type="text"
+                  value={board.subtitle || ''}
+                  onChange={e => setBoard(prev => ({ ...prev, subtitle: e.target.value }))}
+                  placeholder="أضف وصفاً أو عبارة أسفل العنوان..."
+                  style={{ color: theme.mutedText }}
+                  className="w-full text-xs sm:text-sm font-medium bg-transparent border border-transparent hover:border-slate-300/70 dark:hover:border-slate-700 focus:border-sky-500 focus:bg-white/70 dark:focus:bg-slate-800/70 rounded-lg px-2 py-0.5 -mx-2 focus:outline-none"
+                />
+              ) : (
+                board.subtitle && (
+                  <p style={{ color: theme.mutedText }} className="text-xs sm:text-sm font-medium">
+                    {board.subtitle}
+                  </p>
+                )
+              )}
+            </div>
+
+            <div className="flex items-center gap-4 shrink-0">
+              {isFullscreen && (
+                <div
+                  style={{ color: theme.mutedText }}
+                  className="flex items-center gap-1.5 text-sm font-bold tabular-nums font-mono"
+                >
+                  <Clock size={15} />
+                  <span>{liveTime.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              )}
+              <div style={{ color: theme.mutedText }} className="text-xs font-bold tabular-nums">
+                {visibleCompanies.length} شركات
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Multi-Company Grid */}
+        {visibleCompanies.length === 0 ? (
+          <div className="py-20 text-center space-y-3">
+            <Snowflake size={40} className="mx-auto opacity-30" />
+            <p className="text-base font-bold">لا توجد شركات ظاهرة حالياً</p>
+            <p style={{ color: theme.mutedText }} className="text-xs">
+              أضف شركة جديدة أو امسح نص البحث لإظهار الشركات.
+            </p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setShowPresetsModal(true)}
+                className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
+              >
+                <Plus size={14} />
+                <span>إضافة شركة</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div
+            className={isPrint ? 'grid items-stretch' : `grid ${gridColumnsClass} gap-5 items-stretch`}
+            style={
+              isPrint
+                ? {
+                    gridTemplateColumns: `repeat(${board.config.columns}, minmax(0, 1fr))`,
+                    gap: '10px',
+                  }
+                : undefined
+            }
+          >
+            {visibleCompanies.map((company, compIdx) => {
+              const isSelected = canEdit && selectedCompanyId === company.id;
+              const showColors = canEdit && openColorCompanyId === company.id;
+              const showQuickWeights = canEdit && openQuickWeightCompanyId === company.id;
+
+              return (
+                <section
+                  key={company.id}
+                  onClick={() => {
+                    if (canEdit) {
+                      setSelectedCompanyId(company.id);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: theme.cardBg,
+                    borderColor: isSelected ? company.accentColor : theme.cardBorder,
+                    breakInside: 'avoid',
+                    pageBreakInside: 'avoid',
+                  }}
+                  className={`flex flex-col rounded-xl border overflow-hidden transition-all break-inside-avoid ${
+                    isSelected ? 'ring-2 ring-offset-1 ring-sky-500/35' : ''
+                  }`}
+                >
+                  {/* Company Header Bar (Directly Editable) */}
                   <div
                     style={{
-                      backgroundColor: theme.headerBannerBg,
-                      borderColor: theme.rowDivider,
-                      color: theme.mutedText,
+                      backgroundColor: company.accentColor,
                     }}
-                    className="px-4 py-2 border-b flex items-center justify-between text-[11px] font-bold"
+                    className={`${isPrint ? 'px-3 py-2 space-y-1' : 'px-3.5 py-3 space-y-2'} text-white`}
                   >
-                    <span>الوزن / الصنف</span>
-                    <span>السعر</span>
-                  </div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {/* Direct Logo Upload/Preview */}
+                        <div className="relative group/logo shrink-0">
+                          {company.logoUrl ? (
+                            <button
+                              type="button"
+                              disabled={!canEdit}
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (!canEdit) return;
+                                logoTargetCompanyIdRef.current = company.id;
+                                canvasLogoUploadRef.current?.click();
+                              }}
+                              title={canEdit ? 'تغيير شعار الشركة' : undefined}
+                              className="w-10 h-10 rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden"
+                            >
+                              <img
+                                src={company.logoUrl}
+                                alt={company.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-contain"
+                              />
+                            </button>
+                          ) : canEdit ? (
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                logoTargetCompanyIdRef.current = company.id;
+                                canvasLogoUploadRef.current?.click();
+                              }}
+                              title="رفع شعار للشركة"
+                              className="w-10 h-10 rounded-lg bg-white/15 hover:bg-white/25 flex flex-col items-center justify-center shrink-0 transition-colors"
+                            >
+                              <span className="font-black text-sm leading-none group-hover/logo:hidden">
+                                {company.name.trim().charAt(0) || 'ش'}
+                              </span>
+                              <Upload size={14} className="hidden group-hover/logo:block" />
+                            </button>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center shrink-0 font-black text-base">
+                              {company.name.trim().charAt(0)}
+                            </div>
+                          )}
 
-                  <div className="divide-y flex-1" style={{ borderColor: theme.rowDivider }}>
-                    {company.items.length === 0 ? (
-                      <div
-                        style={{ color: theme.mutedText }}
-                        className="px-4 py-8 text-center text-xs font-medium"
-                      >
-                        لا توجد أصناف مسجلة لهذه الشركة بعد
+                          {canEdit && company.logoUrl && (
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                updateCompany(company.id, { logoUrl: null });
+                              }}
+                              title="إزالة الشعار"
+                              className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-red-600 text-white hidden group-hover/logo:flex items-center justify-center shadow"
+                            >
+                              <X size={10} />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          {canEdit ? (
+                            <input
+                              type="text"
+                              value={company.name}
+                              onChange={e => updateCompany(company.id, { name: e.target.value })}
+                              onClick={e => e.stopPropagation()}
+                              placeholder="اسم الشركة..."
+                              style={{ fontSize: `${board.config.titleSize}px` }}
+                              className="w-full font-black leading-tight bg-transparent border border-transparent hover:border-white/35 focus:border-white focus:bg-black/20 rounded px-1.5 py-0.5 -mx-1.5 text-white placeholder:text-white/60 focus:outline-none"
+                            />
+                          ) : (
+                            <h2
+                              style={{ fontSize: `${board.config.titleSize}px` }}
+                              className="font-black leading-tight truncate"
+                            >
+                              {company.name}
+                            </h2>
+                          )}
+
+                          {canEdit ? (
+                            <input
+                              type="text"
+                              value={company.subtitle || ''}
+                              onChange={e =>
+                                updateCompany(company.id, { subtitle: e.target.value })
+                              }
+                              onClick={e => e.stopPropagation()}
+                              placeholder="وصف مختصر (اختياري)..."
+                              className="w-full text-[11px] font-medium bg-transparent border border-transparent hover:border-white/30 focus:border-white/70 focus:bg-black/20 rounded px-1.5 py-0.5 -mx-1.5 text-white/90 placeholder:text-white/50 focus:outline-none mt-0.5"
+                            />
+                          ) : (
+                            company.subtitle && (
+                              <p className="text-[11px] font-medium text-white/85 truncate mt-0.5">
+                                {company.subtitle}
+                              </p>
+                            )
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      company.items.map(item => {
-                        const available = item.isAvailable !== false;
-                        return (
-                          <div
-                            key={item.id}
-                            style={{
-                              borderColor: theme.rowDivider,
-                            }}
-                            className={`px-4 py-2.5 flex items-center justify-between gap-3 transition-colors ${
-                              !available ? 'opacity-50' : ''
-                            }`}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div
-                                style={{ fontSize: `${board.config.itemSize}px` }}
-                                className={`font-bold leading-snug ${
-                                  !available ? 'line-through' : ''
-                                }`}
-                              >
-                                {item.weightLabel}
-                              </div>
-                              {(board.config.showUnits && item.unitLabel) || !available ? (
-                                <div
-                                  style={{ color: theme.mutedText }}
-                                  className="text-[11px] font-medium flex items-center gap-1.5 mt-0.5"
-                                >
-                                  {board.config.showUnits && item.unitLabel && (
-                                    <span>{item.unitLabel}</span>
-                                  )}
-                                  {!available && (
-                                    <>
-                                      {board.config.showUnits && item.unitLabel && (
-                                        <span aria-hidden="true">·</span>
-                                      )}
-                                      <span className="text-red-500 font-bold">غير متوفر</span>
-                                    </>
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
 
-                            <div className="flex items-baseline gap-2 shrink-0">
-                              {board.config.showOldPrices &&
-                                item.oldPrice &&
-                                Number(item.oldPrice) > 0 && (
-                                  <span
-                                    style={{ color: theme.mutedText }}
-                                    className="text-xs line-through tabular-nums font-mono"
-                                  >
-                                    {item.oldPrice}
-                                  </span>
-                                )}
-                              <div
-                                style={{
-                                  color: theme.priceText,
-                                  fontSize: `${board.config.priceSize}px`,
-                                }}
-                                className="font-black tabular-nums font-mono flex items-center gap-1 leading-none"
-                              >
-                                <span>{item.price || '0.00'}</span>
-                                <CurrencySymbolRenderer
-                                  type={currencyType}
-                                  imageUrl={currencyImage}
-                                  color={theme.priceText}
-                                  className="inline-block"
-                                  style={{
-                                    width: `${Math.max(12, Math.round(board.config.priceSize * 0.65))}px`,
-                                    height: `${Math.max(12, Math.round(board.config.priceSize * 0.65))}px`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
+                      {/* Direct Company Header Controls */}
+                      {canEdit ? (
+                        <div
+                          className="flex items-center gap-0.5 shrink-0 bg-black/15 rounded-lg p-0.5"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenColorCompanyId(prev =>
+                                prev === company.id ? null : company.id
+                              )
+                            }
+                            title="تغيير لون الشركة"
+                            className="p-1 rounded hover:bg-white/20 text-white transition-colors"
+                          >
+                            <Palette size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveCompany(company.id, -1)}
+                            disabled={compIdx === 0}
+                            title="نقل لليمين"
+                            className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 transition-colors"
+                          >
+                            <ChevronRight size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveCompany(company.id, 1)}
+                            disabled={compIdx === visibleCompanies.length - 1}
+                            title="نقل لليسار"
+                            className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 transition-colors"
+                          >
+                            <ChevronLeft size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => duplicateCompany(company)}
+                            title="نسخ الشركة"
+                            className="p-1 rounded hover:bg-white/20 text-white transition-colors"
+                          >
+                            <Copy size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeCompany(company.id)}
+                            title="حذف الشركة"
+                            className="p-1 rounded hover:bg-red-500/80 text-white transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] font-bold text-white/80 tabular-nums shrink-0 pt-1">
+                          {company.items.length} أصناف
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Inline Color Picker Bar for Company */}
+                    {showColors && (
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        className="flex items-center justify-between gap-2 pt-2 border-t border-white/20"
+                      >
+                        <span className="text-[11px] font-bold text-white/90">لون الشركة:</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {ACCENT_SWATCHES.map(color => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => {
+                                updateCompany(company.id, { accentColor: color });
+                                setOpenColorCompanyId(null);
+                              }}
+                              style={{ backgroundColor: color }}
+                              className={`w-5 h-5 rounded border border-white/60 flex items-center justify-center ${
+                                company.accentColor === color ? 'ring-2 ring-white scale-110' : ''
+                              }`}
+                            >
+                              {company.accentColor === color && <Check size={11} />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
 
-                  {/* Quick Inline Add Row Button in Edit Mode */}
-                  {!forPrintOrTv && showEditor && (
-                    <button
-                      type="button"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setSelectedCompanyId(company.id);
-                        addItemToCompany(company.id);
-                      }}
+                  {/* Prices Table Underneath the Company */}
+                  <div className="flex-1 flex flex-col">
+                    <div
                       style={{
+                        backgroundColor: theme.headerBannerBg,
                         borderColor: theme.rowDivider,
                         color: theme.mutedText,
                       }}
-                      className="w-full py-2 px-4 border-t text-xs font-bold hover:text-sky-600 transition-colors flex items-center justify-center gap-1.5 print:hidden"
+                      className={`${
+                        isPrint ? 'px-3 py-1.5 text-[10px]' : 'px-3.5 py-2 text-[11px]'
+                      } border-b flex items-center justify-between font-bold`}
                     >
-                      <Plus size={14} />
-                      <span>إضافة وزن / صنف</span>
-                    </button>
-                  )}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      )}
+                      <span>الصنف والوزن</span>
+                      <span>السعر</span>
+                    </div>
 
-      {/* Board Footer */}
-      {board.config.showTaxNote && (
-        <div
-          style={{ borderColor: theme.rowDivider, color: theme.mutedText }}
-          className="mt-6 pt-4 border-t flex flex-wrap items-center justify-between gap-2 text-xs font-bold"
-        >
-          <span>الأسعار شاملة ضريبة القيمة المضافة · تخضع للتحديث اليومي حسب التوريد</span>
-          <span className="tabular-nums">
-            إجمالي الأصناف المعروضة:{' '}
-            {visibleCompanies.reduce((acc, c) => acc + c.items.length, 0)}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+                    <div className="divide-y flex-1" style={{ borderColor: theme.rowDivider }}>
+                      {company.items.length === 0 ? (
+                        <div
+                          style={{ color: theme.mutedText }}
+                          className="px-4 py-8 text-center text-xs font-medium"
+                        >
+                          لا توجد أصناف مسجلة لهذه الشركة بعد
+                        </div>
+                      ) : (
+                        company.items.map((item, itemIdx) => {
+                          const available = item.isAvailable !== false;
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                borderColor: theme.rowDivider,
+                              }}
+                              className={`group/row ${
+                                isPrint ? 'px-3 py-1' : 'px-3.5 py-2'
+                              } flex items-center justify-between gap-2 transition-colors ${
+                                !available ? 'opacity-55' : ''
+                              }`}
+                            >
+                              {/* Weight / Item Name + Unit (Editable Inline) */}
+                              <div className="min-w-0 flex-1">
+                                {canEdit ? (
+                                  <input
+                                    type="text"
+                                    value={item.weightLabel}
+                                    onChange={e =>
+                                      updateItemInCompany(company.id, item.id, {
+                                        weightLabel: e.target.value,
+                                      })
+                                    }
+                                    placeholder="اكتب الصنف أو الوزن..."
+                                    style={{ fontSize: `${board.config.itemSize}px` }}
+                                    className={`w-full font-bold leading-snug bg-transparent border border-transparent hover:border-slate-300/80 dark:hover:border-slate-600 focus:border-sky-500 focus:bg-white/90 dark:focus:bg-slate-800/90 rounded px-1.5 py-0.5 -mx-1.5 focus:outline-none ${
+                                      !available ? 'line-through' : ''
+                                    }`}
+                                  />
+                                ) : (
+                                  <div
+                                    style={{ fontSize: `${board.config.itemSize}px` }}
+                                    className={`font-bold leading-snug ${
+                                      !available ? 'line-through' : ''
+                                    }`}
+                                  >
+                                    {item.weightLabel}
+                                  </div>
+                                )}
+
+                                {canEdit ? (
+                                  <div
+                                    style={{ color: theme.mutedText }}
+                                    className="text-[11px] font-medium flex items-center gap-1.5 mt-0.5 flex-wrap"
+                                  >
+                                    {board.config.showUnits && (
+                                      <input
+                                        type="text"
+                                        value={item.unitLabel || ''}
+                                        onChange={e =>
+                                          updateItemInCompany(company.id, item.id, {
+                                            unitLabel: e.target.value,
+                                          })
+                                        }
+                                        placeholder="الوحدة (حبة/كرتون)"
+                                        className="w-24 text-[11px] font-medium bg-transparent border border-transparent hover:border-slate-300/80 dark:hover:border-slate-600 focus:border-sky-500 focus:bg-white/90 dark:focus:bg-slate-800/90 rounded px-1 -mx-1 focus:outline-none"
+                                      />
+                                    )}
+                                    {!available && (
+                                      <span className="text-red-500 font-bold">غير متوفر</span>
+                                    )}
+
+                                    {/* Row Hover Actions */}
+                                    <div className="opacity-0 group-hover/row:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 transition-opacity mr-auto">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          updateItemInCompany(company.id, item.id, {
+                                            isAvailable: !available,
+                                          })
+                                        }
+                                        title={available ? 'تعيين كغير متوفر' : 'تعيين كمتوفر'}
+                                        className="p-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-700"
+                                      >
+                                        {available ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => moveItemInCompany(company.id, item.id, -1)}
+                                        disabled={itemIdx === 0}
+                                        title="لأعلى"
+                                        className="p-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-700 disabled:opacity-30"
+                                      >
+                                        <ChevronUp size={12} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => moveItemInCompany(company.id, item.id, 1)}
+                                        disabled={itemIdx === company.items.length - 1}
+                                        title="لأسفل"
+                                        className="p-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-700 disabled:opacity-30"
+                                      >
+                                        <ChevronDown size={12} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeItemFromCompany(company.id, item.id)}
+                                        title="حذف الصنف"
+                                        className="p-0.5 rounded text-red-500 hover:bg-red-500/15"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (board.config.showUnits && item.unitLabel) || !available ? (
+                                  <div
+                                    style={{ color: theme.mutedText }}
+                                    className="text-[11px] font-medium flex items-center gap-1.5 mt-0.5"
+                                  >
+                                    {board.config.showUnits && item.unitLabel && (
+                                      <span>{item.unitLabel}</span>
+                                    )}
+                                    {!available && (
+                                      <>
+                                        {board.config.showUnits && item.unitLabel && (
+                                          <span aria-hidden="true">·</span>
+                                        )}
+                                        <span className="text-red-500 font-bold">غير متوفر</span>
+                                      </>
+                                    )}
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              {/* Prices (Old Price + Current Price Editable Inline) */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {board.config.showOldPrices &&
+                                  (canEdit ? (
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={item.oldPrice || ''}
+                                      onChange={e =>
+                                        updateItemInCompany(company.id, item.id, {
+                                          oldPrice: e.target.value,
+                                        })
+                                      }
+                                      placeholder="سابق"
+                                      style={{ color: theme.mutedText }}
+                                      className={`w-12 text-center text-xs line-through tabular-nums font-mono bg-transparent border border-transparent hover:border-slate-300/80 focus:border-sky-500 focus:bg-white/90 dark:focus:bg-slate-800/90 rounded px-1 py-0.5 focus:outline-none ${
+                                        !item.oldPrice
+                                          ? 'opacity-0 group-hover/row:opacity-65 focus:opacity-100'
+                                          : ''
+                                      }`}
+                                    />
+                                  ) : (
+                                    item.oldPrice &&
+                                    Number(item.oldPrice) > 0 && (
+                                      <span
+                                        style={{ color: theme.mutedText }}
+                                        className="text-xs line-through tabular-nums font-mono"
+                                      >
+                                        {item.oldPrice}
+                                      </span>
+                                    )
+                                  ))}
+
+                                <div
+                                  style={{
+                                    color: theme.priceText,
+                                    fontSize: `${board.config.priceSize}px`,
+                                  }}
+                                  className="font-black tabular-nums font-mono flex items-center gap-1 leading-none"
+                                >
+                                  {canEdit ? (
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={item.price}
+                                      onChange={e =>
+                                        updateItemInCompany(company.id, item.id, {
+                                          price: e.target.value,
+                                        })
+                                      }
+                                      onFocus={e => e.target.select()}
+                                      style={{
+                                        color: theme.priceText,
+                                        fontSize: `${board.config.priceSize}px`,
+                                      }}
+                                      className="w-20 text-left font-black tabular-nums font-mono bg-transparent border border-transparent hover:border-slate-300/80 dark:hover:border-slate-600 focus:border-sky-500 focus:bg-white/95 dark:focus:bg-slate-800/95 rounded px-1 py-0.5 focus:outline-none leading-none"
+                                    />
+                                  ) : (
+                                    <span>{item.price || '0.00'}</span>
+                                  )}
+
+                                  <CurrencySymbolRenderer
+                                    type={currencyType}
+                                    imageUrl={currencyImage}
+                                    color={theme.priceText}
+                                    className="inline-block shrink-0"
+                                    style={{
+                                      width: `${Math.max(
+                                        12,
+                                        Math.round(board.config.priceSize * 0.65)
+                                      )}px`,
+                                      height: `${Math.max(
+                                        12,
+                                        Math.round(board.config.priceSize * 0.65)
+                                      )}px`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Quick Weights Picker Drawer inside Card */}
+                    {showQuickWeights && (
+                      <div
+                        style={{ borderColor: theme.rowDivider }}
+                        className="p-2.5 border-t bg-slate-50/90 dark:bg-slate-900/70 space-y-1.5"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+                          <span>اختر وزناً للإضافة السريعة:</span>
+                          <button
+                            type="button"
+                            onClick={() => setOpenQuickWeightCompanyId(null)}
+                            className="p-0.5 hover:text-slate-800"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {QUICK_WEIGHTS.map(w => (
+                            <button
+                              key={w.weightLabel}
+                              type="button"
+                              onClick={() => {
+                                addItemToCompany(company.id, {
+                                  weightLabel: w.weightLabel,
+                                  unitLabel: w.unitLabel,
+                                  price: '0.00',
+                                });
+                              }}
+                              className="px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-500 text-[11px] font-bold text-slate-700 dark:text-slate-200"
+                            >
+                              + {w.weightLabel.replace('دجاج كامل ', '')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Inline Add Row Bar directly on Card */}
+                    {canEdit && (
+                      <div
+                        style={{
+                          borderColor: theme.rowDivider,
+                          color: theme.mutedText,
+                        }}
+                        className="px-3 py-2 border-t flex items-center justify-between gap-2 text-xs font-bold"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCompanyId(company.id);
+                            addItemToCompany(company.id);
+                          }}
+                          className="flex-1 py-1 px-2 rounded-md hover:bg-sky-500/10 hover:text-sky-600 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Plus size={14} />
+                          <span>صنف / وزن</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenQuickWeightCompanyId(prev =>
+                              prev === company.id ? null : company.id
+                            )
+                          }
+                          className="py-1 px-2 rounded-md hover:bg-slate-500/10 transition-colors whitespace-nowrap text-[11px]"
+                        >
+                          أوزان جاهزة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCompanyId(company.id);
+                            setShowProductPicker(true);
+                          }}
+                          className="py-1 px-2 rounded-md hover:bg-slate-500/10 transition-colors whitespace-nowrap text-[11px]"
+                        >
+                          من المتجر
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+
+            {/* Direct "+ Add Company" Tile inside the Grid */}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setShowPresetsModal(true)}
+                style={{
+                  borderColor: theme.cardBorder,
+                  color: theme.mutedText,
+                }}
+                className="min-h-[240px] rounded-xl border-2 border-dashed hover:border-sky-500 hover:text-sky-600 hover:bg-sky-500/5 transition-colors flex flex-col items-center justify-center gap-2 p-6"
+              >
+                <div className="w-11 h-11 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center">
+                  <Plus size={22} />
+                </div>
+                <span className="text-sm font-black">إضافة شركة دجاج جديدة</span>
+                <span className="text-[11px] font-medium opacity-80">
+                  اختر من الشركات الجاهزة أو أضف شركة مخصصة
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Board Footer */}
+        {board.config.showTaxNote && (
+          <div
+            style={{ borderColor: theme.rowDivider, color: theme.mutedText }}
+            className={`${
+              isPrint ? 'mt-3 pt-2.5 text-[11px]' : 'mt-6 pt-4 text-xs'
+            } border-t flex flex-wrap items-center justify-between gap-2 font-bold`}
+          >
+            <span>الأسعار شاملة ضريبة القيمة المضافة · تخضع للتحديث اليومي حسب التوريد</span>
+            <span className="tabular-nums">
+              إجمالي الأصناف المعروضة:{' '}
+              {visibleCompanies.reduce((acc, c) => acc + c.items.length, 0)}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden print:hidden">
+      {/* Hidden input for uploading company logo directly from canvas */}
+      <input
+        ref={canvasLogoUploadRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleUploadCanvasCompanyLogo}
+      />
+
       {/* Studio Top Action Bar */}
       <header className="px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
@@ -939,10 +1491,10 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
             type="text"
             value={board.name}
             onChange={e => setBoard(prev => ({ ...prev, name: e.target.value }))}
-            className="font-black text-sm bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 w-52 sm:w-64 focus:outline-none focus:border-sky-500"
+            className="font-black text-sm bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 w-48 sm:w-60 focus:outline-none focus:border-sky-500"
             placeholder="اسم لوحة الأسعار..."
           />
-          <div className="relative hidden md:block">
+          <div className="relative hidden xl:block">
             <Search
               size={14}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -952,12 +1504,25 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
               value={companySearch}
               onChange={e => setCompanySearch(e.target.value)}
               placeholder="بحث عن شركة أو وزن..."
-              className="pr-8 pl-3 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg w-48 focus:outline-none focus:border-sky-500"
+              className="pr-8 pl-3 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg w-44 focus:outline-none focus:border-sky-500"
             />
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setInlineEditEnabled(prev => !prev)}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
+              inlineEditEnabled
+                ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300'
+                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+            }`}
+          >
+            {inlineEditEnabled ? <Edit3 size={14} /> : <Eye size={14} />}
+            <span>{inlineEditEnabled ? 'التعديل المباشر مفعّل' : 'معاينة صافية'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowPresetsModal(true)}
@@ -1006,7 +1571,7 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
 
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={handlePrint}
             className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
           >
             <Printer size={14} />
@@ -1023,7 +1588,7 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
             }`}
           >
             <SlidersHorizontal size={14} />
-            <span>{showEditor ? 'إخفاء المحرر' : 'إظهار المحرر'}</span>
+            <span>{showEditor ? 'إخفاء التخصيص' : 'تخصيص المظهر'}</span>
           </button>
         </div>
       </header>
@@ -1038,7 +1603,7 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
               <span className="text-xs font-bold">جاري تحميل لوحة الأسعار...</span>
             </div>
           ) : (
-            renderPriceBoardSheet(false)
+            renderPriceBoardSheet('canvas')
           )}
         </main>
 
@@ -1604,6 +2169,55 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
                     ))}
                   </div>
 
+                  {/* Print Settings */}
+                  <div className="space-y-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <label className="block text-xs font-black text-slate-600 dark:text-slate-300">
+                      إعدادات الطباعة (A4)
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      {([
+                        { id: 'auto', label: 'تلقائي' },
+                        { id: 'portrait', label: 'عمودي' },
+                        { id: 'landscape', label: 'أفقي' },
+                      ] as const).map(orient => {
+                        const active = (board.config.printOrientation || 'auto') === orient.id;
+                        return (
+                          <button
+                            key={orient.id}
+                            type="button"
+                            onClick={() =>
+                              setBoard(prev => ({
+                                ...prev,
+                                config: { ...prev.config, printOrientation: orient.id },
+                              }))
+                            }
+                            className={`py-1.5 rounded-md text-xs font-bold transition-colors ${
+                              active
+                                ? 'bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-sm'
+                                : 'text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            {orient.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <label className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 cursor-pointer text-xs font-bold">
+                      <span>طباعة جميع الجداول في صفحة واحدة</span>
+                      <input
+                        type="checkbox"
+                        checked={board.config.printSinglePage !== false}
+                        onChange={e =>
+                          setBoard(prev => ({
+                            ...prev,
+                            config: { ...prev.config, printSinglePage: e.target.checked },
+                          }))
+                        }
+                        className="accent-sky-600 w-4 h-4"
+                      />
+                    </label>
+                  </div>
+
                   {/* Board Utility Actions */}
                   <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-2">
                     <button
@@ -1830,6 +2444,24 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
         </div>
       )}
 
+      {/* Offscreen Print Height Measurement Box */}
+      <div
+        ref={printMeasureRef}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: '-30000px',
+          width: `${printBaseMeasureWidth}px`,
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          zIndex: -1,
+        }}
+        className="print:hidden"
+      >
+        {renderPriceBoardSheet('print')}
+      </div>
+
       {/* Fullscreen TV Signage Overlay */}
       {isFullscreen &&
         createPortal(
@@ -1845,13 +2477,81 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
               <Minimize2 size={15} />
               <span>إنهاء العرض (Esc)</span>
             </button>
-            {renderPriceBoardSheet(true)}
+            {renderPriceBoardSheet('tv')}
           </div>,
           document.body
         )}
 
-      {/* Print Portal Overlay */}
-      {printRoot && createPortal(renderPriceBoardSheet(true), printRoot)}
+      {/* Print Portal Overlay (Single-page fit & anti-split rules) */}
+      {printRoot &&
+        createPortal(
+          <div
+            id="chicken-print-wrapper"
+            dir="rtl"
+            style={
+              printSinglePage && printFit.scaledHeightPx
+                ? {
+                    width: '100%',
+                    height: `${printFit.scaledHeightPx}px`,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    breakInside: 'avoid',
+                    pageBreakInside: 'avoid',
+                  }
+                : {
+                    width: '100%',
+                    position: 'relative',
+                  }
+            }
+          >
+            <style>{`
+              @page {
+                size: A4 ${effectivePrintOrientation};
+                margin: 5mm;
+              }
+              @media print {
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  height: auto !important;
+                  min-height: 0 !important;
+                  background: #ffffff !important;
+                }
+                #print-container {
+                  width: 100% !important;
+                  height: auto !important;
+                  min-height: 0 !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  overflow: ${printSinglePage ? 'hidden' : 'visible'} !important;
+                }
+                * {
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                  animation: none !important;
+                  transition: none !important;
+                }
+              }
+            `}</style>
+            <div
+              style={
+                printFit.scale < 1
+                  ? {
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      width: `${(100 / printFit.scale).toFixed(4)}%`,
+                      transform: `scale(${printFit.scale})`,
+                      transformOrigin: 'top right',
+                    }
+                  : { width: '100%' }
+              }
+            >
+              {renderPriceBoardSheet('print')}
+            </div>
+          </div>,
+          printRoot
+        )}
     </div>
   );
 };
