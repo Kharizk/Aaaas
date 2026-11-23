@@ -707,7 +707,7 @@ export interface FrozenChickenCompany {
 }
 
 export interface FrozenChickenBoardConfig {
-  columns: 2 | 3 | 4;
+  columns: 1 | 2 | 3 | 4;
   theme: FrozenChickenThemeId;
   showHeader: boolean;
   showDate: boolean;

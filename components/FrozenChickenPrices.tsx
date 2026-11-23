@@ -746,7 +746,9 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
       ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
       : board.config.columns === 3
       ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
-      : 'grid-cols-1 md:grid-cols-2';
+      : board.config.columns === 2
+      ? 'grid-cols-1 md:grid-cols-2'
+      : 'grid-cols-1';
 
   // Reusable Multi-Company Board Sheet (Rendered in Canvas, Fullscreen TV, and Print Portal)
   const renderPriceBoardSheet = (mode: 'canvas' | 'tv' | 'print') => {
@@ -2011,8 +2013,8 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
                     <label className="block text-xs font-black text-slate-600 dark:text-slate-300">
                       عدد الشركات في الصف الواحد
                     </label>
-                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                      {([2, 3, 4] as const).map(cols => (
+                    <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      {([1, 2, 3, 4] as const).map(cols => (
                         <button
                           key={cols}
                           type="button"
@@ -2022,13 +2024,13 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
                               config: { ...prev.config, columns: cols },
                             }))
                           }
-                          className={`py-2 rounded-md text-xs font-bold transition-colors ${
+                          className={`py-2 rounded-md text-xs font-bold transition-colors whitespace-nowrap ${
                             board.config.columns === cols
                               ? 'bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-sm'
                               : 'text-slate-600 dark:text-slate-400'
                           }`}
                         >
-                          {cols} شركات
+                          {cols === 1 ? '1 شركة' : `${cols} شركات`}
                         </button>
                       ))}
                     </div>
