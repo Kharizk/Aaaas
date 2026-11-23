@@ -331,7 +331,11 @@ export type PriceGroupTheme =
   | 'fresh_nature'
   | 'dark_menu_board'
   | 'neon_promo_tv'
-  | 'minimal_kiosk';
+  | 'minimal_kiosk'
+  | 'butcher_frozen'
+  | 'cafe_artisan'
+  | 'wholesale_ledger'
+  | 'electronics_sleek';
 
 export interface PriceGroupItem {
   id: string;
