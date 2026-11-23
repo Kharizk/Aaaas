@@ -71,6 +71,8 @@ import {
   Table2,
   Cpu,
   Edit3,
+  ShieldCheck,
+  Package,
 } from 'lucide-react';
 
 type AspectMode = 'a4_landscape' | 'screen_16_9' | 'screen_9_16';
@@ -1445,19 +1447,41 @@ export const PriceGroupManager: React.FC = () => {
         );
       }
       return (
-        <input
-          type="text"
+        <textarea
+          rows={1}
           value={item.label}
+          ref={(el) => {
+            if (el) {
+              el.style.height = 'auto';
+              el.style.height = `${el.scrollHeight}px`;
+            }
+          }}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+          }}
+          onFocus={(e) => {
+            const el = e.currentTarget;
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
           onChange={(e) => updateBoardItem(board.id, item.id, { label: e.target.value })}
           onClick={(e) => e.stopPropagation()}
           placeholder="اسم الصنف..."
           title="اضغط لتعديل اسم الصنف"
-          className={`${className} w-full min-w-0 bg-transparent outline-none rounded px-1 -mx-1 border border-transparent hover:border-dashed focus:border-solid transition-colors ${
+          className={`${className} block w-full min-w-0 resize-none overflow-hidden bg-transparent outline-none rounded-md px-1.5 py-0.5 -mx-1.5 border border-transparent hover:border-dashed focus:border-solid transition-all leading-snug ${
             darkSurface
-              ? 'hover:border-white/35 focus:border-white/80 focus:bg-white/10 placeholder:text-white/35'
-              : 'hover:border-slate-400/55 focus:border-sap-primary focus:bg-white/85 placeholder:text-slate-400'
+              ? 'hover:border-white/35 focus:border-amber-400 focus:bg-slate-900/95 focus:text-white focus:ring-2 focus:ring-amber-400/35 focus:px-2 focus:py-1 placeholder:text-white/35'
+              : 'hover:border-slate-400/55 focus:border-sap-primary focus:bg-white focus:text-slate-900 focus:ring-2 focus:ring-sap-primary/25 focus:px-2 focus:py-1 focus:shadow-sm placeholder:text-slate-400'
           }`}
-          style={style}
+          style={{ ...style, color: undefined }}
         />
       );
     };
@@ -1515,7 +1539,7 @@ export const PriceGroupManager: React.FC = () => {
           placeholder="الوحدة / الوزن..."
           title="اضغط لتعديل الوحدة أو الوزن"
           style={style}
-          className={`${className} w-full bg-transparent outline-none rounded px-1 -mx-1 border border-transparent hover:border-dashed focus:border-solid transition-all ${
+          className={`${className} w-full min-w-0 bg-transparent outline-none rounded px-1 -mx-1 border border-transparent hover:border-dashed focus:border-solid transition-all ${
             !item.unit
               ? 'max-h-0 opacity-0 group-hover/row:max-h-7 group-hover/row:opacity-85 focus:max-h-7 focus:opacity-100 overflow-hidden'
               : ''
@@ -1571,8 +1595,8 @@ export const PriceGroupManager: React.FC = () => {
           onClick={(e) => e.stopPropagation()}
           className={`hidden group-hover/row:flex group-focus-within/row:flex items-center gap-0.5 rounded-md border px-1 py-0.5 shrink-0 ${
             darkSurface
-              ? 'bg-slate-900/90 border-white/20 text-white/85'
-              : 'bg-white/95 border-slate-200 text-slate-600 shadow-xs'
+              ? 'bg-slate-900/95 border-white/20 text-white/85'
+              : 'bg-white border-slate-200 text-slate-600 shadow-xs'
           }`}
         >
           <button
@@ -1707,16 +1731,17 @@ export const PriceGroupManager: React.FC = () => {
     );
 
     const renderTickerAndClockBar = (darkSurface = false) => {
-      if (!s.showClock && !s.showTicker && !s.showBoardFooter) return null;
+      const showVatNotice = s.showBoardFooter !== false;
+      if (!s.showClock && !s.showTicker && !showVatNotice) return null;
       return (
         <div
-          className="mt-auto pt-3 border-t flex items-center justify-between gap-4 relative z-10 shrink-0"
+          className="mt-auto pt-3 border-t flex items-center justify-between gap-3 relative z-10 shrink-0 flex-wrap"
           style={{
-            borderColor: darkSurface ? 'rgba(255,255,255,0.12)' : `${s.primaryColor}22`,
+            borderColor: darkSurface ? 'rgba(255,255,255,0.14)' : `${s.primaryColor}28`,
           }}
         >
           {s.showTicker && s.tickerText ? (
-            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 flex-1 min-w-[180px]">
               <span
                 className="px-2 py-0.5 rounded text-[11px] font-black text-white shrink-0"
                 style={{ backgroundColor: s.primaryColor }}
@@ -1735,27 +1760,50 @@ export const PriceGroupManager: React.FC = () => {
             </div>
           ) : (
             <div
-              className="text-[11px] font-bold opacity-65 truncate"
+              className="text-[11px] font-bold opacity-75 truncate flex-1 min-w-0"
               style={{ color: s.textColor }}
             >
-              {s.showBoardFooter !== false
-                ? board.subtitle || 'الأسعار شاملة ضريبة القيمة المضافة'
+              {board.subtitle && !board.subtitle.includes('ضريبة القيمة المضافة')
+                ? board.subtitle
                 : ''}
             </div>
           )}
 
-          {s.showClock && aspectMode !== 'a4_landscape' && (
-            <div
-              className="flex items-center gap-1.5 font-black tabular-nums font-mono shrink-0 opacity-85"
-              style={{
-                fontSize: `${Math.max(13, 15 * scale)}px`,
-                color: s.textColor,
-              }}
-            >
-              <Clock size={14 * scale} style={{ color: s.primaryColor }} />
-              <span>{timeStr}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3 shrink-0 mr-auto">
+            {showVatNotice && (
+              <div
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-black whitespace-nowrap ${
+                  darkSurface
+                    ? 'bg-white/10 border-white/20'
+                    : 'bg-slate-900/[0.04] border-slate-900/15'
+                }`}
+                style={{
+                  fontSize: `${Math.max(10.5, 11.5 * scale)}px`,
+                  color: s.textColor,
+                }}
+              >
+                <ShieldCheck
+                  size={Math.max(12, 13 * scale)}
+                  style={{ color: s.primaryColor }}
+                  className="shrink-0"
+                />
+                <span>الأسعار شاملة ضريبة القيمة المضافة (15%)</span>
+              </div>
+            )}
+
+            {s.showClock && aspectMode !== 'a4_landscape' && (
+              <div
+                className="flex items-center gap-1.5 font-black tabular-nums font-mono shrink-0 opacity-85"
+                style={{
+                  fontSize: `${Math.max(13, 15 * scale)}px`,
+                  color: s.textColor,
+                }}
+              >
+                <Clock size={14 * scale} style={{ color: s.primaryColor }} />
+                <span>{timeStr}</span>
+              </div>
+            )}
+          </div>
         </div>
       );
     };
@@ -1814,7 +1862,7 @@ export const PriceGroupManager: React.FC = () => {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -1829,19 +1877,23 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded text-[10px] font-black text-slate-950 shrink-0',
+                        'px-2 py-0.5 rounded text-[10px] font-black text-slate-950 shrink-0 mt-1',
                         { backgroundColor: s.primaryColor },
                         'عرض'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-65 font-medium mt-0.5',
-                      { color: s.textColor },
-                      true
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-65 font-medium',
+                          { color: s.textColor },
+                          true
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, true)}
+                    </div>
                   </div>
-                  {renderRowHoverActions(item, idx, board.items.length, true)}
                   {renderPriceBlock(item, s, scale, {
                     priceColorOverride: item.isOffer ? '#fb923c' : s.priceColor,
                     currencyColorOverride: s.textColor,
@@ -1910,33 +1962,37 @@ export const PriceGroupManager: React.FC = () => {
                     borderColor: item.isOffer ? s.secondaryColor : 'rgba(255,255,255,0.14)',
                   }}
                 >
-                  <div className="p-3.5 flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      {renderItemLabel(
-                        item,
-                        'font-black break-words',
-                        {
-                          fontSize: `${s.itemFontSize * scale}px`,
-                          color: s.textColor,
-                          lineHeight: 1.3,
-                        },
-                        true
-                      )}
-                      {renderItemUnit(
-                        item,
-                        'text-xs opacity-70 font-semibold mt-1',
-                        { color: s.textColor },
-                        true
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {renderRowHoverActions(item, idx, board.items.length, true)}
+                  <div className="p-3.5 flex flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        {renderItemLabel(
+                          item,
+                          'font-black break-words',
+                          {
+                            fontSize: `${s.itemFontSize * scale}px`,
+                            color: s.textColor,
+                            lineHeight: 1.3,
+                          },
+                          true
+                        )}
+                      </div>
                       {renderItemBadge(
                         item,
                         'px-2 py-0.5 rounded text-[10px] font-black text-slate-950 shrink-0',
                         { backgroundColor: s.secondaryColor || '#facc15' },
                         'عرض'
                       )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-70 font-semibold',
+                          { color: s.textColor },
+                          true
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, true)}
                     </div>
                   </div>
                   <div
@@ -2026,8 +2082,8 @@ export const PriceGroupManager: React.FC = () => {
                   className="group/row flex items-baseline gap-3 py-2 border-b"
                   style={{ borderColor: 'rgba(254,243,199,0.1)' }}
                 >
-                  <div className="min-w-0 max-w-[58%] flex-1">
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         {renderItemLabel(
                           item,
@@ -2038,23 +2094,27 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-1.5 py-0.5 rounded text-[10px] font-black text-stone-950 shrink-0',
+                        'px-1.5 py-0.5 rounded text-[10px] font-black text-stone-950 shrink-0 mt-1',
                         { backgroundColor: s.primaryColor },
                         'مميز'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-65 mt-0.5',
-                      { color: s.textColor },
-                      true
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-65',
+                          { color: s.textColor },
+                          true
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, true)}
+                    </div>
                   </div>
                   <div
-                    className="flex-1 border-b border-dotted opacity-35 min-w-[20px]"
+                    className="w-6 sm:w-12 border-b border-dotted opacity-35 shrink-0"
                     style={{ borderColor: s.primaryColor }}
                   />
-                  {renderRowHoverActions(item, idx, board.items.length, true)}
                   {renderPriceBlock(item, s, scale, {
                     priceColorOverride: s.priceColor || '#fbbf24',
                     currencyColorOverride: s.textColor,
@@ -2140,32 +2200,36 @@ export const PriceGroupManager: React.FC = () => {
                     borderColor: item.isOffer ? s.primaryColor : 'rgba(255,255,255,0.1)',
                   }}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <div className="min-w-0 flex-1">
-                      {renderItemLabel(
-                        item,
-                        'font-bold leading-snug break-words',
-                        {
-                          fontSize: `${s.itemFontSize * scale * 0.92}px`,
-                          color: s.textColor,
-                        },
-                        true
-                      )}
-                      {renderItemUnit(
-                        item,
-                        'text-[11px] font-mono text-zinc-400 mt-0.5',
-                        undefined,
-                        true
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {renderRowHoverActions(item, idx, board.items.length, true)}
+                  <div className="flex flex-col gap-1.5 mb-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        {renderItemLabel(
+                          item,
+                          'font-bold leading-snug break-words',
+                          {
+                            fontSize: `${s.itemFontSize * scale * 0.92}px`,
+                            color: s.textColor,
+                          },
+                          true
+                        )}
+                      </div>
                       {renderItemBadge(
                         item,
                         'px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0',
                         { backgroundColor: s.primaryColor },
                         'عرض'
                       )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-[11px] font-mono text-zinc-400',
+                          undefined,
+                          true
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, true)}
                     </div>
                   </div>
                   <div className="flex justify-end pt-2 border-t border-zinc-800">
@@ -2245,7 +2309,7 @@ export const PriceGroupManager: React.FC = () => {
                   }}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -2260,19 +2324,23 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0',
+                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0 mt-1',
                         undefined,
                         'عرض'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs font-semibold text-sky-700/80 mt-0.5',
-                      undefined,
-                      false
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs font-semibold text-sky-700/80',
+                          undefined,
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
-                  {renderRowHoverActions(item, idx, board.items.length, false)}
                   <div className="shrink-0 pl-1">
                     {renderPriceBlock(item, s, scale, {
                       fontMono: true,
@@ -2345,7 +2413,7 @@ export const PriceGroupManager: React.FC = () => {
                   style={{ backgroundColor: s.primaryColor }}
                 >
                   <span>الصنف والوحدة</span>
-                  <span>السعر الصافي</span>
+                  <span>السعر (شامل ضريبة القيمة المضافة 15%)</span>
                 </div>
               )}
               <div
@@ -2359,7 +2427,7 @@ export const PriceGroupManager: React.FC = () => {
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start gap-2">
                         <div className="min-w-0 flex-1">
                           {renderItemLabel(
                             item,
@@ -2371,22 +2439,26 @@ export const PriceGroupManager: React.FC = () => {
                             false
                           )}
                         </div>
-                        {renderItemUnit(
-                          item,
-                          'text-xs font-semibold text-slate-500 shrink-0',
-                          undefined,
-                          false,
-                          true
-                        )}
                         {renderItemBadge(
                           item,
-                          'px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0',
+                          'px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0 mt-1',
                           undefined,
                           'عرض'
                         )}
                       </div>
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <div>
+                          {renderItemUnit(
+                            item,
+                            'text-xs font-semibold text-slate-500 shrink-0',
+                            undefined,
+                            false,
+                            true
+                          )}
+                        </div>
+                        {renderRowHoverActions(item, idx, board.items.length, false)}
+                      </div>
                     </div>
-                    {renderRowHoverActions(item, idx, board.items.length, false)}
                     {renderPriceBlock(item, s, scale, {
                       fontMono: true,
                       boardId: board.id,
@@ -2470,7 +2542,7 @@ export const PriceGroupManager: React.FC = () => {
                   className="group/row flex items-center justify-between gap-4 bg-white px-4 py-3 rounded-lg border border-slate-200/90"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -2485,19 +2557,23 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0',
+                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0 mt-1',
                         undefined,
                         'عرض'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs font-medium text-slate-500 mt-0.5',
-                      undefined,
-                      false
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs font-medium text-slate-500',
+                          undefined,
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
-                  {renderRowHoverActions(item, idx, board.items.length, false)}
                   {renderPriceBlock(item, s, scale, {
                     fontMono: true,
                     boardId: board.id,
@@ -2572,8 +2648,8 @@ export const PriceGroupManager: React.FC = () => {
                   className="group/row flex items-center justify-between py-2.5 px-2 border-b gap-3"
                   style={{ borderColor: 'rgba(15,23,42,0.08)' }}
                 >
-                  <div className="flex-1 min-w-0 pl-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0 pl-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -2588,19 +2664,23 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0',
+                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0 mt-1',
                         undefined,
                         'عرض خاص'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-60 font-medium block mt-0.5',
-                      { color: s.textColor },
-                      false
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-60 font-medium block',
+                          { color: s.textColor },
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
-                  {renderRowHoverActions(item, idx, board.items.length, false)}
                   {renderPriceBlock(item, s, scale, {
                     fontMono: true,
                     boardId: board.id,
@@ -2681,32 +2761,36 @@ export const PriceGroupManager: React.FC = () => {
                   className="group/row border p-3.5 flex flex-col justify-between bg-white rounded-lg"
                   style={{ borderColor: item.isOffer ? '#ef4444' : '#cbd5e1' }}
                 >
-                  <div className="flex justify-between items-start gap-2 mb-2.5">
-                    <div className="min-w-0 flex-1">
-                      {renderItemLabel(
-                        item,
-                        'font-bold leading-snug break-words',
-                        {
-                          fontSize: `${s.itemFontSize * scale * 0.9}px`,
-                          color: s.textColor,
-                        },
-                        false
-                      )}
-                      {renderItemUnit(
-                        item,
-                        'text-xs opacity-60 font-medium mt-0.5',
-                        { color: s.textColor },
-                        false
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                  <div className="flex flex-col gap-1.5 mb-2.5">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        {renderItemLabel(
+                          item,
+                          'font-bold leading-snug break-words',
+                          {
+                            fontSize: `${s.itemFontSize * scale * 0.9}px`,
+                            color: s.textColor,
+                          },
+                          false
+                        )}
+                      </div>
                       {renderItemBadge(
                         item,
                         'bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded shrink-0',
                         undefined,
                         'عرض'
                       )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-60 font-medium',
+                          { color: s.textColor },
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
                     </div>
                   </div>
                   <div
@@ -2777,28 +2861,34 @@ export const PriceGroupManager: React.FC = () => {
             ) : (
               board.items.map((item, idx) => (
                 <div key={item.id} className="group/row flex items-baseline w-full gap-3">
-                  <div className="min-w-0 max-w-[58%] flex items-baseline gap-1.5 flex-1">
-                    <div className="min-w-0 flex-1">
-                      {renderItemLabel(
-                        item,
-                        'font-bold break-words',
-                        { fontSize: `${s.itemFontSize * scale}px`, color: s.textColor },
-                        false
-                      )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        {renderItemLabel(
+                          item,
+                          'font-bold break-words',
+                          { fontSize: `${s.itemFontSize * scale}px`, color: s.textColor },
+                          false
+                        )}
+                      </div>
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-60 font-semibold shrink-0',
-                      { color: s.textColor },
-                      false,
-                      true
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div>
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-60 font-semibold shrink-0',
+                          { color: s.textColor },
+                          false,
+                          true
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
                   <div
-                    className="flex-1 border-b-2 border-dotted opacity-40 min-w-[20px]"
+                    className="w-6 sm:w-12 border-b-2 border-dotted opacity-40 shrink-0"
                     style={{ borderColor: s.secondaryColor }}
                   />
-                  {renderRowHoverActions(item, idx, board.items.length, false)}
                   {renderPriceBlock(item, s, scale, {
                     boardId: board.id,
                     canEdit,
@@ -2857,7 +2947,7 @@ export const PriceGroupManager: React.FC = () => {
                   style={{ borderColor: item.isOffer ? '#ef4444' : `${s.primaryColor}45` }}
                 >
                   <div className="flex-1 min-w-0 px-4 py-3 flex flex-col justify-center">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -2871,20 +2961,22 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0',
+                        'px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black shrink-0 mt-1',
                         undefined,
                         'عرض'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs font-semibold text-slate-500 mt-0.5',
-                      undefined,
-                      false
-                    )}
-                  </div>
-                  <div className="flex items-center px-1.5">
-                    {renderRowHoverActions(item, idx, board.items.length, false)}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs font-semibold text-slate-500',
+                          undefined,
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
                   <div
                     className="px-4 py-2.5 flex items-center justify-center shrink-0 border-r"
@@ -2955,7 +3047,7 @@ export const PriceGroupManager: React.FC = () => {
                   style={{ borderColor: `${s.primaryColor}20` }}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -2966,19 +3058,23 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black shrink-0',
+                        'px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black shrink-0 mt-1',
                         undefined,
                         'عرض'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-65 font-medium mt-0.5',
-                      { color: s.textColor },
-                      false
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-65 font-medium',
+                          { color: s.textColor },
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
-                  {renderRowHoverActions(item, idx, board.items.length, false)}
                   {renderPriceBlock(item, s, scale, {
                     fontMono: true,
                     boardId: board.id,
@@ -3050,7 +3146,7 @@ export const PriceGroupManager: React.FC = () => {
                   style={{ borderColor: `${s.primaryColor}35` }}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -3061,19 +3157,23 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0',
+                        'px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 mt-1',
                         { backgroundColor: s.primaryColor },
                         'عرض'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-65 font-medium mt-0.5',
-                      { color: s.textColor },
-                      false
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-65 font-medium',
+                          { color: s.textColor },
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
-                  {renderRowHoverActions(item, idx, board.items.length, false)}
                   {renderPriceBlock(item, s, scale, {
                     boardId: board.id,
                     canEdit,
@@ -3241,25 +3341,29 @@ export const PriceGroupManager: React.FC = () => {
             ) : (
               board.items.map((item, idx) => (
                 <div key={item.id} className="group/row flex items-baseline justify-between py-2 gap-3">
-                  <div className="min-w-0 max-w-[58%] flex-1">
+                  <div className="min-w-0 flex-1">
                     {renderItemLabel(
                       item,
                       'font-bold break-words',
                       { fontSize: `${s.itemFontSize * scale}px`, color: s.textColor },
                       true
                     )}
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-60 mt-0.5',
-                      { color: s.textColor },
-                      true
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-60',
+                          { color: s.textColor },
+                          true
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, true)}
+                    </div>
                   </div>
                   <div
-                    className="flex-1 border-b border-dotted opacity-30 min-w-[20px]"
+                    className="w-6 sm:w-12 border-b border-dotted opacity-30 shrink-0"
                     style={{ borderColor: s.secondaryColor }}
                   />
-                  {renderRowHoverActions(item, idx, board.items.length, true)}
                   {renderPriceBlock(item, s, scale, {
                     priceColorOverride: s.secondaryColor,
                     currencyColorOverride: s.secondaryColor,
@@ -3335,7 +3439,7 @@ export const PriceGroupManager: React.FC = () => {
                   style={{ borderColor: `${s.primaryColor}25` }}
                 >
                   <div className="flex-1 min-w-0 px-4 py-2.5 flex flex-col justify-center">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         {renderItemLabel(
                           item,
@@ -3346,20 +3450,22 @@ export const PriceGroupManager: React.FC = () => {
                       </div>
                       {renderItemBadge(
                         item,
-                        'px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0',
+                        'px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 mt-1',
                         { backgroundColor: s.primaryColor },
                         'طازج'
                       )}
                     </div>
-                    {renderItemUnit(
-                      item,
-                      'text-xs opacity-60 font-medium mt-0.5',
-                      undefined,
-                      false
-                    )}
-                  </div>
-                  <div className="flex items-center px-1.5">
-                    {renderRowHoverActions(item, idx, board.items.length, false)}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        {renderItemUnit(
+                          item,
+                          'text-xs opacity-60 font-medium',
+                          undefined,
+                          false
+                        )}
+                      </div>
+                      {renderRowHoverActions(item, idx, board.items.length, false)}
+                    </div>
                   </div>
                   <div
                     className="px-4 py-2 flex items-center shrink-0 border-r"
@@ -3481,22 +3587,25 @@ export const PriceGroupManager: React.FC = () => {
       )}
 
       {/* TOP STUDIO TOOLBAR */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0 z-30 no-print">
-        {/* Right side (Start): Identity & Project Actions */}
+      <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 shrink-0 z-30 shadow-xs no-print">
+        {/* Start Cluster: Identity, Status & Project Switcher */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-sap-primary text-white flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sap-primary to-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
             <Tv size={18} />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-black truncate max-w-[180px] sm:max-w-[240px]">
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-black truncate max-w-[160px] sm:max-w-[220px]">
                 {projectName || 'مشروع شاشات'}
               </h1>
               {hasUnsavedChanges && (
                 <span
-                  className="w-2 h-2 rounded-full bg-amber-500 shrink-0"
-                  title="تغييرات غير محفوظة"
-                />
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-[10px] font-black shrink-0"
+                  title="يوجد تغييرات غير محفوظة"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <span className="hidden sm:inline">غير محفوظ</span>
+                </span>
               )}
             </div>
             <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate tabular-nums">
@@ -3504,31 +3613,34 @@ export const PriceGroupManager: React.FC = () => {
             </p>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 mr-2 pr-3 border-r border-slate-200 dark:border-slate-700">
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 mr-1">
             <button
               type="button"
               onClick={createNew}
-              className="px-2.5 py-1.5 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-              title="مشروع جديد"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 hover:shadow-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all"
+              title="إنشاء مشروع شاشات جديد"
             >
-              <FilePlus size={14} />
+              <FilePlus size={14} className="text-sap-primary dark:text-emerald-400" />
               <span>جديد</span>
             </button>
             <button
               type="button"
               onClick={() => setShowArchiveModal(true)}
-              className="px-2.5 py-1.5 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 hover:shadow-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all"
+              title="فتح المشاريع المحفوظة"
             >
-              <FolderOpen size={14} />
+              <FolderOpen size={14} className="text-slate-500 dark:text-slate-400" />
               <span>الأرشيف</span>
-              <span className="text-[11px] opacity-60 tabular-nums">({projects.length})</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-slate-200/80 dark:bg-slate-900/70 text-[10px] font-black tabular-nums">
+                {projects.length}
+              </span>
             </button>
           </div>
         </div>
 
-        {/* Center: Screen Aspect Mode & Zoom Controls */}
+        {/* Center Cluster: Screen Aspect Mode & Zoom Controls */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
             {[
               { id: 'a4_landscape' as AspectMode, label: 'A4 طباعة', icon: Printer },
               { id: 'screen_16_9' as AspectMode, label: 'TV 16:9', icon: Monitor },
@@ -3541,7 +3653,7 @@ export const PriceGroupManager: React.FC = () => {
                   setStyles((prev) => ({ ...prev, aspectMode: mode.id }));
                   setAutoFitEnabled(true);
                 }}
-                className={`px-2.5 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all ${
                   aspectMode === mode.id
                     ? 'bg-white dark:bg-slate-700 text-sap-primary dark:text-white shadow-xs'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -3553,19 +3665,19 @@ export const PriceGroupManager: React.FC = () => {
             ))}
           </div>
 
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
             <button
               type="button"
               onClick={() => {
                 setAutoFitEnabled(false);
                 setPreviewZoom((z) => Math.max(15, z - 5));
               }}
-              className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-md"
-              title="تصغير"
+              className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title="تصغير العرض"
             >
               <ZoomOut size={14} />
             </button>
-            <span className="text-[11px] font-bold tabular-nums min-w-[42px] text-center">
+            <span className="text-[11px] font-black tabular-nums min-w-[42px] text-center">
               {previewZoom}%
             </span>
             <button
@@ -3574,8 +3686,8 @@ export const PriceGroupManager: React.FC = () => {
                 setAutoFitEnabled(false);
                 setPreviewZoom((z) => Math.min(160, z + 5));
               }}
-              className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-md"
-              title="تكبير"
+              className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title="تكبير العرض"
             >
               <ZoomIn size={14} />
             </button>
@@ -3585,9 +3697,9 @@ export const PriceGroupManager: React.FC = () => {
                 setAutoFitEnabled(true);
                 computeFitZoom();
               }}
-              className={`px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 transition-all ${
                 autoFitEnabled
-                  ? 'bg-sap-primary/15 text-sap-primary dark:text-emerald-400'
+                  ? 'bg-white dark:bg-slate-700 text-sap-primary dark:text-emerald-400 shadow-xs'
                   : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700'
               }`}
               title="ملاءمة تلقائية للنافذة"
@@ -3597,83 +3709,122 @@ export const PriceGroupManager: React.FC = () => {
           </div>
         </div>
 
-        {/* Left side (End): Primary Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowArchiveModal(true)}
-            className="sm:hidden p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-            title="الأرشيف"
-          >
-            <FolderOpen size={16} />
-          </button>
+        {/* End Cluster: Quick Add + Mode/Export + Live/Save */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* Quick Add Group */}
+          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <button
+              type="button"
+              onClick={addManualItem}
+              className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-xs transition-colors"
+              title="إضافة صنف يدوي للشاشة النشطة"
+            >
+              <Plus size={14} className="text-sap-primary dark:text-emerald-400" />
+              <span className="hidden md:inline">صنف يدوي</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (currentBoard) {
+                  openCatalogForBoard(currentBoard.id);
+                } else {
+                  setSelectedProductIds(new Set());
+                  setShowProductPicker(true);
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+              title="استيراد أصناف من المتجر"
+            >
+              <Package size={14} className="text-sky-600 dark:text-sky-400" />
+              <span className="hidden xl:inline">من المتجر</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowArchiveModal(true)}
+              className="sm:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
+              title="الأرشيف"
+            >
+              <FolderOpen size={15} />
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setInlineEditEnabled((v) => !v)}
-            className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
-              inlineEditEnabled
-                ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-            }`}
-            title={
-              inlineEditEnabled
-                ? 'التعديل المباشر على التصميم مفعّل — اضغط للتبديل إلى معاينة صافية'
-                : 'معاينة صافية بدون حقول تعديل'
-            }
-          >
-            {inlineEditEnabled ? <Edit3 size={14} /> : <Eye size={14} />}
-            <span className="hidden xl:inline">
-              {inlineEditEnabled ? 'التعديل المباشر مفعّل' : 'معاينة صافية'}
-            </span>
-          </button>
+          {/* Mode & Export Group */}
+          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <button
+              type="button"
+              onClick={() => setInlineEditEnabled((v) => !v)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all ${
+                inlineEditEnabled
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+              }`}
+              title={
+                inlineEditEnabled
+                  ? 'التعديل المباشر مفعّل — اضغط للتبديل إلى معاينة صافية'
+                  : 'معاينة صافية بدون حقول تعديل'
+              }
+            >
+              {inlineEditEnabled ? <Edit3 size={14} /> : <Eye size={14} />}
+              <span className="hidden xl:inline">
+                {inlineEditEnabled ? 'التعديل المباشر' : 'معاينة صافية'}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={enterPresentation}
-            className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-xs transition-colors"
-          >
-            <Play size={14} fill="currentColor" />
-            <span>عرض مباشر</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setDownloadDialog({ isOpen: true, fileName: projectName })}
+              className="px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+              title="تصدير كصورة عالية الدقة PNG"
+            >
+              <Download size={14} />
+              <span className="hidden lg:inline">PNG</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setDownloadDialog({ isOpen: true, fileName: projectName })}
-            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-          >
-            <Download size={14} />
-            <span className="hidden md:inline">صورة PNG</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+              title="طباعة صفحة A4"
+            >
+              <Printer size={14} />
+              <span className="hidden lg:inline">طباعة</span>
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-          >
-            <Printer size={14} />
-            <span className="hidden md:inline">طباعة</span>
-          </button>
+          {/* Primary Actions Group */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={enterPresentation}
+              className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-700 text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-xs transition-colors border border-slate-700/60"
+            >
+              <Play size={13} fill="currentColor" className="text-emerald-400" />
+              <span>عرض مباشر</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className={`px-3.5 py-2 rounded-lg text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
-              saveSuccess
-                ? 'bg-emerald-600'
-                : 'bg-sap-primary hover:bg-sap-primary-hover'
-            }`}
-          >
-            {isSaving ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : saveSuccess ? (
-              <Check size={14} />
-            ) : (
-              <Save size={14} />
-            )}
-            <span>{saveSuccess ? 'تم الحفظ' : 'حفظ'}</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`relative px-4 py-2 rounded-xl text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-xs transition-all disabled:opacity-60 ${
+                saveSuccess
+                  ? 'bg-emerald-600'
+                  : 'bg-sap-primary hover:bg-sap-primary-hover'
+              }`}
+            >
+              {isSaving ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : saveSuccess ? (
+                <Check size={14} />
+              ) : (
+                <Save size={14} />
+              )}
+              <span>{saveSuccess ? 'تم الحفظ' : 'حفظ'}</span>
+              {hasUnsavedChanges && !saveSuccess && !isSaving && (
+                <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -4541,6 +4692,24 @@ export const PriceGroupManager: React.FC = () => {
                       checked={styles.showClock !== false}
                       onChange={(e) =>
                         setStyles((prev) => ({ ...prev, showClock: e.target.checked }))
+                      }
+                      className="rounded accent-sap-primary"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between gap-2 cursor-pointer py-1">
+                    <span className="text-xs font-bold flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
+                      <span>توضيح شمول الأسعار لضريبة القيمة المضافة (15%)</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={styles.showBoardFooter !== false}
+                      onChange={(e) =>
+                        setStyles((prev) => ({
+                          ...prev,
+                          showBoardFooter: e.target.checked,
+                        }))
                       }
                       className="rounded accent-sap-primary"
                     />

@@ -42,6 +42,7 @@ import {
   Clock,
   Palette,
   Edit3,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface FrozenChickenPricesProps {
@@ -838,18 +839,36 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
               )}
             </div>
 
-            <div className="flex items-center gap-4 shrink-0">
-              {isFullscreen && (
+            <div className="flex flex-col sm:items-end gap-2 shrink-0">
+              {board.config.showTaxNote && (
                 <div
-                  style={{ color: theme.mutedText }}
-                  className="flex items-center gap-1.5 text-sm font-bold tabular-nums font-mono"
+                  style={{
+                    backgroundColor: theme.headerBannerBg,
+                    borderColor: theme.rowDivider,
+                    color: theme.priceText,
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border font-black ${
+                    isPrint ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'
+                  }`}
                 >
-                  <Clock size={15} />
-                  <span>{liveTime.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <ShieldCheck size={isPrint ? 12 : 14} className="shrink-0" />
+                  <span>الأسعار شاملة ضريبة القيمة المضافة (15%)</span>
                 </div>
               )}
-              <div style={{ color: theme.mutedText }} className="text-xs font-bold tabular-nums">
-                {visibleCompanies.length} شركات
+
+              <div className="flex items-center gap-4">
+                {isFullscreen && (
+                  <div
+                    style={{ color: theme.mutedText }}
+                    className="flex items-center gap-1.5 text-sm font-bold tabular-nums font-mono"
+                  >
+                    <Clock size={15} />
+                    <span>{liveTime.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
+                <div style={{ color: theme.mutedText }} className="text-xs font-bold tabular-nums">
+                  {visibleCompanies.length} شركات
+                </div>
               </div>
             </div>
           </div>
@@ -1120,7 +1139,11 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
                       } border-b flex items-center justify-between font-bold`}
                     >
                       <span>الصنف والوزن</span>
-                      <span>السعر</span>
+                      <span>
+                        {board.config.showTaxNote
+                          ? 'السعر (شامل الضريبة 15%)'
+                          : 'السعر'}
+                      </span>
                     </div>
 
                     <div className="divide-y flex-1" style={{ borderColor: theme.rowDivider }}>
@@ -1146,27 +1169,49 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
                                 !available ? 'opacity-55' : ''
                               }`}
                             >
-                              {/* Weight / Item Name + Unit (Editable Inline) */}
+                              {/* Weight / Item Name + Unit (Editable Inline with Auto-Resize) */}
                               <div className="min-w-0 flex-1">
                                 {canEdit ? (
-                                  <input
-                                    type="text"
+                                  <textarea
+                                    rows={1}
                                     value={item.weightLabel}
+                                    ref={el => {
+                                      if (el) {
+                                        el.style.height = 'auto';
+                                        el.style.height = `${el.scrollHeight}px`;
+                                      }
+                                    }}
                                     onChange={e =>
                                       updateItemInCompany(company.id, item.id, {
-                                        weightLabel: e.target.value,
+                                        weightLabel: e.target.value.replace(/\r?\n/g, ' '),
                                       })
                                     }
+                                    onInput={e => {
+                                      const el = e.currentTarget;
+                                      el.style.height = 'auto';
+                                      el.style.height = `${el.scrollHeight}px`;
+                                    }}
+                                    onFocus={e => {
+                                      const el = e.currentTarget;
+                                      el.style.height = 'auto';
+                                      el.style.height = `${el.scrollHeight}px`;
+                                    }}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        e.currentTarget.blur();
+                                      }
+                                    }}
                                     placeholder="اكتب الصنف أو الوزن..."
                                     style={{ fontSize: `${board.config.itemSize}px` }}
-                                    className={`w-full font-bold leading-snug bg-transparent border border-transparent hover:border-slate-300/80 dark:hover:border-slate-600 focus:border-sky-500 focus:bg-white/90 dark:focus:bg-slate-800/90 rounded px-1.5 py-0.5 -mx-1.5 focus:outline-none ${
+                                    className={`w-full resize-none overflow-hidden font-bold leading-snug bg-transparent border border-transparent hover:border-slate-300/80 dark:hover:border-slate-600 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25 focus:bg-white dark:focus:bg-slate-800 rounded-md px-2 py-1 -mx-1.5 focus:outline-none transition-all ${
                                       !available ? 'line-through' : ''
                                     }`}
                                   />
                                 ) : (
                                   <div
                                     style={{ fontSize: `${board.config.itemSize}px` }}
-                                    className={`font-bold leading-snug ${
+                                    className={`font-bold leading-snug whitespace-normal break-words ${
                                       !available ? 'line-through' : ''
                                     }`}
                                   >
@@ -1461,7 +1506,10 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
               isPrint ? 'mt-3 pt-2.5 text-[11px]' : 'mt-6 pt-4 text-xs'
             } border-t flex flex-wrap items-center justify-between gap-2 font-bold`}
           >
-            <span>الأسعار شاملة ضريبة القيمة المضافة · تخضع للتحديث اليومي حسب التوريد</span>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck size={14} style={{ color: theme.priceText }} />
+              <span>جميع الأسعار شاملة ضريبة القيمة المضافة (15%) · تخضع للتحديث اليومي حسب التوريد</span>
+            </span>
             <span className="tabular-nums">
               إجمالي الأصناف المعروضة:{' '}
               {visibleCompanies.reduce((acc, c) => acc + c.items.length, 0)}
@@ -1484,18 +1532,21 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
       />
 
       {/* Studio Top Action Bar */}
-      <header className="px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0">
+      <header className="px-3 sm:px-4 py-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 shrink-0 shadow-xs z-20">
+        {/* Start Cluster: Brand, Board Name & Search */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-600 to-cyan-600 text-white flex items-center justify-center shrink-0 shadow-xs">
             <Snowflake size={18} />
           </div>
-          <input
-            type="text"
-            value={board.name}
-            onChange={e => setBoard(prev => ({ ...prev, name: e.target.value }))}
-            className="font-black text-sm bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 w-48 sm:w-60 focus:outline-none focus:border-sky-500"
-            placeholder="اسم لوحة الأسعار..."
-          />
+          <div className="flex flex-col min-w-0">
+            <input
+              type="text"
+              value={board.name}
+              onChange={e => setBoard(prev => ({ ...prev, name: e.target.value }))}
+              className="font-black text-sm bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 w-44 sm:w-56 focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-800 transition-colors"
+              placeholder="اسم لوحة الأسعار..."
+            />
+          </div>
           <div className="relative hidden xl:block">
             <Search
               size={14}
@@ -1506,92 +1557,114 @@ export const FrozenChickenPrices: React.FC<FrozenChickenPricesProps> = ({ produc
               value={companySearch}
               onChange={e => setCompanySearch(e.target.value)}
               placeholder="بحث عن شركة أو وزن..."
-              className="pr-8 pl-3 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg w-44 focus:outline-none focus:border-sky-500"
+              className="pr-8 pl-3 py-1.5 text-xs font-medium bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl w-44 focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-800 transition-colors"
             />
           </div>
         </div>
 
+        {/* End Cluster: Creation/Archive | Mode/Export/Print | Live/Save/Customize */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setInlineEditEnabled(prev => !prev)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
-              inlineEditEnabled
-                ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300'
-                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-            }`}
-          >
-            {inlineEditEnabled ? <Edit3 size={14} /> : <Eye size={14} />}
-            <span>{inlineEditEnabled ? 'التعديل المباشر مفعّل' : 'معاينة صافية'}</span>
-          </button>
+          {/* Creation & Saved Cluster */}
+          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <button
+              type="button"
+              onClick={() => setShowPresetsModal(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-xs transition-colors"
+            >
+              <Plus size={14} />
+              <span>إضافة شركة</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setShowPresetsModal(true)}
-            className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-          >
-            <Plus size={14} />
-            <span>إضافة شركة</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowSavedModal(true)}
+              className="px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+            >
+              <FolderOpen size={14} className="text-slate-500 dark:text-slate-400" />
+              <span>المحفوظة</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-slate-200/80 dark:bg-slate-900/70 text-[10px] font-black tabular-nums">
+                {savedBoards.length}
+              </span>
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setShowSavedModal(true)}
-            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-          >
-            <FolderOpen size={14} />
-            <span>المحفوظة ({savedBoards.length})</span>
-          </button>
+          {/* Mode & Output Cluster */}
+          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <button
+              type="button"
+              onClick={() => setInlineEditEnabled(prev => !prev)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all ${
+                inlineEditEnabled
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700'
+              }`}
+              title={
+                inlineEditEnabled
+                  ? 'التعديل المباشر مفعّل — اضغط للمعاينة الصافية'
+                  : 'معاينة صافية بدون حقول تعديل'
+              }
+            >
+              {inlineEditEnabled ? <Edit3 size={14} /> : <Eye size={14} />}
+              <span className="hidden lg:inline">
+                {inlineEditEnabled ? 'التعديل المباشر' : 'معاينة صافية'}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleSaveBoard(false)}
-            disabled={isSaving}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors disabled:opacity-60"
-          >
-            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            <span>حفظ</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleExportPng}
+              className="px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+              title="تصدير صورة PNG"
+            >
+              <Download size={14} />
+              <span className="hidden md:inline">PNG</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setIsFullscreen(true)}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-700 hover:bg-black dark:hover:bg-slate-600 text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-          >
-            <Maximize2 size={14} />
-            <span>شاشة عرض</span>
-          </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+              title="طباعة صفحة A4"
+            >
+              <Printer size={14} />
+              <span className="hidden md:inline">طباعة</span>
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleExportPng}
-            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-          >
-            <Download size={14} />
-            <span>صورة</span>
-          </button>
+          {/* Live Display, Customize & Primary Save */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowEditor(prev => !prev)}
+              className={`px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
+                showEditor
+                  ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              <span className="hidden xl:inline">{showEditor ? 'إخفاء التخصيص' : 'تخصيص المظهر'}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-          >
-            <Printer size={14} />
-            <span>طباعة</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(true)}
+              className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-700 text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-xs border border-slate-700/60 transition-colors"
+            >
+              <Maximize2 size={13} className="text-sky-400" />
+              <span>شاشة عرض</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setShowEditor(prev => !prev)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
-              showEditor
-                ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300'
-                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-            }`}
-          >
-            <SlidersHorizontal size={14} />
-            <span>{showEditor ? 'إخفاء التخصيص' : 'تخصيص المظهر'}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleSaveBoard(false)}
+              disabled={isSaving}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-xs transition-colors disabled:opacity-60"
+            >
+              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              <span>حفظ</span>
+            </button>
+          </div>
         </div>
       </header>
 
