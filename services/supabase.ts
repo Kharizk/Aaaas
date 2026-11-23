@@ -519,5 +519,51 @@ export const db = {
     async getAll() { return safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "customer_trusts"), orderBy("date", "desc")))), []); },
     async upsert(trust: any) { return safeDbCall(async () => { await setDoc(doc(firestore, "customer_trusts", trust.id), trust); }); },
     async delete(id: string) { return safeDbCall(async () => { await deleteDoc(doc(firestore, "customer_trusts", id)); }); }
+  },
+  frozenChickenBoards: {
+    async getAll() {
+      const LOCAL_KEY = 'sf_frozen_chicken_boards_v1';
+      let localData: any[] = [];
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        if (raw) localData = JSON.parse(raw);
+      } catch {}
+      try {
+        const remoteData = await safeDbCall(async () => snapshotToArray(await getDocs(query(collection(firestore, "frozen_chicken_boards"), orderBy("date", "desc")))), []);
+        if (Array.isArray(remoteData) && remoteData.length > 0) {
+          const mergedMap = new Map<string, any>();
+          localData.forEach(item => mergedMap.set(item.id, item));
+          remoteData.forEach(item => mergedMap.set(item.id, item));
+          const merged = Array.from(mergedMap.values()).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+          try { localStorage.setItem(LOCAL_KEY, JSON.stringify(merged)); } catch {}
+          return merged;
+        }
+      } catch (e) {
+        console.warn("frozenChickenBoards offline fallback:", e);
+      }
+      return localData;
+    },
+    async upsert(board: any) {
+      const LOCAL_KEY = 'sf_frozen_chicken_boards_v1';
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        const list: any[] = raw ? JSON.parse(raw) : [];
+        const idx = list.findIndex(b => b.id === board.id);
+        if (idx >= 0) list[idx] = board;
+        else list.unshift(board);
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+      } catch {}
+      return safeDbCall(async () => { await setDoc(doc(firestore, "frozen_chicken_boards", board.id), board); });
+    },
+    async delete(id: string) {
+      const LOCAL_KEY = 'sf_frozen_chicken_boards_v1';
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        const list: any[] = raw ? JSON.parse(raw) : [];
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(list.filter(b => b.id !== id)));
+      } catch {}
+      return safeDbCall(async () => { await deleteDoc(doc(firestore, "frozen_chicken_boards", id)); });
+    }
   }
 };
+

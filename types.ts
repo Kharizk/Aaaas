@@ -682,3 +682,50 @@ export interface ActivityLog {
   user?: string;
   type: 'info' | 'warning' | 'error' | 'success';
 }
+
+export type FrozenChickenThemeId = 'frost' | 'classic' | 'dark_tv' | 'fresh';
+
+export interface FrozenChickenPriceItem {
+  id: string;
+  weightLabel: string;
+  unitLabel?: string;
+  price: string;
+  oldPrice?: string;
+  productId?: string;
+  note?: string;
+  isAvailable?: boolean;
+}
+
+export interface FrozenChickenCompany {
+  id: string;
+  name: string;
+  subtitle?: string;
+  accentColor: string;
+  logoUrl?: string | null;
+  items: FrozenChickenPriceItem[];
+  isVisible?: boolean;
+}
+
+export interface FrozenChickenBoardConfig {
+  columns: 2 | 3 | 4;
+  theme: FrozenChickenThemeId;
+  showHeader: boolean;
+  showDate: boolean;
+  showTaxNote: boolean;
+  showOldPrices: boolean;
+  showUnits: boolean;
+  titleSize: number;
+  itemSize: number;
+  priceSize: number;
+}
+
+export interface FrozenChickenBoard {
+  id: string;
+  name: string;
+  title: string;
+  subtitle?: string;
+  date: string;
+  companies: FrozenChickenCompany[];
+  config: FrozenChickenBoardConfig;
+}
+

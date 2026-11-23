@@ -12,6 +12,7 @@ import { DatabaseManager } from './components/DatabaseManager';
 import { PriceTagGenerator } from './components/PriceTagGenerator';
 import { OfferGenerator } from './components/OfferGenerator';
 import { PriceGroupManager } from './components/PriceGroupManager';
+import { FrozenChickenPrices } from './components/FrozenChickenPrices';
 import { CatalogGenerator } from './components/CatalogGenerator';
 import { SettlementManager } from './components/SettlementManager';
 import { POSManagement } from './components/POSManagement';
@@ -53,7 +54,7 @@ import {
   FolderOpen, HardDrive, Folder, FolderPlus, RefreshCw, Image as ImageIcon,
   Layers, Minimize2, X, Languages, Database, ExternalLink,
   Power, ChevronLeft, ChevronRight, SlidersHorizontal, Maximize2,
-  LayoutGrid, ArrowUpDown, Plus, Check, ChevronUp, ChevronDown
+  LayoutGrid, ArrowUpDown, Plus, Check, ChevronUp, ChevronDown, Snowflake
 } from 'lucide-react';
 import { THEMES, AppTheme } from './utils/themes';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts';
@@ -173,6 +174,7 @@ const DENSE_MAXIMIZED_APPS = new Set([
   'offers',
   'price_tags',
   'price_groups',
+  'chicken_prices',
   'catalog',
   'reports_center',
   'advanced_reports',
@@ -395,6 +397,7 @@ const AppContent: React.FC = () => {
           { id: 'price_tags', label: t('nav.price_tags'), icon: Tag, color: COLORS.DARK_GRAY, permission: 'print_labels' },
           { id: 'catalog', label: t('nav.catalog'), icon: BookOpen, color: COLORS.GOLD, permission: 'print_labels' },
           { id: 'price_groups', label: t('nav.price_groups'), icon: Monitor, color: COLORS.SLATE, permission: 'print_labels' },
+          { id: 'chicken_prices', label: t('nav.chicken_prices'), icon: Snowflake, color: COLORS.BLUE, permissions: ['view_products', 'manage_products', 'print_labels'] },
         ],
       },
       {
@@ -1358,6 +1361,8 @@ const AppContent: React.FC = () => {
         return <OfferGenerator products={products} units={units} />;
       case 'price_groups':
         return <PriceGroupManager />;
+      case 'chicken_prices':
+        return <FrozenChickenPrices products={products} units={units} />;
       case 'catalog':
         return <CatalogGenerator products={products} units={units} />;
       case 'activity_log':
@@ -1637,7 +1642,7 @@ const AppContent: React.FC = () => {
           onMove={(x, y) => handleMoveWindow(win.id, x, y)}
           onResize={(bounds) => handleResizeWindow(win.id, bounds)}
         >
-          <div className={win.id === 'file_manager' || win.id === 'price_groups' || win.id === 'catalog' ? 'h-full print:h-auto' : 'p-4 md:p-6 min-h-full print:p-0'}>
+          <div className={win.id === 'file_manager' || win.id === 'price_groups' || win.id === 'chicken_prices' || win.id === 'catalog' ? 'h-full print:h-auto' : 'p-4 md:p-6 min-h-full print:p-0'}>
             {renderWindowAppContent(win.id)}
           </div>
         </DesktopWindow>

@@ -23,6 +23,7 @@ import {
   Clock,
   Calendar,
   RefreshCw,
+  Snowflake,
 } from 'lucide-react';
 import { Product, DailySales, ListRow } from '../types';
 import { db } from '../services/supabase';
@@ -77,7 +78,7 @@ export const DESKTOP_WIDGET_CATALOG: DesktopWidgetCatalogItem[] = [
     id: 'price_offers',
     title: 'ويدجت الأسعار والعروض',
     description: 'اختصارات شاشات الأسعار والملصقات والعروض والكتالوج',
-    requiredAppIds: ['price_groups', 'offers', 'price_tags', 'catalog'],
+    requiredAppIds: ['price_groups', 'chicken_prices', 'offers', 'price_tags', 'catalog'],
   },
   {
     id: 'quick_notes',
@@ -503,6 +504,7 @@ export const DesktopWidgets: React.FC<DesktopWidgetsProps> = ({
       case 'price_offers': {
         const promoActions = [
           { id: 'price_groups', label: 'شاشات الأسعار', icon: Monitor, color: '#475569' },
+          { id: 'chicken_prices', label: 'أسعار الدجاج المجمد', icon: Snowflake, color: '#0284C7' },
           { id: 'offers', label: 'العروض', icon: Percent, color: '#C5A059' },
           { id: 'price_tags', label: 'ملصقات السعر', icon: Tag, color: '#334155' },
           { id: 'catalog', label: 'الكتالوج', icon: BookOpen, color: '#800020' },
